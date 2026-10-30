@@ -285,6 +285,12 @@ dialog[open] { animation: pop 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .x { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1px solid var(--line); font-size: 18px; }
 .x:hover { border-color: var(--ink); }
 .composer .field { position: relative; }
+/* Schreibfenster: 75 % des Bildschirms, das Textfeld füllt den freien Platz. */
+dialog.dlg-large { width: 75vw; height: 75vh; height: 75dvh; max-width: none; max-height: none; }
+dialog.dlg-large .dlg { min-height: 100%; display: flex; flex-direction: column; }
+dialog.dlg-large .composer { flex: 1; display: flex; flex-direction: column; }
+dialog.dlg-large .composer .field { flex: 1; display: flex; flex-direction: column; }
+dialog.dlg-large .composer textarea { flex: 1; resize: none; }
 .composer textarea, .composer .hl { width: 100%; min-height: 150px; border: 0; font-family: var(--serif); font-size: 26px; line-height: 1.25; padding: 6px 0; white-space: pre-wrap; overflow-wrap: break-word; letter-spacing: normal; }
 .composer textarea { resize: vertical; background: transparent; outline: none; position: relative; z-index: 1; display: block; }
 .composer textarea::placeholder { color: var(--ink-3); }
@@ -494,6 +500,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
   .post-meta .need-mobile { display: inline; }
 }
 @media (max-width: 560px) {
+  dialog.dlg-large { width: calc(100% - 24px); }
   .principles { grid-template-columns: 1fr; }
   .public-top nav .hide-sm { display: none; }
   .acute .call a { min-width: 0; flex: 1; }
