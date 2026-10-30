@@ -1,14 +1,25 @@
+import { execSync } from 'node:child_process'
 import { defineConfig, devices } from '@playwright/test'
 
 /**
  * E2E gegen einen Produktions-Build: `npm run build` vorher.
- * Datenbank: DATABASE_URL (Migrationen + Seed laufen im globalSetup).
+ * Datenbank: Jeder Lauf bekommt eine frische eigene Datenbank «<name>_e2e» neben DATABASE_URL.
+ * Angelegt wird sie hier beim Laden der Konfiguration – Playwright startet den webServer noch vor
+ * globalSetup, und dessen Health-Check braucht die Datenbank schon. Die Datei wird auch in den
+ * Test-Prozessen geladen; die Umgebungsvariable sorgt dafür, dass das nur einmal passiert.
  */
 const PORT = Number(process.env.E2E_PORT ?? 3100)
+if (!process.env.E2E_ADMIN_DATABASE_URL) {
+  const base = process.env.DATABASE_URL ?? 'postgres://lichtung:lichtung@localhost:5432/lichtung'
+  const e2e = new URL(base)
+  e2e.pathname = `${e2e.pathname}_e2e`
+  process.env.E2E_ADMIN_DATABASE_URL = base
+  process.env.DATABASE_URL = e2e.toString()
+  execSync('npx tsx tests/e2e/prepare-db.ts', { stdio: 'inherit', env: process.env })
+}
 
 export default defineConfig({
   testDir: 'tests/e2e',
-  globalSetup: './tests/e2e/global-setup.ts',
   timeout: 60_000,
   fullyParallel: false,
   workers: 1,

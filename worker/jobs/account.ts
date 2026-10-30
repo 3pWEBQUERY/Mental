@@ -21,6 +21,7 @@ import {
   users,
 } from '../../db/schema'
 import { bucketConfigured, deleteObject, getObjectBytes, putObject } from '../../lib/s3'
+import { syncReplyCount } from '../../lib/reply-count'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -104,8 +105,10 @@ export async function purgeAccount({ userId, reason = 'deleted' }: { userId: str
     const ex = await db.select({ key: exports.bucketKey }).from(exports).where(eq(exports.userId, userId))
     for (const { key } of ex) if (key) await deleteObject(key).catch(() => {})
   }
+  const repliedTo = (await db.selectDistinct({ postId: replies.postId }).from(replies).where(eq(replies.userId, userId))).map((r) => r.postId)
   await db.transaction(async (tx) => {
     await tx.update(replies).set({ body: '', deletedAt: new Date() }).where(eq(replies.userId, userId))
+    await syncReplyCount(repliedTo, tx)
     await tx
       .insert(reservedUsernames)
       .values({ username: u.username, until: new Date(Date.now() + 90 * DAY) })
@@ -120,7 +123,10 @@ export async function purgeDueAccounts() {
     .select({ id: users.id })
     .from(users)
     .where(and(eq(users.status, 'deleting'), isNotNull(users.deleteAfter), lt(users.deleteAfter, new Date())))
-  for (const { id } of due) await purgeAccount({ userId: id })
+  for (const { id } of due) {
+    // Ein fehlerhaftes Konto darf die übrigen Löschungen nicht jeden Tag blockieren.
+    await purgeAccount({ userId: id }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, (e as Error).message))
+  }
 }
 
 /**
@@ -140,5 +146,7 @@ export async function purgeInactiveAccounts() {
         sql`NOT EXISTS (SELECT 1 FROM ${sessions} WHERE ${sessions.userId} = ${users.id} AND ${sessions.lastSeenAt} >= ${cutoff})`,
       ),
     )
-  for (const { id } of stale) await purgeAccount({ userId: id, reason: 'inactive' })
+  for (const { id } of stale) {
+    await purgeAccount({ userId: id, reason: 'inactive' }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, (e as Error).message))
+  }
 }

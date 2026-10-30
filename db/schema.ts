@@ -190,6 +190,8 @@ export const posts = pgTable(
   },
   (t) => [
     index('posts_status_created_idx').on(t.status, t.createdAt.desc()),
+    // Feed «Alle»: Sortierung samt Cursor, ohne den Status-Filter (eigene Gedanken in jedem Zustand).
+    index('posts_feed_idx').on(t.createdAt.desc().nullsFirst(), t.id.desc().nullsFirst()).where(sql`deleted_at IS NULL`),
     index('posts_unheard_idx')
       .on(t.replyCount, t.createdAt)
       .where(sql`status = 'visible' AND reply_count = 0`),
@@ -214,7 +216,7 @@ export const postMedia = pgTable(
     status: mediaStatusEnum('status').notNull().default('quarantine'),
     createdAt: createdAt(),
   },
-  (t) => [index('post_media_post_idx').on(t.postId), index('post_media_status_idx').on(t.status, t.createdAt)],
+  (t) => [index('post_media_post_idx').on(t.postId), index('post_media_status_idx').on(t.status, t.createdAt), index('post_media_user_idx').on(t.userId, t.createdAt)],
 )
 
 export const replies = pgTable(
@@ -246,7 +248,7 @@ export const support = pgTable(
     kind: supportKindEnum('kind').notNull(),
     createdAt: createdAt(),
   },
-  (t) => [primaryKey({ columns: [t.postId, t.userId, t.kind] })],
+  (t) => [primaryKey({ columns: [t.postId, t.userId, t.kind] }), index('support_user_idx').on(t.userId)],
 )
 
 export const bookmarks = pgTable(
@@ -256,7 +258,7 @@ export const bookmarks = pgTable(
     postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
     createdAt: createdAt(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.postId] })],
+  (t) => [primaryKey({ columns: [t.userId, t.postId] }), index('bookmarks_post_idx').on(t.postId)],
 )
 
 /* --------------------------------------------------------- Privater Raum */
@@ -339,7 +341,7 @@ export const notifications = pgTable(
     readAt: ts('read_at'),
     createdAt: createdAt(),
   },
-  (t) => [index('notifications_user_idx').on(t.userId, t.readAt, t.createdAt.desc())],
+  (t) => [index('notifications_user_idx').on(t.userId, t.readAt, t.createdAt.desc()), index('notifications_post_idx').on(t.postId)],
 )
 
 export const pushSubscriptions = pgTable(
@@ -376,6 +378,7 @@ export const reports = pgTable(
   },
   (t) => [
     index('reports_queue_idx').on(t.status, t.priority, t.createdAt),
+    index('reports_reporter_idx').on(t.reporterId),
     index('reports_target_idx').on(t.targetType, t.targetId),
     uniqueIndex('reports_once_idx')
       .on(t.reporterId, t.targetType, t.targetId)
@@ -406,6 +409,12 @@ export const postHides = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.postId] }), index('post_hides_post_idx').on(t.postId)],
 )
+
+/** Lebenszeichen der Worker-Instanzen – für /api/health/worker und externe Überwachung. */
+export const workerHeartbeats = pgTable('worker_heartbeats', {
+  instance: text('instance').primaryKey(),
+  seenAt: ts('seen_at').notNull().defaultNow(),
+})
 
 /** Audit-Log. Ein Trigger verhindert UPDATE und DELETE. */
 export const moderationActions = pgTable(
@@ -440,6 +449,8 @@ export const crisisTerms = pgTable(
     term: text('term').notNull(),
     level: crisisTermLevelEnum('level').notNull(),
     language: text('language').notNull().default('de'),
+    /** Entfernte Begriffe bleiben als inaktiv stehen – sonst legte der Seed sie beim nächsten Deploy wieder an. */
+    active: boolean('active').notNull().default(true),
   },
   (t) => [uniqueIndex('crisis_terms_term_idx').on(t.language, t.term)],
 )

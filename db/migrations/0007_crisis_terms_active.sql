@@ -1,0 +1,1 @@
+ALTER TABLE "crisis_terms" ADD COLUMN "active" boolean DEFAULT true NOT NULL;
