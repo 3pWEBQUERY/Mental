@@ -8,8 +8,10 @@ import { emit, on, toast } from '@/lib/client/bus'
 import { BREATH, LIMITS, MOOD_HEAVY } from '@/lib/constants'
 import { m } from '@/messages'
 import { panic } from '../panic'
+import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
 import type { OrbApi } from './orb'
+import { attempt } from '@/lib/client/attempt'
 
 function OrbFallback() {
   return (
@@ -50,14 +52,14 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     api.current?.setMood(i)
     api.current?.pulse()
     emit('checkin-mood', i)
-    const res = await saveCheckin({ mood: i })
-    if (res.ok && res.proHint) setProHint(true)
+    const res = await attempt(() => saveCheckin({ mood: i }))
+    if (res?.proHint) setProHint(true)
   }
 
   async function saveNote() {
     if (mood === null || !note.trim()) return
-    const res = await saveCheckin({ mood, note })
-    if (res.ok) {
+    const res = await attempt(() => saveCheckin({ mood, note }))
+    if (res) {
       toast(m.stage.noteSaved)
       setNote('')
       setNoteOpen(false)
@@ -133,22 +135,17 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
           {s.hide}
         </button>
       </div>
-      <div className="breath-label" aria-live="polite">
-        <b>{s[phase]}</b>
-        <span>{left === null ? s.breathStart : s.breathMeta(left)}</span>
+      {/* Angesagt wird nur die Phase (Einatmen/Halten/Ausatmen) – nicht jede Sekunde. */}
+      <div className="breath-label">
+        <b aria-live="polite">{s[phase]}</b>
+        <span aria-hidden="true">{left === null ? s.breathStart : s.breathMeta(left)}</span>
       </div>
       <div className="checkin">
         <div className="eyebrow">{greeting}</div>
-        <h1>
+        <h2>
           {s.question} <em>{s.questionEm}</em>
-        </h1>
-        <div className="moods" role="group" aria-label={s.moodGroup}>
-          {m.moods.labels.map((label, i) => (
-            <button key={label} type="button" className="mood" aria-pressed={mood === i} onClick={() => pick(i)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        </h2>
+        <RadioGroup className="moods" itemClassName="mood" label={s.moodGroup} value={mood} onChange={pick} options={m.moods.labels.map((label, i) => ({ value: i, label }))} />
         <p className="mood-note" aria-live="polite">
           {mood === null ? (
             s.pick

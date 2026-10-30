@@ -14,7 +14,8 @@ export function Toaster() {
         setMsg(text)
         setVisible(true)
         clearTimeout(timer.current)
-        timer.current = setTimeout(() => setVisible(false), 2600)
+        // Lange Meldungen (z. B. Fehler) bleiben länger stehen: ~60 ms pro Zeichen, 2.6 bis 8 s.
+        timer.current = setTimeout(() => setVisible(false), Math.min(8000, Math.max(2600, 1200 + text.length * 60)))
       }),
     [],
   )

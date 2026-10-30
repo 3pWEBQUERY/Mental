@@ -77,7 +77,7 @@ export default async function ImagesPage() {
                   {t.approve}
                 </button>
               )}
-              <button className="btn ghost small" name="decision" value="reject" style={{ color: 'var(--clay-ink)', borderColor: 'var(--clay)' }}>
+              <button className="btn ghost small danger" name="decision" value="reject">
                 {t.reject}
               </button>
             </form>

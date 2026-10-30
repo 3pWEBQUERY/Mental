@@ -9,6 +9,7 @@ import type { PublicPost } from '@/lib/dto'
 import { detectPii, type PiiMatch } from '@/lib/pii'
 import { m } from '@/messages'
 import { Dialog } from '../dialog'
+import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
 import { AcuteDialog, CareNote } from './care'
 
@@ -112,8 +113,8 @@ export function Composer() {
           }
           if (detail?.circle) setCircle(detail.circle)
         }
+        // Fokus setzt der Dialog nach showModal() auf das Textfeld (data-autofocus).
         setOpen(true)
-        setTimeout(() => area.current?.focus(), 60)
       }),
     [],
   )
@@ -223,6 +224,7 @@ export function Composer() {
             </label>
             <textarea
               id="composer-text"
+              data-autofocus
               ref={area}
               value={text}
               maxLength={LIMITS.postMax}
@@ -249,35 +251,38 @@ export function Composer() {
           <div className="opts">
             <div>
               <h3>{c.need}</h3>
-              <div className="opt-row" role="group" aria-label={c.need}>
-                {NEEDS.map((n) => (
-                  <button key={n} type="button" className="opt" aria-pressed={need === n} onClick={() => setNeed(n)}>
-                    {m.needs[n]}
-                  </button>
-                ))}
-              </div>
+              <RadioGroup className="opt-row" itemClassName="opt" label={c.need} value={need} onChange={setNeed} options={NEEDS.map((n) => ({ value: n, label: m.needs[n] }))} />
             </div>
             <div>
               <h3>{c.circle}</h3>
-              <div className="opt-row" role="group" aria-label={c.circle}>
-                {viewer.circles.map((ci) => (
-                  <button key={ci.slug} type="button" className="opt" aria-pressed={circle === ci.slug} onClick={() => setCircle(ci.slug)}>
-                    {ci.name}
-                  </button>
-                ))}
-              </div>
+              <RadioGroup
+                className="opt-row"
+                itemClassName="opt"
+                label={c.circle}
+                value={circle}
+                onChange={setCircle}
+                options={viewer.circles.map((ci) => ({ value: ci.slug, label: ci.name }))}
+              />
             </div>
             {!edit && (
               <div>
                 <h3>{c.mood}</h3>
-                <div className="opt-row" role="group" aria-label={c.mood}>
-                  {m.moods.labels.map((label, i) => (
-                    <button key={label} type="button" className="opt" aria-pressed={mood === i} onClick={() => setMood(i)}>
-                      <i className="dot" style={{ background: `var(--mood-${i})` }} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <RadioGroup
+                  className="opt-row"
+                  itemClassName="opt"
+                  label={c.mood}
+                  value={mood}
+                  onChange={setMood}
+                  options={m.moods.labels.map((label, i) => ({
+                    value: i,
+                    label: (
+                      <>
+                        <i className="dot" style={{ background: `var(--mood-${i})` }} />
+                        {label}
+                      </>
+                    ),
+                  }))}
+                />
               </div>
             )}
             {!edit && (
@@ -286,7 +291,7 @@ export function Composer() {
                 <i />
                 <span>
                   {c.anonymous}
-                  <small>{anonymous ? m.settings.visibility.anonymous : c.anonymousHint(viewer.displayName)}</small>
+                  <small>{anonymous ? c.anonymousOn : c.anonymousHint(viewer.displayName)}</small>
                 </span>
               </label>
             )}

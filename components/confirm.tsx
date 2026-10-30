@@ -28,10 +28,11 @@ export function ConfirmHost() {
     <Dialog open={req !== null} onClose={() => answer(false)} title={req?.confirmLabel}>
       <p style={{ fontFamily: 'var(--serif)', fontSize: 'calc(22px * var(--fz))', lineHeight: 1.25 }}>{req?.message}</p>
       <div className="dlg-foot">
-        <button type="button" className="btn ghost" onClick={() => answer(false)}>
+        {/* Bestätigt wird hier immer etwas Endgültiges: Fokus auf «Abbrechen», Enter löscht nichts aus Versehen. */}
+        <button type="button" className="btn ghost" onClick={() => answer(false)} data-autofocus>
           {m.common.cancel}
         </button>
-        <button type="button" className="btn" onClick={() => answer(true)} autoFocus>
+        <button type="button" className="btn danger" onClick={() => answer(true)}>
           {req?.confirmLabel}
         </button>
       </div>

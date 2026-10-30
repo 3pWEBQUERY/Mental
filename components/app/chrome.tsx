@@ -16,6 +16,7 @@ import { CirclesList } from './circles'
 import { Composer } from './composer'
 import { Rail } from './rail'
 import { ServiceWorkerRegister } from './sw-register'
+import { attempt } from '@/lib/client/attempt'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -51,8 +52,9 @@ export function AppChrome({
     () =>
       on('notifications', async () => {
         setNotifOpen(true)
-        setItems(await listNotifications())
-        await markNotificationsRead()
+        // Laden schlägt fehl: leere Liste statt endlos «Einen Moment …».
+        setItems((await attempt(() => listNotifications())) ?? [])
+        await markNotificationsRead().catch(() => {})
         setUnread(0)
       }),
     [],
@@ -95,7 +97,7 @@ export function AppChrome({
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} title={m.help.title}>
         <div className="help">
-          <HelpList resources={viewer.help} />
+          <HelpList resources={viewer.help} eyebrow={false} />
         </div>
         <p className="fine" style={{ marginTop: 14 }}>
           {m.help.honest}
@@ -117,6 +119,7 @@ export function AppChrome({
               <li key={n.id} className={`notif${n.read ? '' : ' unread'}`}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="notif-title">
+                    {!n.read && <span className="sr-only">{m.notifications.unread}: </span>}
                     {n.kind === 'reply'
                       ? m.notifications.reply
                       : n.kind === 'support'
