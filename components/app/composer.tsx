@@ -77,6 +77,7 @@ export function Composer() {
   const [need, setNeed] = useState<Need>('listen')
   const [circle, setCircle] = useState(viewer.circles[0]?.slug ?? '')
   const [mood, setMood] = useState(viewer.lastMood ?? 2)
+  const [letGo, setLetGo] = useState<0 | 1 | 7 | 30>(0)
   const [anonymous, setAnonymous] = useState(viewer.defaultVisibility === 'anonymous')
   const [cw, setCw] = useState(false)
   const [upload, setUpload] = useState<Upload>(null)
@@ -166,6 +167,7 @@ export function Composer() {
   function reset() {
     setText('')
     setCw(false)
+    setLetGo(0)
     if (upload) URL.revokeObjectURL(upload.preview)
     setUpload(null)
     setEdit(null)
@@ -198,6 +200,7 @@ export function Composer() {
       visibility: anonymous ? 'anonymous' : 'pseudonym',
       contentWarning: cw,
       mediaId: upload && 'mediaId' in upload ? upload.mediaId : null,
+      letGoDays: letGo,
     }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
@@ -294,6 +297,20 @@ export function Composer() {
                   <small>{anonymous ? c.anonymousOn : c.anonymousHint(viewer.displayName)}</small>
                 </span>
               </label>
+            )}
+            {!edit && (
+              <div>
+                <h3>{c.letGo}</h3>
+                <RadioGroup
+                  className="opt-row"
+                  itemClassName="opt"
+                  label={c.letGo}
+                  value={letGo}
+                  onChange={setLetGo}
+                  options={([0, 1, 7, 30] as const).map((d) => ({ value: d, label: c.letGoOptions[d] }))}
+                />
+                {letGo > 0 && <p className="fine" style={{ marginTop: 6 }}>{c.letGoHint}</p>}
+              </div>
             )}
             <label className="switch">
               <input type="checkbox" checked={cw} onChange={(e) => setCw(e.target.checked)} />

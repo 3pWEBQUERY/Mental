@@ -18,6 +18,7 @@ const postColumns = {
   contentWarning: posts.contentWarning,
   createdAt: posts.createdAt,
   editedAt: posts.editedAt,
+  expiresAt: posts.expiresAt,
   replyCount: posts.replyCount,
   closed: posts.closed,
   visibility: posts.visibility,
@@ -211,10 +212,12 @@ export async function getFeed(opts: {
   /** «Meine Kreise»: nur Kreise, denen die Person folgt. */
   followed?: boolean
   cursor?: string | null
+  /** Seitengrösse; «Ein Gedanke wartet» lädt immer genau einen. */
+  size?: number
 }): Promise<FeedPage> {
   const { viewerId, view, circleId } = opts
   const c = decode(opts.cursor)
-  const size = LIMITS.feedPageSize
+  const size = opts.size ?? LIMITS.feedPageSize
   const remaining = LIMITS.feedDailyCap - c.n
   if (remaining <= 0) return { posts: [], nextCursor: null, caughtUp: true }
   const take = Math.min(size, remaining)

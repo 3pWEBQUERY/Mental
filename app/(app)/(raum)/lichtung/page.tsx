@@ -60,7 +60,15 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
           ))}
         </nav>
       </div>
-      <p className="manifest">{m.feed.manifest}</p>
+      <p className="manifest">
+        {m.feed.manifest}
+        {view === 'unheard' && (
+          <>
+            {' '}
+            <Link href="/lichtung/wartet">{m.waiting.open} →</Link>
+          </>
+        )}
+      </p>
       <PromptButton circle={circle === MINE ? null : circle} />
     </>
   )

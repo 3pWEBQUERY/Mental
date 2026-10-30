@@ -53,6 +53,7 @@ const settingsSchema = z
     breathSound: z.boolean(),
     hidePresence: z.boolean(),
     collapseWarnings: z.boolean(),
+    discreet: z.boolean(),
   })
   .partial()
 

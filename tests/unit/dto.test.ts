@@ -16,6 +16,7 @@ const post: PostRow = {
   contentWarning: false,
   createdAt: new Date(),
   editedAt: null,
+  expiresAt: null,
   replyCount: 1,
   closed: false,
   visibility: 'anonymous',

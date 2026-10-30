@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { detectCrisis } from '@/lib/crisis'
+import { detectAdvice } from '@/lib/advice'
 import { detectDerogation } from '@/lib/derogation'
 import { detectPii } from '@/lib/pii'
 
@@ -43,5 +44,19 @@ describe('Abwertung', () => {
   })
   it('lässt freundliche Antworten durch', () => {
     expect(detectDerogation('Du bist damit nicht allein.')).toBe(false)
+  })
+})
+
+describe('detectAdvice', () => {
+  it('erkennt Ratschläge', () => {
+    expect(detectAdvice('Du solltest mal mit jemandem reden')).toBe(true)
+    expect(detectAdvice('Probier es doch mal mit Sport')).toBe(true)
+    expect(detectAdvice('Hast du schon versucht, früher zu schlafen?')).toBe(true)
+    expect(detectAdvice('An deiner Stelle würde ich kündigen')).toBe(true)
+  })
+  it('lässt Zuspruch durch', () => {
+    expect(detectAdvice('Ich höre dich. Das klingt wirklich schwer.')).toBe(false)
+    expect(detectAdvice('Du bist damit nicht allein.')).toBe(false)
+    expect(detectAdvice('Du musstest so viel tragen.')).toBe(false)
   })
 })

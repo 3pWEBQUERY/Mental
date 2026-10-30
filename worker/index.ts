@@ -11,6 +11,7 @@ import { exportAccount, purgeAccount, purgeDueAccounts, purgeInactiveAccounts } 
 import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimits } from './jobs/cleanup'
 import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media'
 import { moderateContent } from './jobs/moderation'
+import { expirePosts } from './jobs/posts'
 import { sendPush } from './jobs/push'
 
 const TZ = 'Europe/Zurich'
@@ -62,6 +63,7 @@ async function main() {
   const cron: [string, string, () => Promise<void>][] = [
     [QUEUES.cleanupQuarantine, '*/15 * * * *', cleanupQuarantine],
     [QUEUES.requeueMedia, '*/10 * * * *', requeueStuckMedia],
+    [QUEUES.expirePosts, '*/15 * * * *', expirePosts],
     [QUEUES.cleanupRateLimits, '7 * * * *', cleanupRateLimits],
     [QUEUES.cleanupPresence, '*/20 * * * *', cleanupPresence],
     [QUEUES.cleanupExports, '23 * * * *', cleanupExports],

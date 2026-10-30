@@ -4,6 +4,7 @@ import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { Loading } from '@/components/ui'
 import { PostList } from '@/components/feed/post-list'
+import { Letters, SafetyPlanEditor } from '@/components/me/for-me'
 import { Journal } from '@/components/me/journal'
 import { db } from '@/db'
 import { breathLog, checkins, posts, replies, stepLog } from '@/db/schema'
@@ -11,11 +12,11 @@ import { getBookmarkedPosts, getMyPosts } from '@/lib/server/posts'
 import { requireViewer, type Viewer } from '@/lib/server/session'
 import { formatDate, zurichDay } from '@/lib/time'
 import { m } from '@/messages'
-import { journalState } from './actions'
+import { getSafetyPlan, journalState, myLetters } from './actions'
 
 export const metadata: Metadata = { title: m.me.title }
 
-const TABS = ['verlauf', 'gedanken', 'gutgetan', 'merkliste', 'tagebuch'] as const
+const TABS = ['verlauf', 'gedanken', 'gutgetan', 'merkliste', 'tagebuch', 'fuermich'] as const
 type Tab = (typeof TABS)[number]
 const LABEL: Record<Tab, string> = {
   verlauf: m.me.tabs.history,
@@ -23,6 +24,7 @@ const LABEL: Record<Tab, string> = {
   gutgetan: m.me.tabs.saved,
   merkliste: m.me.tabs.bookmarks,
   tagebuch: m.me.tabs.journal,
+  fuermich: m.me.tabs.forMe,
 }
 
 export default function MePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -58,6 +60,7 @@ async function Me({ searchParams }: { searchParams: Promise<{ tab?: string }> })
       {tab === 'verlauf' && <History v={v} />}
       {tab === 'gedanken' && <PostList initial={await getMyPosts(v.userId)} empty={m.me.postsEmpty} />}
       {tab === 'gutgetan' && <Saved v={v} />}
+      {tab === 'fuermich' && <ForMe />}
       {tab === 'merkliste' && <PostList initial={await getBookmarkedPosts(v.userId)} empty={m.me.bookmarksEmpty} />}
       {tab === 'tagebuch' && <Journal state={await journalState()} />}
     </>
@@ -171,5 +174,15 @@ async function Saved({ v }: { v: Viewer }) {
         </ul>
       )}
     </section>
+  )
+}
+
+async function ForMe() {
+  const [plan, letters] = await Promise.all([getSafetyPlan(), myLetters()])
+  return (
+    <div className="stack" style={{ gap: 40 }}>
+      <SafetyPlanEditor initial={plan} />
+      <Letters initial={letters} />
+    </div>
   )
 }

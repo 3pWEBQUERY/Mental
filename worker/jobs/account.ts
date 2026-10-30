@@ -10,11 +10,13 @@ import {
   circles,
   exports,
   journalEntries,
+  letters,
   postMedia,
   posts,
   profiles,
   replies,
   reservedUsernames,
+  safetyPlans,
   sessions,
   stepLog,
   support,
@@ -41,7 +43,7 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       .from(posts)
       .innerJoin(circles, eq(circles.id, posts.circleId))
       .where(and(eq(posts.userId, userId), sql`${posts.deletedAt} IS NULL`))
-    const [myReplies, myCheckins, journal, given, marks, prefs, breaths, stepsDone, blocked, media] = await Promise.all([
+    const [myReplies, myCheckins, journal, given, marks, prefs, breaths, stepsDone, blocked, media, plan, myLetters] = await Promise.all([
       db.select({ postId: replies.postId, body: replies.body, authorHandle: replies.authorHandle, createdAt: replies.createdAt }).from(replies).where(eq(replies.userId, userId)),
       db.select({ mood: checkins.mood, note: checkins.note, createdAt: checkins.createdAt }).from(checkins).where(eq(checkins.userId, userId)),
       db.select({ ciphertext: journalEntries.ciphertext, iv: journalEntries.iv, salt: journalEntries.salt, createdAt: journalEntries.createdAt }).from(journalEntries).where(eq(journalEntries.userId, userId)),
@@ -52,6 +54,8 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       db.select({ action: stepLog.action, createdAt: stepLog.createdAt }).from(stepLog).where(eq(stepLog.userId, userId)),
       db.select({ createdAt: blocks.createdAt }).from(blocks).where(eq(blocks.blockerId, userId)),
       db.select({ id: postMedia.id, key: postMedia.bucketKey, postId: postMedia.postId }).from(postMedia).where(and(eq(postMedia.userId, userId), eq(postMedia.status, 'ready'))),
+      db.select({ plan: safetyPlans.plan, updatedAt: safetyPlans.updatedAt }).from(safetyPlans).where(eq(safetyPlans.userId, userId)),
+      db.select({ body: letters.body, createdAt: letters.createdAt, shownAt: letters.shownAt }).from(letters).where(eq(letters.userId, userId)),
     ])
 
     const { journalSalt, journalCheck, ...settings } = profile?.settings ?? {}
@@ -69,6 +73,8 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       kleineSchritte: stepsDone,
       blockiert: blocked.length,
       tagebuch: { salt: journalSalt ?? null, pruefwert: journalCheck ?? null, eintraege: journal },
+      notfallplan: plan[0] ?? null,
+      briefe: myLetters,
     }
     const files: Zippable = { 'lichtung.json': strToU8(JSON.stringify(data, null, 2)) }
     for (const m of media) {

@@ -44,6 +44,8 @@ export type PublicPost = {
   contentWarning: boolean
   createdAt: string
   editedAt: string | null
+  /** Nur für die Verfasserin: wann der Gedanke sich selbst löscht. */
+  expiresAt: string | null
   replyCount: number
   closed: boolean
   isMine: boolean
@@ -70,6 +72,7 @@ export type PostRow = {
   contentWarning: boolean
   createdAt: Date
   editedAt: Date | null
+  expiresAt: Date | null
   replyCount: number
   closed: boolean
   visibility: 'anonymous' | 'pseudonym'
@@ -141,6 +144,7 @@ export function toPublicPost(
     contentWarning: p.contentWarning,
     createdAt: p.createdAt.toISOString(),
     editedAt: p.editedAt?.toISOString() ?? null,
+    expiresAt: isMine ? (p.expiresAt?.toISOString() ?? null) : null,
     replyCount: p.replyCount,
     closed: p.closed,
     isMine,

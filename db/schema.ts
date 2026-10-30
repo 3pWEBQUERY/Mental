@@ -114,6 +114,8 @@ export type Settings = {
   breathSound?: boolean
   hidePresence?: boolean
   collapseWarnings?: boolean
+  /** Diskret: neutraler Tab-Titel, Inhalt verschwimmt beim Verlassen des Fensters. */
+  discreet?: boolean
   journalSalt?: string
   journalCheck?: { iv: string; ciphertext: string; salt: string }
   proHelpHintAt?: string
@@ -187,8 +189,11 @@ export const posts = pgTable(
     editedAt: ts('edited_at'),
     createdAt: createdAt(),
     deletedAt: ts('deleted_at'),
+    /** «Gedanke loslassen»: wird zu diesem Zeitpunkt automatisch endgültig gelöscht. */
+    expiresAt: ts('expires_at'),
   },
   (t) => [
+    index('posts_expires_idx').on(t.expiresAt).where(sql`expires_at IS NOT NULL AND deleted_at IS NULL`),
     index('posts_status_created_idx').on(t.status, t.createdAt.desc()),
     // Feed «Alle»: Sortierung samt Cursor, ohne den Status-Filter (eigene Gedanken in jedem Zustand).
     index('posts_feed_idx').on(t.createdAt.desc().nullsFirst(), t.id.desc().nullsFirst()).where(sql`deleted_at IS NULL`),
@@ -262,6 +267,33 @@ export const bookmarks = pgTable(
 )
 
 /* --------------------------------------------------------- Privater Raum */
+
+export type SafetyPlan = { signs: string; self: string; distract: string; people: string; pros: string; safe: string }
+
+/** «Mein Notfallplan» – nur für die Person selbst, Teil von Export und Löschung. */
+export const safetyPlans = pgTable('safety_plans', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  plan: jsonb('plan').$type<SafetyPlan>().notNull(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+})
+
+/** «Brief an mein späteres Ich» – an einem guten Tag geschrieben, nach dem nächsten «Schwer» gezeigt. */
+export const letters = pgTable(
+  'letters',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    createdAt: createdAt(),
+    shownAt: ts('shown_at'),
+  },
+  (t) => [index('letters_user_idx').on(t.userId, t.createdAt)],
+)
+
 
 export const checkins = pgTable(
   'checkins',

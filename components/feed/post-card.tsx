@@ -16,10 +16,11 @@ import { attempt } from '@/lib/client/attempt'
 import { emit, pulse, toast } from '@/lib/client/bus'
 import { LIMITS, NO_ADVICE_NEEDS, SUPPORT_KINDS, type SupportKind } from '@/lib/constants'
 import { detectCrisis } from '@/lib/crisis'
+import { detectAdvice } from '@/lib/advice'
 import { detectDerogation } from '@/lib/derogation'
 import type { PublicPost, PublicReply } from '@/lib/dto'
 import { detectPii } from '@/lib/pii'
-import { relativeTime } from '@/lib/time'
+import { formatDate, relativeTime } from '@/lib/time'
 import { m } from '@/messages'
 import { AcuteDialog, CareNote } from '../app/care'
 import { askConfirm } from '../confirm'
@@ -164,6 +165,8 @@ export function PostCard({
 
   const crisis = detectCrisis(reply, viewer.crisisTerms) !== 'none'
   const derogation = detectDerogation(reply)
+  // Wer nur gehört werden will, bekommt vor dem Senden einen sanften Hinweis auf Ratschläge.
+  const advice = !post.isMine && NO_ADVICE_NEEDS.includes(post.need) && detectAdvice(reply)
   const pii = detectPii(reply)
   const visibleReplies = replies.filter((r) => !r.hiddenByAuthor || post.isMine || r.isMine)
   const rc = replies.filter((r) => !r.deleted && !r.isAuthor).length
@@ -185,7 +188,7 @@ export function PostCard({
     e.preventDefault()
     const text = reply.trim()
     if (!text || busy) return
-    if (derogation && !derogationAck) {
+    if ((derogation || advice) && !derogationAck) {
       setDerogationAck(true)
       return
     }
@@ -335,6 +338,11 @@ export function PostCard({
       </div>
 
       {post.isMine && post.status === 'pending' && <p className="status-note">{f.pendingMine}</p>}
+      {post.isMine && post.expiresAt && (
+        <p className="status-note" suppressHydrationWarning>
+          {f.letsGo(formatDate(post.expiresAt, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))}
+        </p>
+      )}
       {post.isMine && post.status === 'hidden' && (
         <p className="status-note">
           {f.hiddenMine} {post.moderationNote && f.hiddenReason(post.moderationNote)}
@@ -492,6 +500,11 @@ export function PostCard({
             {derogation && derogationAck && (
               <p className="care" role="alert">
                 {m.replies.derogation} <b>{m.replies.sendAnyway}: →</b>
+              </p>
+            )}
+            {!derogation && advice && derogationAck && (
+              <p className="care" role="alert">
+                {m.replies.advice} <b>{m.replies.sendAnyway}: →</b>
               </p>
             )}
             {pii.length > 0 && (

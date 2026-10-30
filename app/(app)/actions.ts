@@ -1,6 +1,6 @@
 'use server'
 
-import { and, count, desc, eq, gt, gte, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, isNull, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
@@ -11,6 +11,7 @@ import {
   circlePrefs,
   circlePresence,
   circles,
+  letters,
   notifications,
   postHides,
   postMedia,
@@ -23,6 +24,7 @@ import {
   support,
 } from '@/db/schema'
 import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
+import { hardDeletePost } from '@/lib/post-delete'
 import { syncReplyCount } from '@/lib/reply-count'
 import { detectCrisis } from '@/lib/crisis'
 import { toPublicReply, type PublicPost, type PublicReply } from '@/lib/dto'
@@ -32,7 +34,6 @@ import { notifyReply, notifySupport } from '@/lib/server/notify'
 import { getFeed, getPostById, type FeedPage, type FeedView } from '@/lib/server/posts'
 import { getViewer, type Viewer } from '@/lib/server/session'
 import { getCrisisTerms } from '@/lib/server/terms'
-import { deleteObject, bucketConfigured } from '@/lib/s3'
 import { zurichDay } from '@/lib/time'
 import { m } from '@/messages'
 
@@ -104,6 +105,8 @@ const postSchema = z.object({
   visibility: z.enum(['anonymous', 'pseudonym']),
   contentWarning: z.boolean(),
   mediaId: z.uuid().nullish(),
+  /** «Gedanke loslassen»: nach so vielen Tagen automatisch löschen (0 = nie). */
+  letGoDays: z.union([z.literal(0), z.literal(1), z.literal(7), z.literal(30)]).default(0),
 })
 
 export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<{ post: PublicPost; acute: boolean }> | Fail> {
@@ -138,6 +141,7 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
       authorHandle: anonymous ? m.common.anonymous : v.displayName,
       glyphSeed: anonymous ? randomSeed() : v.glyphSeed,
       contentWarning: d.contentWarning,
+      expiresAt: d.letGoDays ? new Date(Date.now() + d.letGoDays * DAY) : null,
       status: level === 'acute' ? 'pending' : 'visible',
       crisisLevel: level,
     })
@@ -202,46 +206,8 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
 export async function deletePost(id: string): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
-  const media = await db
-    .select({ key: postMedia.bucketKey })
-    .from(postMedia)
-    .innerJoin(posts, eq(posts.id, postMedia.postId))
-    .where(and(eq(posts.id, id), eq(posts.userId, v.userId)))
-  const done = await db.transaction(async (tx) => {
-    const res = await tx
-      .update(posts)
-      .set({ body: '', deletedAt: new Date(), status: 'removed', authorHandle: m.common.anonymous })
-      .where(and(eq(posts.id, id), eq(posts.userId, v.userId), isNull(posts.deletedAt)))
-      .returning({ id: posts.id })
-    if (!res.length) return false
-    const replyIds = (await tx.select({ id: replies.id }).from(replies).where(eq(replies.postId, id))).map((r) => r.id)
-    await tx.delete(replies).where(eq(replies.postId, id))
-    await tx.delete(support).where(eq(support.postId, id))
-    await tx.delete(postMedia).where(eq(postMedia.postId, id))
-    // «Sofort und endgültig»: auch Auszüge in Benachrichtigungen verschwinden.
-    await tx.delete(notifications).where(eq(notifications.postId, id))
-    // Offene Meldungen zu gelöschten Inhalten wären in der Warteschlange unsichtbar und blieben ewig offen.
-    await tx
-      .update(reports)
-      .set({ status: 'dismissed', resolvedAt: new Date() })
-      .where(
-        and(
-          eq(reports.status, 'open'),
-          or(
-            and(eq(reports.targetType, 'post'), eq(reports.targetId, id)),
-            ...(replyIds.length ? [and(eq(reports.targetType, 'reply'), inArray(reports.targetId, replyIds))] : []),
-          ),
-        ),
-      )
-    return true
-  })
-  if (!done) return fail(m.common.error)
-  if (bucketConfigured()) {
-    for (const { key } of media) {
-      for (const k of [key, key.replace(/\.webp$/, '.avif')]) await deleteObject(k).catch(() => {})
-    }
-  }
-  return { ok: true }
+  const ok = z.uuid().safeParse(id).success && (await hardDeletePost(id, v.userId))
+  return ok ? { ok: true } : fail(m.common.error)
 }
 
 export async function setClosed(id: string, closed: boolean): Promise<Ok<object> | Fail> {
@@ -461,7 +427,7 @@ export async function blockAuthor(input: { type: 'post' | 'reply'; id: string })
 
 /* ----------------------------------------------------------- Privater Raum */
 
-export async function saveCheckin(input: { mood: number; note?: string }): Promise<Ok<{ proHint: boolean }> | Fail> {
+export async function saveCheckin(input: { mood: number; note?: string }): Promise<Ok<{ proHint: boolean; letter: { body: string; createdAt: string } | null }> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
   const mood = z.number().int().min(0).max(4).safeParse(input.mood)
@@ -481,7 +447,28 @@ export async function saveCheckin(input: { mood: number; note?: string }): Promi
   } else {
     await db.insert(checkins).values({ userId: v.userId, mood: mood.data, note })
   }
-  return { ok: true, proHint: mood.data === MOOD_HEAVY ? await shouldShowProHint(v) : false }
+  const heavy = mood.data === MOOD_HEAVY
+  return { ok: true, proHint: heavy ? await shouldShowProHint(v) : false, letter: heavy ? await takeLetter(v.userId) : null }
+}
+
+/** Nach einem «Schwer»: der älteste noch nicht gezeigte Brief an sich selbst – jeder kommt genau einmal von allein. */
+async function takeLetter(userId: string) {
+  const [l] = await db
+    .update(letters)
+    .set({ shownAt: new Date() })
+    .where(
+      eq(
+        letters.id,
+        db
+          .select({ id: letters.id })
+          .from(letters)
+          .where(and(eq(letters.userId, userId), isNull(letters.shownAt)))
+          .orderBy(letters.createdAt)
+          .limit(1),
+      ),
+    )
+    .returning({ body: letters.body, createdAt: letters.createdAt })
+  return l ? { body: l.body, createdAt: l.createdAt.toISOString() } : null
 }
 
 /** Drei Tage in Folge «Schwer»: einmalig ein behutsamer Hinweis, nicht öfter als alle 7 Tage. */
@@ -568,6 +555,14 @@ export async function loadFeed(view: FeedView, circleSlug: string | null, cursor
     circleId = c?.id ?? null
   }
   return getFeed({ viewerId: v.userId, view: safeView, circleId, cursor })
+}
+
+/** «Ein Gedanke wartet»: der nächste unbeantwortete Gedanke – genau einer, ohne Liste und ohne Zahlen. */
+export async function nextWaiting(cursor: string | null): Promise<{ post: PublicPost | null; cursor: string | null } | null> {
+  const v = await getViewer()
+  if (!v) return null
+  const page = await getFeed({ viewerId: v.userId, view: 'unheard', cursor, size: 1 })
+  return { post: page.posts[0] ?? null, cursor: page.nextCursor }
 }
 
 export async function setCirclePref(slug: string, state: 'follow' | 'mute' | null): Promise<Ok<object> | Fail> {
