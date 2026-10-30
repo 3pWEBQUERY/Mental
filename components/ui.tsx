@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { glyphPath } from '@/lib/glyph'
 import type { HelpResource } from '@/lib/help'
 import { m } from '@/messages'
+import { ThemeToggle } from './theme-toggle'
 
 export function Mark({ className = 'mark' }: { className?: string }) {
   return (
@@ -75,6 +76,7 @@ export function PublicShell({ children, active }: { children: ReactNode; active?
           <Link className="help-pill" href="/hilfe" aria-current={active === 'help' ? 'page' : undefined}>
             {m.nav.help}
           </Link>
+          <ThemeToggle />
         </nav>
       </header>
       <main id="inhalt" className="public-main">

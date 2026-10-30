@@ -25,7 +25,7 @@ import {
 } from '@/app/(app)/einstellungen/actions'
 import type { Settings } from '@/db/schema'
 import { toast } from '@/lib/client/bus'
-import { applyLocalPrefs } from '@/lib/prefs-script'
+import { applyLocalPrefs, readLocalPrefs } from '@/lib/prefs-script'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { usePasskeySetup } from '../auth/passkey-setup'
@@ -96,6 +96,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
 
   /* Darstellung & Raum */
   const [prefs, setPrefs] = useState<Settings>(data.settings)
+  useEffect(() => {
+    const local = readLocalPrefs()
+    if (local.theme) setPrefs((p) => ({ ...p, theme: local.theme }))
+  }, [])
   function setPref(patch: Partial<Settings>) {
     const next = { ...prefs, ...patch }
     setPrefs(next)
@@ -429,7 +433,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
       <Section title={s.sections.display}>
         <div className="sub">
           <span className="field-label">{s.theme}</span>
-          <Segment value={prefs.theme ?? 'system'} options={s.themes} onChange={(v) => setPref({ theme: v })} label={s.theme} />
+          <Segment value={prefs.theme ?? 'light'} options={s.themes} onChange={(v) => setPref({ theme: v })} label={s.theme} />
           <span className="field-label">{s.fontSize}</span>
           <Segment value={prefs.fontSize ?? 'normal'} options={s.fontSizes} onChange={(v) => setPref({ fontSize: v })} label={s.fontSize} />
         </div>
