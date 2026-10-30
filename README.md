@@ -47,16 +47,16 @@ E2E deckt Registrierung, Login, Wiederherstellung, Teilen, Zuspruch, Antworten, 
 
 ## Deployment auf Railway
 
-Ein Projekt, Region **EU West**, vier Bausteine:
+Projekt «Lichtung», alles in **EU West (Amsterdam)**. Config-as-Code (`railway.json`) liest Railway für neue Services nicht mehr; die Einstellungen liegen direkt an den Services:
 
-| Service | Konfiguration |
+| Service | Einstellungen |
 | --- | --- |
-| `web` | `railway.json` – Build `npm run build`, Start `npm run start`, Pre-Deploy `drizzle-kit migrate` + Seed + Bucket-CORS, Healthcheck `/api/health`, 2 Replikas |
-| `worker` | Config-Pfad `railway.worker.json` – Start `npm run worker`, 1 Replika |
-| `postgres` | Railway Postgres; `DATABASE_URL=${{postgres.DATABASE_URL}}` in beiden Services |
-| `media` | Storage Bucket (privat); `BUCKET`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, `ENDPOINT` als Referenzen in beiden Services |
+| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
+| `worker` | Start `npm run worker`, Restart immer, 1 Replika, Region `europe-west4-drams3a` |
+| `Postgres` | Railway-Template, Volume in `europe-west4-drams3a` |
+| `media` | Storage Bucket (privat), Region `ams` |
 
-Die CORS-Regel des Buckets (PUT, nur die eigene Domain) setzt `scripts/bucket-cors.ts` bei jedem Deploy selbst. VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
+Variablen beider Services: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `BUCKET`/`ACCESS_KEY_ID`/`SECRET_ACCESS_KEY`/`REGION`/`ENDPOINT` als `${{media.*}}`-Referenzen, `APP_URL`, `VAPID_*`; im Web zusätzlich `SESSION_SECRET`. Die CORS-Regel des Buckets (PUT, nur `APP_URL`) setzt `scripts/bucket-cors.ts` bei jedem Deploy selbst. VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
 
 ## Architektur in Kürze
 
