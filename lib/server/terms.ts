@@ -10,8 +10,11 @@ import { DEFAULT_HELP, type HelpResource } from '../help'
  * Der Cache liegt im Speicher jeder Web-Replika; updateTag wirkt nur auf der, die die Änderung speichert.
  * Darum kurze Lebensdauer ('minutes' = nach 1 Minute im Hintergrund neu laden): Eine Admin-Änderung
  * an Krisenbegriffen oder Nummern gilt so spätestens nach etwa einer Minute überall.
- * Die Rückfallliste bei DB-Fehlern wird nur Sekunden gehalten, nie stundenlang.
+ * Die Rückfallliste bei DB-Fehlern wird nur kurz gehalten (FALLBACK), nie stundenlang. Kürzer geht nicht:
+ * Beim Build ist die DB nicht erreichbar, und unter 30 s / 5 min Ablauf wäre /hilfe nicht mehr vorab
+ * renderbar – der Build bricht dann ab (siehe cacheLife-Doku, «Prerendering behavior»).
  */
+const FALLBACK = { stale: 30, revalidate: 30, expire: 300 }
 
 /** Wortliste für Stufe 1 (Browser) und Stufe 2 (Server). Fällt die DB aus, gilt kurz die Startliste. */
 export async function getCrisisTerms(): Promise<CrisisTerm[]> {
@@ -22,7 +25,7 @@ export async function getCrisisTerms(): Promise<CrisisTerm[]> {
     cacheLife('minutes')
     return rows.length ? rows : DEFAULT_CRISIS_TERMS
   } catch {
-    cacheLife('seconds')
+    cacheLife(FALLBACK)
     return DEFAULT_CRISIS_TERMS
   }
 }
@@ -38,7 +41,7 @@ export async function getHelpResources(): Promise<HelpResource[]> {
       ? rows.map((r) => ({ name: r.name, phone: r.phone, url: r.url, hours: r.hours, audience: r.audience }))
       : DEFAULT_HELP
   } catch {
-    cacheLife('seconds')
+    cacheLife(FALLBACK)
     return DEFAULT_HELP
   }
 }
