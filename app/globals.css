@@ -334,6 +334,8 @@ dialog.dlg-large .composer textarea { flex: 1; resize: none; }
 .opt-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .opt { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: calc(13px * var(--fz)); display: inline-flex; align-items: center; gap: 6px; }
 .opt[aria-pressed='true'], .opt[aria-checked='true'] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+/* Gewählt: dunkle Pille – der Stimmungspunkt bekommt einen hellen Ring, damit auch «Okay» (Tintenfarbe) sichtbar bleibt. */
+.opt[aria-checked='true'] .dot { box-shadow: 0 0 0 1.5px var(--paper); }
 .switch { display: flex; align-items: center; gap: 10px; font-size: calc(14px * var(--fz)); cursor: pointer; position: relative; }
 .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .switch i { width: 38px; height: 22px; flex: none; border-radius: 999px; background: var(--line-strong); position: relative; transition: background 0.2s; }

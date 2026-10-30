@@ -81,7 +81,7 @@ async function main() {
     await db.insert(helpResources).values([
       ...DEFAULT_HELP.map((h, i) => ({ ...h, sort: i * 10 })),
       { name: 'Chat der Dargebotenen Hand', phone: null, url: 'https://www.143.ch', hours: 'täglich', audience: 'schreiben statt reden', sort: 40 },
-      { name: 'Chat von Pro Juventute', phone: null, url: 'https://www.147.ch', hours: 'rund um die Uhr', audience: 'für Junge, auch per SMS', sort: 50 },
+      { name: 'Chat von Pro Juventute', phone: null, url: 'https://www.147.ch', hours: 'rund um die Uhr', audience: 'für Kinder und Jugendliche, auch per SMS', sort: 50 },
     ])
   }
 
