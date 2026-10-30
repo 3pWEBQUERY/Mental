@@ -54,6 +54,7 @@ test('Brief an mein späteres Ich erscheint nach «Schwer»', async ({ page }) =
   const dlg = page.getByRole('dialog', { name: 'Brief an mein späteres Ich' })
   await expect(dlg.getByText('heute war der See ruhig')).toBeVisible()
   await dlg.getByRole('button', { name: 'Danke' }).click()
+  await expect(dlg).toHaveCount(0)
   await page.goto('/ich?tab=fuermich')
   await expect(page.locator('.letters')).toContainText('gelesen am')
 })
