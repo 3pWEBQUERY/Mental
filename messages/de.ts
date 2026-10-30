@@ -538,7 +538,7 @@ export const de = {
   },
   admin: {
     title: 'Moderation',
-    nav: { queue: 'Warteschlange', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', audit: 'Audit-Log' },
+    nav: { queue: 'Warteschlange', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', audit: 'Audit-Log' },
     passkeyRequired: 'Der Moderationsbereich ist nur mit einem Passkey erreichbar. Melde dich mit deinem Passkey an.',
     queueEmpty: 'Die Warteschlange ist leer.',
     priority: ['Akut', 'Sorge', 'Meldung', 'Automatisch'],
@@ -566,6 +566,23 @@ export const de = {
       mute7: (r: string) => `Du bist für 7 Tage stummgeschaltet und kannst nur lesen.${r ? ` Begründung: ${r}` : ''}`,
     },
     done: 'Erledigt. Im Audit-Log vermerkt.',
+    images: {
+      title: 'Bilder',
+      intro:
+        'Jedes Bild in einem Gedanken bleibt unsichtbar, bis es hier freigegeben wird. Achte auf Gesichter, Namen, Adressen, Nummernschilder und Inhalte, die verletzen könnten.',
+      empty: 'Keine Bilder warten auf Freigabe.',
+      waiting: (n: number) => (n === 1 ? '1 Bild wartet' : `${n} Bilder warten`),
+      status: { quarantine: 'noch nicht bereinigt', review: 'bereinigt, wartet auf Freigabe' },
+      quarantineHint: 'Noch nicht bereinigt. Beim Freigeben werden jetzt die Metadaten (Ort, Kamera) entfernt und das Bild neu kodiert.',
+      noPreview: 'Keine Vorschau möglich (z. B. HEIC). Freigeben bereinigt das Bild trotzdem.',
+      postHidden: 'Der Gedanke selbst ist gerade nicht sichtbar.',
+      approve: 'Bild freigeben',
+      reject: 'Bild ablehnen',
+      reason: 'Begründung bei Ablehnung (geht an die Person)',
+      approvedNote: 'Dein Bild ist jetzt für andere sichtbar.',
+      rejectedNote: (r: string) => `Dein Bild wurde nicht veröffentlicht. Der Text deines Gedankens bleibt sichtbar.${r ? ` Begründung: ${r}` : ''}`,
+      failed: 'Das Bild liess sich nicht verarbeiten und wurde abgelehnt.',
+    },
   },
 } as const
 

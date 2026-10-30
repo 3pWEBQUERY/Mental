@@ -1,7 +1,10 @@
+import { and, count, eq, inArray, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import type { ReactNode } from 'react'
 import { logout } from '@/app/(auth)/actions'
+import { db } from '@/db'
+import { postMedia, posts } from '@/db/schema'
 import { Mark } from '@/components/ui'
 import { AdminNav } from '@/components/admin/nav'
 import { canModerate, hasStrongAuth, requireModerator } from '@/lib/server/admin'
@@ -13,6 +16,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   await connection()
   const v = await requireModerator('peer')
   const strong = hasStrongAuth(v)
+  const level = canModerate(v, 'admin') ? 'admin' : canModerate(v, 'mod') ? 'mod' : 'peer'
+  const [waiting] =
+    strong && level !== 'peer'
+      ? await db
+          .select({ n: count() })
+          .from(postMedia)
+          .innerJoin(posts, eq(posts.id, postMedia.postId))
+          .where(and(inArray(postMedia.status, ['quarantine', 'review']), isNull(posts.deletedAt)))
+      : [{ n: 0 }]
   return (
     <div className="public">
       <header className="public-top">
@@ -29,7 +41,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <main id="inhalt" className="public-main" style={{ maxWidth: 1100, width: '100%', margin: '0 auto' }}>
         {strong ? (
           <>
-            <AdminNav admin={canModerate(v, 'admin')} />
+            <AdminNav level={level} imagesWaiting={waiting?.n ?? 0} />
             {children}
           </>
         ) : (

@@ -1,7 +1,7 @@
 'use server'
 
 import { and, eq } from 'drizzle-orm'
-import { updateTag } from 'next/cache'
+import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
@@ -9,6 +9,7 @@ import {
   crisisTerms,
   helpResources,
   moderationActions,
+  postMedia,
   posts,
   replies,
   reports,
@@ -16,6 +17,7 @@ import {
   steps,
   users,
 } from '@/db/schema'
+import { processMedia, rejectMedia } from '@/lib/media'
 import { assertModerator } from '@/lib/server/admin'
 import { notifyModeration } from '@/lib/server/notify'
 import { m } from '@/messages'
@@ -96,6 +98,51 @@ export async function moderate(form: FormData) {
   }
   const message = MESSAGES[action]?.(reason)
   if (message && target.userId) await notifyModeration(target.userId, targetType === 'post' ? targetId : target.postId, message)
+  refresh()
+}
+
+/* ------------------------------------------------------------- Bilder */
+
+/**
+ * Bildfreigabe. Ein Bild, das der Worker schon bereinigt hat (`review`), wird nur sichtbar geschaltet.
+ * Hängt es noch in der Quarantäne, wird es jetzt hier bereinigt (EXIF/GPS weg, neu kodiert) und direkt freigegeben.
+ */
+export async function reviewImage(form: FormData): Promise<void> {
+  const parsed = z
+    .object({ mediaId: z.uuid(), decision: z.enum(['approve', 'reject']), reason: z.string().max(500).optional() })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const { mediaId, decision } = parsed.data
+  const reason = parsed.data.reason?.trim() ?? ''
+  const mod = await assertModerator('mod')
+
+  const [row] = await db
+    .select({ status: postMedia.status, postId: postMedia.postId, userId: postMedia.userId })
+    .from(postMedia)
+    .where(eq(postMedia.id, mediaId))
+  if (!row?.postId || (row.status !== 'quarantine' && row.status !== 'review')) return refresh()
+
+  let result: 'ready' | 'rejected'
+  if (decision === 'reject') {
+    await rejectMedia(mediaId, `Moderation${reason ? `: ${reason}` : ''}`)
+    result = 'rejected'
+  } else if (row.status === 'review') {
+    await db.update(postMedia).set({ status: 'ready' }).where(and(eq(postMedia.id, mediaId), eq(postMedia.status, 'review')))
+    result = 'ready'
+  } else {
+    const r = await processMedia(mediaId, 'ready')
+    result = r === 'ready' ? 'ready' : 'rejected'
+  }
+
+  await db.insert(moderationActions).values({
+    moderatorId: mod.userId,
+    targetType: 'post',
+    targetId: row.postId,
+    action: result === 'ready' ? 'image_approve' : 'image_reject',
+    reason: decision === 'approve' && result === 'rejected' ? m.admin.images.failed : reason || null,
+  })
+  await notifyModeration(row.userId, row.postId, result === 'ready' ? m.admin.images.approvedNote : m.admin.images.rejectedNote(decision === 'reject' ? reason : ''))
+  refresh()
 }
 
 /* ------------------------------------------------------------- Listen */

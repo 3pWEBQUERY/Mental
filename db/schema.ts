@@ -31,7 +31,8 @@ export const contentStatusEnum = pgEnum('content_status', ['pending', 'visible',
 export const crisisLevelEnum = pgEnum('crisis_level', ['none', 'concern', 'acute'])
 export const supportKindEnum = pgEnum('support_kind', ['hear', 'same', 'strong'])
 export const circlePrefEnum = pgEnum('circle_pref', ['follow', 'mute'])
-export const mediaStatusEnum = pgEnum('media_status', ['quarantine', 'ready', 'rejected'])
+/** quarantine: hochgeladen, unbearbeitet · review: bereinigt, wartet auf Freigabe durch die Moderation · ready: sichtbar */
+export const mediaStatusEnum = pgEnum('media_status', ['quarantine', 'review', 'ready', 'rejected'])
 export const notificationKindEnum = pgEnum('notification_kind', ['reply', 'support', 'moderation'])
 export const targetTypeEnum = pgEnum('target_type', ['post', 'reply', 'user'])
 export const reportReasonEnum = pgEnum('report_reason', [
