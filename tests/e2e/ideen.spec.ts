@@ -38,7 +38,7 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   const g = page.getByRole('dialog', { name: '5-4-3-2-1' })
   for (const step of ['fünf Dinge, die du sehen', 'vier Dinge, die du spüren', 'drei Dinge, die du hören', 'zwei Dinge, die du riechen', 'eine Sache, die du schmecken']) {
     await expect(page.getByText(`Nenne ${step}`)).toBeVisible()
-    await page.getByRole('button', { name: 'Weiter' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   }
   await expect(page.getByText(/Du bist hier/)).toBeVisible()
 })
@@ -64,17 +64,16 @@ test('Ratschlag-Hinweis auf «Zuhören» und «Ein Gedanke wartet»', async ({ b
   await register(a)
   await register(b)
   const text = `Ich will nur gehört werden ${Date.now()}`
+  // «Ein Gedanke wartet» zeigt den ältesten unbeantworteten zuerst – die übrigen Test-Gedanken
+  // dieses Laufs (eigene Test-Datenbank) schliessen, damit unserer der erste ist.
+  await sql(`UPDATE posts SET closed = true WHERE reply_count = 0`)
   await share(a, text) // Standard-Bedürfnis: Zuhören
 
   await b.goto('/lichtung/wartet')
   await expect(b.getByRole('heading', { name: 'Ein Gedanke wartet' })).toBeVisible()
   await expect(b.locator('.waiting-one article')).toHaveCount(1)
-  // Der neueste unbeantwortete kommt zuletzt – bis zu ihm weitergehen.
-  for (let i = 0; i < 40 && !(await b.locator('.waiting-one article', { hasText: text }).count()); i++) {
-    await b.getByRole('button', { name: 'Nächster Gedanke' }).click()
-    await b.waitForTimeout(300)
-  }
   const card = b.locator('.waiting-one article', { hasText: text })
+  await expect(card).toHaveCount(1)
   await card.getByLabel('Antwort schreiben').fill('Du solltest mal mit jemandem reden.')
   await card.getByRole('button', { name: 'Antwort senden' }).click()
   await expect(card.getByText(/Das klingt nach einem Rat/)).toBeVisible()

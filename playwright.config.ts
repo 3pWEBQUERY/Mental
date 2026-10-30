@@ -34,7 +34,8 @@ export default defineConfig({
   webServer: {
     command: `npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // Nie wiederverwenden: Jeder Lauf legt die Test-Datenbank neu an – ein alter Server hielte gekappte Verbindungen.
+    reuseExistingServer: false,
     env: { HIBP_DISABLED: '1', REGISTRATIONS_PER_IP_PER_DAY: '1000' },
   },
 })
