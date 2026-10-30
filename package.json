@@ -1,0 +1,70 @@
+{
+  "name": "lichtung",
+  "version": "0.1.0",
+  "description": "Lichtung – ein ruhiger, anonymer Ort zum Teilen und Zuhören.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "worker": "tsx worker/index.ts",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx db/migrate.ts",
+    "db:seed": "tsx db/seed.ts",
+    "db:demo": "tsx db/demo.ts",
+    "admin:grant": "tsx scripts/grant-role.ts",
+    "vapid:generate": "web-push generate-vapid-keys",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3pWEBQUERY/Mental.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/3pWEBQUERY/Mental/issues"
+  },
+  "homepage": "https://github.com/3pWEBQUERY/Mental#readme",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1160.0",
+    "@aws-sdk/s3-request-presigner": "^3.1160.0",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@node-rs/argon2": "^2.2.2",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
+    "altcha-lib": "^2.8.0",
+    "blurhash": "^2.0.5",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.4",
+    "fflate": "^0.8.3",
+    "geist": "^1.8.2",
+    "next": "^16.4.3",
+    "pg": "^8.23.1",
+    "pg-boss": "^12.38.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.5",
+    "three": "^0.187.0",
+    "tsx": "^4.23.15",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@types/web-push": "^3.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}

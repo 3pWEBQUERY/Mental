@@ -1,0 +1,42 @@
+import { expect, test } from '@playwright/test'
+import { login, register } from './helpers'
+
+test('Hilfe ist ohne Anmeldung erreichbar, mit tel:-Links', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Sofort Hilfe' }).click()
+  await expect(page).toHaveURL(/\/hilfe$/)
+  for (const n of ['143', '147', '144']) await expect(page.locator(`a[href="tel:${n}"]`)).toBeVisible()
+})
+
+test('Hilfe ist in der App von jedem Screen einen Tipp entfernt', async ({ page }) => {
+  await register(page)
+  for (const path of ['/lichtung', '/ich', '/einstellungen']) {
+    await page.goto(path)
+    await page.getByRole('button', { name: 'Sofort Hilfe' }).click()
+    await expect(page.getByRole('dialog')).toContainText('143')
+    await page.keyboard.press('Escape')
+  }
+})
+
+test('Dreimal Esc blendet Lichtung aus und beendet die Sitzung', async ({ page }) => {
+  await page.route('https://www.meteoschweiz.admin.ch/**', (r) => r.fulfill({ body: '<title>Wetter</title>', contentType: 'text/html' }))
+  await register(page)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await page.waitForURL(/meteoschweiz/)
+  await page.goto('/ich')
+  await expect(page).toHaveURL(/\/anmelden$/)
+})
+
+test('Konto löschen – ein Login innerhalb von 7 Tagen bricht die Löschung ab', async ({ page }) => {
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByLabel('Mit Passwort bestätigen').fill('ein ruhiger langer satz 2026')
+  await page.getByRole('button', { name: 'Konto löschen' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Konto löschen' }).click()
+  await page.waitForURL((u) => u.pathname === '/')
+  await login(page, username)
+  await page.waitForURL('**/lichtung')
+  await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible()
+})
