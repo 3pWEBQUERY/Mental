@@ -45,12 +45,12 @@ export default function PrivacyPage() {
         <ul className="dash">
           <li>Unter Einstellungen → Daten lädst du jederzeit alle deine Daten als ZIP herunter.</li>
           <li>Du kannst dein Konto jederzeit löschen. Nach 7 Tagen ist alles endgültig weg, auch Bilder.</li>
-          <li>Konten ohne Login seit 24 Monaten löschen wir automatisch.</li>
+          <li>Konten, die seit 24 Monaten nicht mehr benutzt wurden, löschen wir automatisch.</li>
         </ul>
         <h2>Verantwortlich</h2>
         <p>
-          Alexander Sulschani, Schaffhauserstrasse 6, 8180 Bülach, Schweiz. Weitere Angaben im{' '}
-          <a href="/impressum">Impressum</a>.
+          Alexander Sulschani, Schaffhauserstrasse 6, 8180 Bülach, Schweiz. Fragen zum Datenschutz und Auskunftsbegehren an{' '}
+          <a href="mailto:kontakt@lichtung.ch">kontakt@lichtung.ch</a>. Weitere Angaben im <a href="/impressum">Impressum</a>.
         </p>
       </div>
     </PublicShell>
