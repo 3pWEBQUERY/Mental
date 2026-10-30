@@ -6,8 +6,12 @@
   },
   "deploy": {
     "startCommand": "npm run worker",
-    "numReplicas": 1,
     "restartPolicyType": "ALWAYS",
-    "drainingSeconds": 25
+    "drainingSeconds": 25,
+    "multiRegionConfig": {
+      "europe-west4-drams3a": {
+        "numReplicas": 1
+      }
+    }
   }
 }
