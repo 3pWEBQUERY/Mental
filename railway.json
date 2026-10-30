@@ -8,7 +8,8 @@
     "startCommand": "npm run start",
     "preDeployCommand": [
       "npx drizzle-kit migrate",
-      "npx tsx db/seed.ts"
+      "npx tsx db/seed.ts",
+      "npx tsx scripts/bucket-cors.ts"
     ],
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 60,

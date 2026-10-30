@@ -51,12 +51,12 @@ Ein Projekt, Region **EU West**, vier Bausteine:
 
 | Service | Konfiguration |
 | --- | --- |
-| `web` | `railway.json` – Build `npm run build`, Start `npm run start`, Pre-Deploy `drizzle-kit migrate` + Seed, Healthcheck `/api/health`, 2 Replikas |
+| `web` | `railway.json` – Build `npm run build`, Start `npm run start`, Pre-Deploy `drizzle-kit migrate` + Seed + Bucket-CORS, Healthcheck `/api/health`, 2 Replikas |
 | `worker` | Config-Pfad `railway.worker.json` – Start `npm run worker`, 1 Replika |
 | `postgres` | Railway Postgres; `DATABASE_URL=${{postgres.DATABASE_URL}}` in beiden Services |
 | `media` | Storage Bucket (privat); `BUCKET`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, `ENDPOINT` als Referenzen in beiden Services |
 
-Für Browser-Uploads braucht der Bucket eine CORS-Regel (PUT, nur die eigene Domain), siehe Railway-Doku «Uploading & Serving Files». VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
+Die CORS-Regel des Buckets (PUT, nur die eigene Domain) setzt `scripts/bucket-cors.ts` bei jedem Deploy selbst. VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
 
 ## Architektur in Kürze
 
