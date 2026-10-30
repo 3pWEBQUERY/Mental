@@ -36,9 +36,11 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   // 5-4-3-2-1 aus dem Raum
   await page.getByRole('button', { name: /5-4-3-2-1/ }).first().click()
   const g = page.getByRole('dialog', { name: '5-4-3-2-1' })
-  await expect(g.getByText('Nenne fünf Dinge, die du sehen kannst.')).toBeVisible()
-  for (let i = 0; i < 5; i++) await g.getByRole('button', { name: 'Weiter' }).click()
-  await expect(g.getByText(/Du bist hier/)).toBeVisible()
+  for (const step of ['fünf Dinge, die du sehen', 'vier Dinge, die du spüren', 'drei Dinge, die du hören', 'zwei Dinge, die du riechen', 'eine Sache, die du schmecken']) {
+    await expect(page.getByText(`Nenne ${step}`)).toBeVisible()
+    await page.getByRole('button', { name: 'Weiter' }).click()
+  }
+  await expect(page.getByText(/Du bist hier/)).toBeVisible()
 })
 
 test('Brief an mein späteres Ich erscheint nach «Schwer»', async ({ page }) => {
