@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { HelpList, PublicShell } from '@/components/ui'
+import { HelpList, PhoneScript, PublicShell } from '@/components/ui'
 import { getHelpResources } from '@/lib/server/terms'
 import { m } from '@/messages'
 
@@ -22,6 +22,7 @@ export default async function HelpPage() {
         <section className="help">
           <HelpList resources={resources} />
         </section>
+        <PhoneScript />
         <div className="prose">
           <p className="notice" style={{ marginTop: 22 }}>
             {m.help.honest}

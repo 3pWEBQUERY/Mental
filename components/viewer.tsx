@@ -18,6 +18,7 @@ export type ClientViewer = {
   /** Gespeicherte Darstellung – gilt auf einem neuen Gerät, bis dort lokal etwas gewählt wird. */
   theme: 'system' | 'light' | 'dark'
   fontSize: 'normal' | 'large' | 'xlarge'
+  discreet: boolean
   breathSound: boolean
   collapseWarnings: boolean
   hidePresence: boolean

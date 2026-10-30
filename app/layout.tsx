@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import type { ReactNode } from 'react'
+import { DiscreetGuard } from '@/components/discreet'
 import { PanicGuard } from '@/components/panic'
 import { Toaster } from '@/components/toast'
 import { PREFS_SCRIPT } from '@/lib/prefs-script'
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {children}
         <Toaster />
         <PanicGuard />
+        <DiscreetGuard />
       </body>
     </html>
   )

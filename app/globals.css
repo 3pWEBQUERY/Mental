@@ -301,6 +301,31 @@ ul, ol { list-style: none; }
 .help a.line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); text-decoration: none; font-size: calc(13px * var(--fz)); }
 .help a.line b { font-family: var(--serif); font-weight: 400; font-size: calc(24px * var(--fz)); color: var(--clay-ink); }
 .help a.line.chat b { font-family: var(--sans); font-size: calc(13px * var(--fz)); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.grounding-link { margin-top: 12px; }
+.grounding .grounding-count { font-family: var(--serif); font-size: calc(88px * var(--fz)); line-height: 0.9; color: var(--clay-ink); }
+.grounding .grounding-text { font-family: var(--serif); font-size: calc(30px * var(--fz)); line-height: 1.15; max-width: 22ch; }
+.grounding-dots { display: flex; gap: 8px; }
+.grounding-dots li { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.grounding-dots li.on { background: var(--clay-ink); }
+.plan-field { display: grid; gap: 8px; }
+.plan-field b { display: block; font-weight: 500; }
+.plan-field small { display: block; color: var(--ink-3); font-size: calc(13px * var(--fz)); }
+.plan-view { display: grid; gap: 16px; counter-reset: plan; }
+.plan-view li { counter-increment: plan; padding-left: 34px; position: relative; }
+.plan-view li::before { content: counter(plan); position: absolute; left: 0; top: -2px; font-family: var(--serif); font-size: calc(26px * var(--fz)); color: var(--clay-ink); }
+.plan-view h3 { font-size: calc(13px * var(--fz)); font-weight: 500; color: var(--ink-2); margin-bottom: 4px; }
+.plan-view p { white-space: pre-line; }
+.letter-input { font-family: var(--serif); font-size: calc(20px * var(--fz)); line-height: 1.3; }
+.letters { display: grid; gap: 14px; margin-top: 22px; }
+.letters li { border-top: 1px solid var(--line); padding-top: 14px; }
+.letters p { font-family: var(--serif); font-size: calc(20px * var(--fz)); line-height: 1.3; white-space: pre-line; margin-bottom: 6px; }
+.letter-dialog .letter-body { font-family: var(--serif); font-size: calc(26px * var(--fz)); line-height: 1.3; white-space: pre-line; }
+.phone-script { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--r); padding: 4px 18px; background: var(--card); }
+.phone-script summary { cursor: pointer; padding: 12px 0; font-weight: 500; list-style-position: inside; }
+.phone-script ul { display: grid; gap: 8px; margin: 10px 0 12px; }
+.phone-script li { font-family: var(--serif); font-size: calc(21px * var(--fz)); line-height: 1.25; }
+.phone-script p { margin-bottom: 8px; }
+.acute .phone-script { max-width: 60ch; }
 .fine { font-size: calc(12px * var(--fz)); color: var(--ink-3); }
 
 /* ---------- Dialoge ---------- */
@@ -555,6 +580,7 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+:root[data-veiled] body { filter: blur(18px); }
 :root[data-motion='off'] * { animation: none !important; transition: none !important; }
 /* «Reduziert»: keine Bewegung (Einblenden, Hochrutschen), Farb- und Zustandswechsel bleiben, nur sofort. */
 :root[data-motion='reduced'] * { animation: none !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

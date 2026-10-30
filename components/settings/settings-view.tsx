@@ -99,8 +99,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
   function setPref(patch: Partial<Settings>) {
     const next = { ...prefs, ...patch }
     setPrefs(next)
-    if ('theme' in patch || 'fontSize' in patch || 'motion' in patch) {
-      applyLocalPrefs({ theme: next.theme, fontSize: next.fontSize, motion: next.motion })
+    if ('theme' in patch || 'fontSize' in patch || 'motion' in patch || 'discreet' in patch) {
+      applyLocalPrefs({ theme: next.theme, fontSize: next.fontSize, motion: next.motion, discreet: next.discreet })
     }
     start(async () => {
       const r = await updateSettings(patch)
@@ -457,6 +457,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           <Segment value={prefs.theme ?? 'light'} options={s.themes} onChange={(v) => setPref({ theme: v })} label={s.theme} />
           <span className="field-label">{s.fontSize}</span>
           <Segment value={prefs.fontSize ?? 'normal'} options={s.fontSizes} onChange={(v) => setPref({ fontSize: v })} label={s.fontSize} />
+          <Toggle checked={prefs.discreet ?? false} onChange={(v) => setPref({ discreet: v })} label={s.discreet} hint={s.discreetHint} />
         </div>
       </Section>
 

@@ -10,6 +10,7 @@ export const QUEUES = {
   // wiederkehrend
   cleanupQuarantine: 'cleanup-quarantine',
   requeueMedia: 'requeue-media',
+  expirePosts: 'expire-posts',
   cleanupRateLimits: 'cleanup-rate-limits',
   cleanupNotifications: 'cleanup-notifications',
   cleanupPresence: 'cleanup-presence',

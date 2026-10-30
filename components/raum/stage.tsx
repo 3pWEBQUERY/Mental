@@ -6,8 +6,10 @@ import { useEffect, useRef, useState } from 'react'
 import { logBreath, saveCheckin } from '@/app/(app)/actions'
 import { emit, on, toast } from '@/lib/client/bus'
 import { BREATH, LIMITS, MOOD_HEAVY } from '@/lib/constants'
+import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { panic } from '../panic'
+import { Dialog } from '../dialog'
 import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
 import type { OrbApi } from './orb'
@@ -39,6 +41,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   const [phase, setPhase] = useState<Phase>('inhale')
   const [left, setLeft] = useState<number | null>(null)
   const [proHint, setProHint] = useState(false)
+  const [letter, setLetter] = useState<{ body: string; createdAt: string } | null>(null)
   const [webgl, setWebgl] = useState(viewer.motion !== 'off')
   const api = useRef<OrbApi | null>(null)
   const fallbackTimer = useRef<number>(0)
@@ -54,6 +57,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     emit('checkin-mood', i)
     const res = await attempt(() => saveCheckin({ mood: i }))
     if (res?.proHint) setProHint(true)
+    if (res?.letter) setLetter(res.letter)
   }
 
   async function saveNote() {
@@ -213,7 +217,25 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
             {s.share}
           </button>
         </div>
+        {!breathing && (
+          <button type="button" className="linkish grounding-link" onClick={() => emit('grounding')}>
+            {m.grounding.open}
+          </button>
+        )}
       </div>
+      <Dialog open={letter !== null} onClose={() => setLetter(null)} title={m.letters.title} className="letter-dialog">
+        {letter && (
+          <div className="stack" style={{ gap: 14 }}>
+            <p className="fine">{m.letters.from(formatDate(letter.createdAt))}</p>
+            <p className="letter-body">{letter.body}</p>
+            <div>
+              <button type="button" className="btn" data-autofocus onClick={() => setLetter(null)}>
+                {m.letters.close}
+              </button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </section>
   )
 }

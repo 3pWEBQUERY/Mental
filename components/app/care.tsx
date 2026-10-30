@@ -2,6 +2,7 @@
 
 import { m } from '@/messages'
 import { Dialog } from '../dialog'
+import { PhoneScript } from '../ui'
 
 /** Ruhiger Hinweis bei Krisensprache. Blockiert das Teilen nie. */
 export function CareNote() {
@@ -38,6 +39,7 @@ export function AcuteDialog({ open, onClose }: { open: boolean; onClose: () => v
             <span>Notruf · {m.care.acuteDanger}</span>
           </a>
         </div>
+        <PhoneScript />
         <p className="fine">{a.note}</p>
         <p className="fine">{a.pending}</p>
         <div>

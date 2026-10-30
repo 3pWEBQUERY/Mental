@@ -25,12 +25,14 @@ export default function PrivacyPage() {
           <li>Dass du mindestens 16 bist und die Hausregeln angenommen hast – als Zeitpunkt, ohne Geburtsdatum.</li>
           <li>Deine Gedanken, Antworten, Check-ins und Einstellungen. Ganz anonyme Gedanken sind intern deinem Konto zugeordnet, damit du sie löschen kannst und die Moderation funktioniert – sie werden aber nie mit einer Konto-ID ausgeliefert.</li>
           <li>Dein Tagebuch nur verschlüsselt. Den Schlüssel hast nur du.</li>
+          <li>Deinen Notfallplan und deine Briefe an dich selbst, wenn du welche anlegst. Sie sind nur für dich sichtbar, Teil deines Datenexports und werden mit deinem Konto gelöscht.</li>
+          <li>Gedanken, die du «loslassen» willst, löschen wir zum gewählten Zeitpunkt endgültig – samt Antworten.</li>
           <li>Sitzungen mit Gerätetyp und Datum, ohne IP-Adresse.</li>
           <li>IP-Adressen nur gesalzen gehasht für den Schutz vor Missbrauch. Nach 24 Stunden werden sie gelöscht.</li>
         </ul>
         <h2>Bilder</h2>
         <p>
-          Bevor jemand dein Bild sieht, entfernen wir alle Metadaten (auch GPS und Kameradaten) und kodieren es neu. Bilder
+          Bevor jemand dein Bild sieht, entfernen wir alle Metadaten (auch GPS und Kameradaten), kodieren es neu und das Moderationsteam gibt es frei. Bilder
           sind nie über eine öffentliche Adresse erreichbar, nur über kurzlebige Links für eingeloggte Mitglieder.
         </p>
         <h2>Wo deine Daten liegen</h2>

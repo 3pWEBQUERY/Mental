@@ -12,6 +12,7 @@ export type BusEvents = {
   compose: { text?: string; edit?: PublicPost; circle?: string } | undefined
   help: undefined
   breathe: undefined
+  grounding: undefined
   notifications: undefined
   'post-created': PublicPost
   'post-updated': PublicPost

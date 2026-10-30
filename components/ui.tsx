@@ -101,3 +101,20 @@ export function Loading() {
     </p>
   )
 }
+
+/** Für viele ist der erste Satz die grösste Hürde – darum ein paar fertige Anfänge. Ohne JavaScript (details). */
+export function PhoneScript({ open = false }: { open?: boolean }) {
+  const p = m.help.phone
+  return (
+    <details className="phone-script" open={open}>
+      <summary>{p.title}</summary>
+      <p>{p.lead}</p>
+      <ul>
+        {p.lines.map((l) => (
+          <li key={l}>«{l}»</li>
+        ))}
+      </ul>
+      <p className="fine">{p.after}</p>
+    </details>
+  )
+}
