@@ -6,7 +6,7 @@ const SESSION_COOKIE = 'lichtung_session'
 const PROTECTED = ['/lichtung', '/ich', '/einstellungen', '/admin']
 const AUTH_ONLY = ['/anmelden', '/registrieren']
 /** Vollständig vorgerenderte Seiten ohne Nutzerinhalte – hier kann es keine Nonce geben. */
-const STATIC_PAGES = ['/', '/hilfe', '/regeln', '/datenschutz', '/offline']
+const STATIC_PAGES = ['/', '/hilfe', '/regeln', '/datenschutz', '/impressum', '/offline']
 const PREFS_HASH = `'sha256-${createHash('sha256').update(PREFS_SCRIPT).digest('base64')}'`
 
 /**

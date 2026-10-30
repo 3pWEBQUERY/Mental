@@ -523,6 +523,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
             </form>
             <PanicButton />
           </div>
+          <p className="fine">
+            <a href="/regeln">{m.landing.rules}</a> · <a href="/datenschutz">{m.landing.privacy}</a> ·{' '}
+            <a href="/impressum">{m.landing.imprint}</a>
+          </p>
         </div>
       </section>
     </div>

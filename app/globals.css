@@ -394,12 +394,20 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .input-row .input { flex: 1; min-width: 0; }
 
 .landing { max-width: 1120px; margin: 0 auto; }
-.landing-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 32px; align-items: center; min-height: 62vh; }
+.landing-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 32px; align-items: center; min-height: 62vh; padding-bottom: 40px; }
 .landing-hero .display { font-size: clamp(46px, 6.4vw, 92px); max-width: 12ch; }
 .landing-hero .lead { color: var(--ink-2); font-size: 17px; max-width: 44ch; margin: 22px 0 28px; }
-.landing-orb { position: relative; aspect-ratio: 1; width: 100%; max-width: 480px; justify-self: center; }
-.landing-orb svg { width: 100%; height: 100%; }
-.landing-orb circle, .landing-orb ellipse { fill: none; stroke: var(--ink); }
+.landing-art { position: relative; aspect-ratio: 1; width: 100%; max-width: 480px; justify-self: center; }
+.clearing { width: 100%; height: 100%; display: block; overflow: hidden; }
+.clearing .glow { fill: var(--clay-soft); }
+.clearing .halo { fill: none; stroke: var(--clay); stroke-width: 1; opacity: 0.35; }
+.clearing .sun { fill: var(--clay); }
+.clearing .earth { fill: var(--paper); }
+.clearing .ground { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; }
+.clearing .ground.faint { opacity: 0.28; }
+.clearing .tree path { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
+.clearing .breath { transform-box: view-box; transform-origin: 200px 284px; animation: clearing-breath 10s ease-in-out infinite; }
+@keyframes clearing-breath { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.05); } 55% { transform: scale(1.05); } }
 .principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); margin-top: 40px; }
 .principles li { padding: 24px 22px 24px 0; border-bottom: 1px solid var(--line); }
 .principles b { display: block; font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.1; margin-bottom: 8px; }
@@ -412,6 +420,8 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .prose ul.dash li { padding-left: 16px; position: relative; color: var(--ink-2); }
 .prose ul.dash li::before { content: '–'; position: absolute; left: 0; }
 .help-page { max-width: 720px; margin: 0 auto; }
+.imprint { font-style: normal; font-family: var(--serif); font-size: 24px; line-height: 1.3; margin-top: 10px; }
+.prose a { color: var(--clay-ink); text-underline-offset: 3px; }
 .help-page .help { margin-top: 22px; }
 .help-page .help a.line { font-size: 15px; padding: 14px 0; }
 .help-page .help a.line b { font-size: 40px; }
@@ -460,7 +470,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 }
 @media (max-width: 960px) {
   .landing-hero { grid-template-columns: 1fr; min-height: 0; }
-  .landing-orb { max-width: 320px; order: -1; }
+  .landing-art { max-width: 320px; order: -1; }
   .principles { grid-template-columns: 1fr 1fr; }
   .section { grid-template-columns: 1fr; gap: 12px; }
 }

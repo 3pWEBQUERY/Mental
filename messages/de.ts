@@ -508,6 +508,7 @@ export const de = {
     ],
     rules: 'Hausregeln',
     privacy: 'Datenschutz',
+    imprint: 'Impressum',
     help: 'Hilfe',
   },
   rules: {
