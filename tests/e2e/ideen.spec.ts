@@ -38,7 +38,7 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   const g = page.getByRole('dialog', { name: '5-4-3-2-1' })
   for (const step of ['fünf Dinge, die du sehen', 'vier Dinge, die du spüren', 'drei Dinge, die du hören', 'zwei Dinge, die du riechen', 'eine Sache, die du schmecken']) {
     await expect(page.getByText(`Nenne ${step}`)).toBeVisible()
-    await page.getByRole('button', { name: 'Weiter' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   }
   await expect(page.getByText(/Du bist hier/)).toBeVisible()
 })
