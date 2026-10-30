@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { m } from '@/messages'
 import type { StepView } from '@/app/(app)/actions'
 import { HelpList } from '../ui'
@@ -19,7 +20,12 @@ export function Side({ presence, step }: { presence: Record<string, number | nul
       <section className="help">
         <HelpList resources={viewer.help.filter((h) => h.phone)} />
       </section>
-      <p className="fine">{m.common.fine}</p>
+      <p className="fine">
+        {m.common.fine}
+        <br />
+        <Link href="/regeln">{m.landing.rules}</Link> · <Link href="/datenschutz">{m.landing.privacy}</Link> ·{' '}
+        <Link href="/impressum">{m.landing.imprint}</Link>
+      </p>
     </aside>
   )
 }

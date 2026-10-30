@@ -45,6 +45,11 @@ export default function PrivacyPage() {
           <li>Du kannst dein Konto jederzeit löschen. Nach 7 Tagen ist alles endgültig weg, auch Bilder.</li>
           <li>Konten ohne Login seit 24 Monaten löschen wir automatisch.</li>
         </ul>
+        <h2>Verantwortlich</h2>
+        <p>
+          Alexander Sulschani, Schaffhauserstrasse 6, 8180 Bülach, Schweiz. Weitere Angaben im{' '}
+          <a href="/impressum">Impressum</a>.
+        </p>
       </div>
     </PublicShell>
   )

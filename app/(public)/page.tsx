@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ClearingArt } from '@/components/landing-art'
 import { PublicShell } from '@/components/ui'
 import { m } from '@/messages'
 
@@ -24,18 +25,8 @@ export default function Landing() {
               </Link>
             </div>
           </div>
-          <div className="landing-orb" aria-hidden="true">
-            <svg viewBox="0 0 400 400">
-              <circle cx="200" cy="200" r="118" strokeWidth="1" />
-              <circle cx="200" cy="200" r="86" strokeWidth="1" strokeDasharray="1 7" strokeLinecap="round" />
-              <circle cx="200" cy="200" r="52" strokeWidth="1" strokeDasharray="1 6" strokeLinecap="round" />
-              <ellipse cx="200" cy="200" rx="176" ry="54" strokeWidth="1" opacity=".35" transform="rotate(-18 200 200)" />
-              <ellipse cx="200" cy="200" rx="190" ry="70" strokeWidth="1" opacity=".25" transform="rotate(24 200 200)" />
-              <circle cx="40" cy="250" r="5" style={{ fill: 'var(--clay)', stroke: 'none' }} />
-              <circle cx="352" cy="150" r="5" style={{ fill: 'var(--clay)', stroke: 'none' }} />
-              <circle cx="300" cy="300" r="4" style={{ fill: 'var(--clay)', stroke: 'none' }} />
-              <circle cx="200" cy="200" r="22" style={{ fill: 'var(--clay)', stroke: 'none' }} />
-            </svg>
+          <div className="landing-art">
+            <ClearingArt />
           </div>
         </section>
 

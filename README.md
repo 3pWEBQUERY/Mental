@@ -28,7 +28,7 @@ npm run dev                     # Web auf :3000
 npm run worker                  # zweites Terminal: Hintergrundjobs
 ```
 
-Moderationsrolle vergeben (nur über die Kommandozeile):
+Moderationsrolle vergeben – lokal über die Kommandozeile, auf Railway über die Variable `ADMIN_USERNAMES` (kommagetrennt) am `web`-Service; `scripts/bootstrap-admins.ts` vergibt die Rolle beim nächsten Deploy und stuft nie herab:
 
 ```bash
 npm run admin:grant -- <benutzername> admin
@@ -51,7 +51,7 @@ Projekt «Lichtung», alles in **EU West (Amsterdam)**. Config-as-Code (`railway
 
 | Service | Einstellungen |
 | --- | --- |
-| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
+| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts && npx tsx scripts/bootstrap-admins.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
 | `worker` | Start `npm run worker`, Restart immer, 1 Replika, Region `europe-west4-drams3a` |
 | `Postgres` | Railway-Template, Volume in `europe-west4-drams3a` |
 | `media` | Storage Bucket (privat), Region `ams` |

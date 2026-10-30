@@ -84,6 +84,7 @@ export function PublicShell({ children, active }: { children: ReactNode; active?
         <span>{m.common.fine}</span>
         <Link href="/regeln">{m.landing.rules}</Link>
         <Link href="/datenschutz">{m.landing.privacy}</Link>
+        <Link href="/impressum">{m.landing.imprint}</Link>
         <Link href="/hilfe">{m.landing.help}</Link>
       </footer>
     </div>
