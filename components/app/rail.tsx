@@ -36,7 +36,7 @@ export function Rail({ unread, onCircles }: { unread: number; onCircles: () => v
       >
         {Icon.breathe}
       </button>
-      <button type="button" className="desktop-only" data-label={n.circles} aria-label={n.circles} onClick={onCircles}>
+      <button type="button" className="circles-btn" data-label={n.circles} aria-label={n.circles} onClick={onCircles}>
         {Icon.circles}
       </button>
       <Link href="/ich" data-label={n.me} aria-label={n.me} aria-current={here('/ich')}>

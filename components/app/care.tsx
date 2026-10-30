@@ -18,7 +18,7 @@ export function CareNote() {
 export function AcuteDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const a = m.acute
   return (
-    <Dialog open={open} onClose={onClose} className="acute">
+    <Dialog open={open} onClose={onClose} className="acute" label={`${a.titleLead} ${a.titleEm}`}>
       <div className="inner">
         <h2>
           {a.titleLead} <em>{a.titleEm}</em>

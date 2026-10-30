@@ -11,6 +11,7 @@ export function Dialog({
   children,
   className,
   wide,
+  label,
 }: {
   open: boolean
   onClose: () => void
@@ -18,6 +19,8 @@ export function Dialog({
   children: ReactNode
   className?: string
   wide?: boolean
+  /** Zugänglicher Name, wenn der Dialog keinen sichtbaren Titel über `title` hat. */
+  label?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   const id = useId()
@@ -33,6 +36,7 @@ export function Dialog({
       ref={ref}
       className={className}
       aria-labelledby={title ? id : undefined}
+      aria-label={!title ? label : undefined}
       style={wide ? { width: 'min(760px, calc(100% - 24px))' } : undefined}
       onClose={onClose}
       onClick={(e) => {

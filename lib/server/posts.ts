@@ -61,6 +61,13 @@ function baseQuery() {
     .$dynamic()
 }
 
+function followedCircles(viewerId: string) {
+  return db
+    .select({ id: circlePrefs.circleId })
+    .from(circlePrefs)
+    .where(and(eq(circlePrefs.userId, viewerId), eq(circlePrefs.state, 'follow')))
+}
+
 function mutedCircles(viewerId: string) {
   return db
     .select({ id: circlePrefs.circleId })
@@ -201,6 +208,8 @@ export async function getFeed(opts: {
   viewerId: string
   view: FeedView
   circleId?: string | null
+  /** «Meine Kreise»: nur Kreise, denen die Person folgt. */
+  followed?: boolean
   cursor?: string | null
 }): Promise<FeedPage> {
   const { viewerId, view, circleId } = opts
@@ -212,6 +221,7 @@ export async function getFeed(opts: {
 
   const scope: SQL[] = [visibleTo(viewerId)]
   if (circleId) scope.push(eq(posts.circleId, circleId))
+  else if (opts.followed) scope.push(inArray(posts.circleId, followedCircles(viewerId)))
   else scope.push(notInArray(posts.circleId, mutedCircles(viewerId)))
 
   if (view === 'unheard') {

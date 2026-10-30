@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { eq } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { Side } from '@/components/app/side'
+import { StepCard } from '@/components/app/step-card'
 import { PromptButton } from '@/components/feed/prompt'
 import { FeedList } from '@/components/feed/feed-list'
 import { db } from '@/db'
@@ -15,6 +16,9 @@ import { currentStep, presenceCounts, touchCircle } from '../../actions'
 export const metadata: Metadata = { title: m.feed.title }
 
 type Search = Promise<{ ansicht?: string; kreis?: string }>
+
+/** ?kreis=meine – Filter auf alle Kreise, denen die Person folgt. */
+const MINE = 'meine'
 
 const VIEWS: { key: FeedView; label: string }[] = [
   { key: 'all', label: m.feed.tabs.all },
@@ -57,7 +61,7 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
         </nav>
       </div>
       <p className="manifest">{m.feed.manifest}</p>
-      <PromptButton circle={circle} />
+      <PromptButton circle={circle === MINE ? null : circle} />
     </>
   )
 }
@@ -66,18 +70,28 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   const v = await requireViewer()
   const sp = await searchParams
   const view: FeedView = sp.ansicht === 'unheard' || sp.ansicht === 'brave' ? sp.ansicht : 'all'
-  const [circle] = sp.kreis ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
+  const mine = sp.kreis === MINE
+  const [circle] = sp.kreis && !mine ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
   if (circle) await touchCircle(circle.slug)
-  const page = await getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null })
+  const [page, step] = await Promise.all([getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }), currentStep()])
   const params = new URLSearchParams()
   if (view !== 'all') params.set('ansicht', view)
   return (
     <>
-      <FeedHead view={view} circle={circle?.slug ?? null} />
+      <FeedHead view={view} circle={mine ? MINE : (circle?.slug ?? null)} />
+      {mine && (
+        <div className="filter">
+          <span>{m.feed.circle}</span>
+          <Link href={params.size ? `/lichtung?${params}` : '/lichtung'} scroll={false} aria-label={m.feed.clearFilter(m.circles.mine)}>
+            {m.feed.clearCircle(m.circles.mine)}
+          </Link>
+          <p className="circle-desc">{m.circles.mineHint}</p>
+        </div>
+      )}
       {circle && (
         <div className="filter">
           <span>{m.feed.circle}</span>
-          <Link href={params.size ? `/lichtung?${params}` : '/lichtung'} scroll={false} aria-label={`${circle.name} – Filter entfernen`}>
+          <Link href={params.size ? `/lichtung?${params}` : '/lichtung'} scroll={false} aria-label={m.feed.clearFilter(circle.name)}>
             {m.feed.clearCircle(circle.name)}
           </Link>
           <p className="circle-desc">
@@ -85,7 +99,18 @@ async function Feed({ searchParams }: { searchParams: Search }) {
           </p>
         </div>
       )}
-      <FeedList key={`${view}:${circle?.slug ?? ''}`} initial={page.posts} nextCursor={page.nextCursor} caughtUp={page.caughtUp} view={view} circle={circle?.slug ?? null} />
+      {/* Unter 1200 px gibt es keine Seitenleiste – der kleine Schritt steht dann hier im Feed. */}
+      <div className="step-inline">
+        <StepCard initial={step} />
+      </div>
+      <FeedList
+        key={`${view}:${mine ? MINE : (circle?.slug ?? '')}`}
+        initial={page.posts}
+        nextCursor={page.nextCursor}
+        caughtUp={page.caughtUp}
+        view={view}
+        circle={mine ? MINE : (circle?.slug ?? null)}
+      />
     </>
   )
 }

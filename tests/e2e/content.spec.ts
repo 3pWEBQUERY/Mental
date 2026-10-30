@@ -58,6 +58,62 @@ test('Krisensprache: Hinweis beim Tippen, Vollbild nach dem Teilen, nur für die
   await expect(b.locator('article', { hasText: text })).toHaveCount(0)
 })
 
+test('Krisensprache in einer Antwort: Vollbild-Hinweis, Antwort wartet auf Prüfung', async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage()
+  const b = await (await browser.newContext()).newPage()
+  await register(a)
+  await register(b)
+  const text = `Ein Gedanke für eine Antwort ${Date.now()}`
+  await share(a, text)
+  await b.goto('/lichtung')
+  const card = b.locator('article', { hasText: text })
+  await card.locator('.reply-toggle').click()
+  await card.getByLabel('Antwort schreiben').fill('Mir geht es auch so, ich will nicht mehr leben')
+  await expect(card.locator('.care')).toContainText('143')
+  await card.getByRole('button', { name: 'Antwort senden' }).click()
+  const acute = b.getByRole('dialog', { name: /Du bist nicht/ })
+  await expect(acute).toBeVisible()
+  await expect(acute.locator('a[href="tel:144"]').first()).toBeVisible()
+  await acute.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
+  // Für andere erst nach der Prüfung sichtbar.
+  await a.reload()
+  await expect(a.locator('article', { hasText: text }).locator('.replies')).not.toContainText('ich will nicht mehr leben')
+})
+
+test('Eigene Antwort löschen und Antwortende blockieren', async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage()
+  const b = await (await browser.newContext()).newPage()
+  await register(a)
+  await register(b, 'Lio')
+  const text = `Ein Gedanke für Antworten ${Date.now()}`
+  await share(a, text)
+  await b.goto('/lichtung')
+  const card = b.locator('article', { hasText: text })
+  await card.locator('.reply-toggle').click()
+  await card.getByLabel('Antwort schreiben').fill('Meine Nummer ist hier zu viel')
+  await card.getByRole('button', { name: 'Antwort senden' }).click()
+  await expect(card.locator('.replies')).toContainText('Meine Nummer ist hier zu viel')
+  await card.locator('.reply-actions').getByRole('button', { name: 'Löschen' }).click()
+  await b.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
+  await expect(card.locator('.replies')).not.toContainText('Meine Nummer ist hier zu viel')
+  await card.getByLabel('Antwort schreiben').fill('Du schaffst das, wirklich.')
+  await card.getByRole('button', { name: 'Antwort senden' }).click()
+
+  // Die Autorin blockiert «Lio» direkt an der Antwort auf ihren eigenen Gedanken.
+  await a.reload()
+  const mine = a.locator('article', { hasText: text })
+  await mine.locator('.reply-toggle').click()
+  await expect(mine.locator('.replies')).toContainText('Du schaffst das, wirklich.')
+  await expect(mine.locator('.replies')).not.toContainText('Meine Nummer ist hier zu viel')
+  await mine.locator('.reply', { hasText: 'Du schaffst das' }).getByRole('button', { name: 'Blockieren' }).click()
+  await a.getByRole('dialog').getByRole('button', { name: 'Blockieren' }).click()
+  // Erst neu laden, wenn die Aktion durch ist – sonst bricht der Reload sie ab.
+  await expect(mine.locator('.replies')).not.toContainText('Du schaffst das, wirklich.')
+  await a.reload()
+  await a.locator('article', { hasText: text }).locator('.reply-toggle').click()
+  await expect(a.locator('article', { hasText: text }).locator('.replies')).not.toContainText('Du schaffst das, wirklich.')
+})
+
 test('Persönliche Daten werden markiert', async ({ page }) => {
   await register(page)
   await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
@@ -191,4 +247,29 @@ test('Gedanke per Klick gross öffnen – 75 % des Bildschirms, Antworten darin'
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   // Die Karte im Feed hat die Antwort ebenfalls – ohne Neuladen.
   await expect(page.locator('.list article', { hasText: text }).locator('.replies')).toContainText('Danke, dass du das teilst.')
+})
+
+test('«Meine Kreise»: gefolgte Kreise als Filter', async ({ page }) => {
+  await register(page)
+  const t = Date.now()
+  await page.goto('/einstellungen')
+  // Erster Kreis aus der Liste auf «Folgen»
+  const row = page.locator('.kv', { hasText: 'Angst' })
+  await row.getByRole('radio', { name: 'Folgen' }).click()
+  await expect(row.getByRole('radio', { name: 'Folgen' })).toHaveAttribute('aria-checked', 'true')
+  await page.waitForLoadState('networkidle')
+  await page.goto('/lichtung')
+  const inAngst = `Angst-Gedanke ${t}`
+  const elsewhere = `Trauer-Gedanke ${t}`
+  for (const [text, circle] of [[inAngst, 'Angst'], [elsewhere, 'Trauer']] as const) {
+    await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+    await page.locator('#composer-text').fill(text)
+    await page.getByRole('dialog').getByRole('button', { name: circle, exact: true }).click()
+    await page.getByRole('button', { name: 'Teilen', exact: true }).click()
+    await expect(page.locator('dialog[open]')).toHaveCount(0)
+  }
+  await page.getByRole('link', { name: /Meine Kreise/ }).first().click()
+  await page.waitForURL('**kreis=meine**')
+  await expect(page.locator('article', { hasText: inAngst })).toHaveCount(1)
+  await expect(page.locator('article', { hasText: elsewhere })).toHaveCount(0)
 })

@@ -35,3 +35,24 @@ test('Wiederherstellen mit dem Schlüssel setzt ein neues Passwort und erzeugt e
   await page.goto('/ich')
   await expect(page).toHaveURL(/\/anmelden$/)
 })
+
+test('Darstellung aus dem Konto gilt auf einem neuen Gerät, Schriftgrösse wirkt überall', async ({ browser }) => {
+  const first = await (await browser.newContext()).newPage()
+  const { username } = await register(first)
+  await first.goto('/einstellungen')
+  await first.waitForLoadState('networkidle')
+  const before = await first.locator('.feed-head h2, h1').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+  await first.getByRole('radio', { name: 'Sehr gross' }).click()
+  await first.getByRole('radio', { name: 'Dunkel' }).click()
+  await expect(first.locator('html')).toHaveAttribute('data-font', 'xlarge')
+  const after = await first.locator('.feed-head h2, h1').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+  expect(after).toBeGreaterThan(before * 1.2)
+  await first.waitForLoadState('networkidle')
+
+  // Neues Gerät: leerer Speicher, gleiche Darstellung nach dem Anmelden.
+  const second = await (await browser.newContext()).newPage()
+  await login(second, username)
+  await second.waitForURL('**/lichtung')
+  await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(second.locator('html')).toHaveAttribute('data-font', 'xlarge')
+})

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { listNotifications, markNotificationsRead, type ClientNotification } from '@/app/(app)/actions'
 import { emit, on, pulse } from '@/lib/client/bus'
+import { applyLocalPrefs, PREFS_KEY } from '@/lib/prefs-script'
 import { relativeTime } from '@/lib/time'
 import { m } from '@/messages'
 import { ConfirmHost } from '../confirm'
@@ -39,6 +40,12 @@ export function AppChrome({
   const [notifOpen, setNotifOpen] = useState(false)
   const [items, setItems] = useState<ClientNotification[] | null>(null)
 
+  // Neues Gerät: Noch nichts lokal gewählt → die im Konto gespeicherte Darstellung übernehmen.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(PREFS_KEY) === null) applyLocalPrefs({ theme: viewer.theme, fontSize: viewer.fontSize, motion: viewer.motion })
+    } catch {}
+  }, [viewer.theme, viewer.fontSize, viewer.motion])
   useEffect(() => on('help', () => setHelpOpen(true)), [])
   useEffect(
     () =>

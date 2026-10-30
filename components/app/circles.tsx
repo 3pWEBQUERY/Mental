@@ -14,8 +14,27 @@ export function CirclesList({ presence, onPick }: { presence: Record<string, num
   const viewer = useViewer()
   const params = useSearchParams()
   const active = params.get('kreis')
+  const mineQ = new URLSearchParams(params.toString())
+  if (active === 'meine') mineQ.delete('kreis')
+  else mineQ.set('kreis', 'meine')
+  mineQ.delete('cursor')
   return (
     <ul className="circles">
+      {viewer.following.length > 0 && (
+        <li>
+          <Link
+            className="circle mine"
+            href={`/lichtung${mineQ.size ? `?${mineQ}` : ''}`}
+            aria-current={active === 'meine' ? 'page' : undefined}
+            onClick={onPick}
+            scroll={false}
+          >
+            <i className="dot" style={{ background: 'transparent', border: '1.5px solid var(--ink)' }} />
+            <span>{m.circles.mine}</span>
+            <small>{viewer.following.length}</small>
+          </Link>
+        </li>
+      )}
       {viewer.circles.map((c) => {
         const here = presence[c.slug]
         const on = active === c.slug
