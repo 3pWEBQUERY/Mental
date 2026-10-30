@@ -34,7 +34,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root[data-theme='system'] {
     --paper: #171715;
     --paper-2: #22211e;
     --card: #1d1c1a;
@@ -371,6 +371,9 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .public-top .brand { display: flex; align-items: center; gap: 12px; }
 .public-top .brand .mark { margin: 0; width: 30px; height: 30px; }
 .public-top nav { display: flex; gap: 8px; align-items: center; }
+.theme-toggle { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1px solid var(--ink); display: grid; place-items: center; color: var(--ink); transition: background 0.2s; }
+.theme-toggle:hover { background: var(--paper-2); }
+.theme-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .help-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--clay); color: var(--clay-ink); text-decoration: none; font-size: 14px; font-weight: 500; }
 .public-main { padding: 20px clamp(16px, 4vw, 48px) 60px; }
 .public-foot { padding: 22px clamp(16px, 4vw, 48px); border-top: 1px solid var(--line); display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-3); }
@@ -398,16 +401,8 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .landing-hero .display { font-size: clamp(46px, 6.4vw, 92px); max-width: 12ch; }
 .landing-hero .lead { color: var(--ink-2); font-size: 17px; max-width: 44ch; margin: 22px 0 28px; }
 .landing-art { position: relative; aspect-ratio: 1; width: 100%; max-width: 480px; justify-self: center; }
-.clearing { width: 100%; height: 100%; display: block; overflow: hidden; }
-.clearing .glow { fill: var(--clay-soft); }
-.clearing .halo { fill: none; stroke: var(--clay); stroke-width: 1; opacity: 0.35; }
-.clearing .sun { fill: var(--clay); }
-.clearing .earth { fill: var(--paper); }
-.clearing .ground { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; }
-.clearing .ground.faint { opacity: 0.28; }
-.clearing .tree path { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; }
-.clearing .breath { transform-box: view-box; transform-origin: 200px 284px; animation: clearing-breath 10s ease-in-out infinite; }
-@keyframes clearing-breath { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.05); } 55% { transform: scale(1.05); } }
+.gathering, .gathering-still { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.gathering canvas { display: block; }
 .principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); margin-top: 40px; }
 .principles li { padding: 24px 22px 24px 0; border-bottom: 1px solid var(--line); }
 .principles b { display: block; font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.1; margin-bottom: 8px; }

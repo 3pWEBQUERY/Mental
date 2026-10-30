@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ClearingArt } from '@/components/landing-art'
+import { HeroArt } from '@/components/landing/hero-art'
 import { PublicShell } from '@/components/ui'
 import { m } from '@/messages'
 
@@ -25,9 +25,7 @@ export default function Landing() {
               </Link>
             </div>
           </div>
-          <div className="landing-art">
-            <ClearingArt />
-          </div>
+          <HeroArt />
         </section>
 
         <section aria-labelledby="prinzipien">
