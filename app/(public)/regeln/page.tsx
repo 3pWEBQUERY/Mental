@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 import { PublicShell } from '@/components/ui'
-import { getCircles } from '@/lib/server/terms'
+import { getCirclesForStaticPage } from '@/lib/server/terms'
 import { m } from '@/messages'
 
 export const metadata: Metadata = { title: m.rules.title }
 
 export default async function RulesPage() {
-  const circles = await getCircles().catch(() => [])
+  const circles = await getCirclesForStaticPage()
   return (
     <PublicShell>
       <div className="prose" style={{ margin: '0 auto' }}>

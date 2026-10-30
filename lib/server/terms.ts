@@ -45,3 +45,21 @@ export async function getCircles(): Promise<CircleInfo[]> {
     .filter((c) => c.isActive)
     .map(({ id, slug, name, description, rules, color }) => ({ id, slug, name, description, rules, color }))
 }
+
+/**
+ * Für die statische Regeln-Seite: Beim Build ist die Datenbank (privates Netzwerk) nicht erreichbar.
+ * Dann bleibt die Kreisliste leer und erscheint mit der nächsten Revalidierung.
+ */
+export async function getCirclesForStaticPage(): Promise<CircleInfo[]> {
+  'use cache'
+  cacheTag('circles')
+  cacheLife('hours')
+  try {
+    const rows = await db.select().from(circles).orderBy(asc(circles.sort))
+    return rows
+      .filter((c) => c.isActive)
+      .map(({ id, slug, name, description, rules, color }) => ({ id, slug, name, description, rules, color }))
+  } catch {
+    return []
+  }
+}
