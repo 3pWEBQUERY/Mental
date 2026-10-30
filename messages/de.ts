@@ -110,6 +110,8 @@ export const de = {
     concernCard:
       'Wir haben gemerkt, dass dein Gedanke sehr schwer klingt. Du musst nicht warten, bis hier jemand antwortet:',
     image: 'Bild zum Gedanken',
+    openPost: 'Gedanken gross öffnen',
+    postDialog: 'Gedanke',
     imagePending: 'Bild wird geprüft …',
     imageRejected: 'Das Bild konnte nicht veröffentlicht werden.',
     menu: 'Weitere Aktionen',

@@ -110,3 +110,25 @@ test('Löschen ist sofort und endgültig', async ({ page }) => {
   await page.reload()
   await expect(page.locator('article', { hasText: text })).toHaveCount(0)
 })
+
+test('Gedanke per Klick gross öffnen – 75 % des Bildschirms, Antworten darin', async ({ page }) => {
+  await register(page)
+  const text = `Ein Gedanke zum Öffnen ${Date.now()}`
+  await share(page, text)
+  await page.locator('article', { hasText: text }).locator('.post-text').click()
+  const dlg = page.locator('dialog[open]')
+  await expect(dlg.getByRole('heading', { name: 'Gedanke' })).toBeVisible()
+  await expect(dlg.locator('.post-text')).toHaveText(text)
+  const box = (await dlg.boundingBox())!
+  const vp = page.viewportSize()!
+  expect(Math.abs(box.width / vp.width - 0.75)).toBeLessThan(0.01)
+  expect(Math.abs(box.height / vp.height - 0.75)).toBeLessThan(0.01)
+
+  await dlg.getByLabel('Antwort schreiben').fill('Danke, dass du das teilst.')
+  await dlg.getByRole('button', { name: 'Antwort senden' }).click()
+  await expect(dlg.locator('.replies')).toContainText('Danke, dass du das teilst.')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  // Die Karte im Feed hat die Antwort ebenfalls – ohne Neuladen.
+  await expect(page.locator('.list article', { hasText: text }).locator('.replies')).toContainText('Danke, dass du das teilst.')
+})

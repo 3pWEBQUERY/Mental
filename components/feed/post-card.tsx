@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type FormEvent } from 'react'
+import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import {
   blockAuthor,
   createReply,
@@ -92,12 +92,15 @@ export function PostCard({
   onChange,
   onRemove,
   onReport,
+  onOpen,
   defaultOpen = false,
 }: {
   post: PublicPost
   onChange: (p: PublicPost) => void
   onRemove: (id: string) => void
   onReport: (t: ReportTarget) => void
+  /** Öffnet den Gedanken gross im Dialog – per Klick auf Text oder Bild. */
+  onOpen?: () => void
   defaultOpen?: boolean
 }) {
   const viewer = useViewer()
@@ -232,6 +235,22 @@ export function PostCard({
       ]
 
   const brave = post.need === 'brave'
+  // Wer Text markiert, will kopieren – nicht öffnen.
+  const openable = onOpen
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick: () => {
+          if (!window.getSelection()?.toString()) onOpen()
+        },
+        onKeyDown: (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onOpen()
+          }
+        },
+      }
+    : {}
   return (
     <article className={`post${open ? ' open' : ''}`} aria-labelledby={`p-${post.id}`}>
       <div className="post-meta">
@@ -260,7 +279,9 @@ export function PostCard({
       )}
 
       {revealed ? (
-        <p className="post-text">{post.body}</p>
+        <p className={`post-text${onOpen ? ' openable' : ''}`} {...openable}>
+          {post.body}
+        </p>
       ) : (
         <button
           type="button"
@@ -274,7 +295,11 @@ export function PostCard({
           <span>{f.cwReveal}</span>
         </button>
       )}
-      {revealed && post.media && <PostImage media={post.media} />}
+      {revealed && post.media && (
+        <div className={onOpen ? 'openable' : undefined} {...openable} aria-label={onOpen ? f.openPost : undefined}>
+          <PostImage media={post.media} />
+        </div>
+      )}
 
       {post.isMine && (post.crisisLevel === 'concern' || post.crisisLevel === 'acute') && (
         <div className="care">

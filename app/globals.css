@@ -206,6 +206,13 @@ ul, ol { list-style: none; }
 .post-image { margin: 12px 0 4px; border-radius: var(--r-m); overflow: hidden; background: var(--paper-2); max-width: 520px; position: relative; }
 .post-image img, .post-image canvas { display: block; width: 100%; height: auto; }
 .post-image .state { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; color: var(--ink-2); }
+.openable { cursor: pointer; border-radius: var(--r-s); }
+.openable:focus-visible { outline: 2px solid var(--clay); outline-offset: 4px; }
+.post-text.openable:hover { color: var(--ink-2); }
+/* Gedanke gross: gleiche Fläche wie das Schreibfenster, Inhalt scrollt im Dialog. */
+.post-dlg .post { border-top: 0; padding: 0; animation: none; }
+.post-dlg .post-text { font-size: clamp(26px, 2.2vw, 34px); }
+.post-dlg .post-image { max-width: 720px; }
 .unheard { font-size: 13px; color: var(--clay-ink); margin-bottom: 6px; }
 .status-note { font-size: 13px; color: var(--ink-2); border-left: 2px solid var(--clay); padding: 2px 0 2px 10px; margin: 8px 0; }
 .support { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
@@ -270,7 +277,8 @@ ul, ol { list-style: none; }
 .step .btn { background: var(--paper); color: var(--ink); border-color: var(--paper); padding: 9px 16px; font-size: 13px; border-radius: calc(var(--r-l) - var(--inset)); }
 .step .btn.ghost { background: transparent; color: var(--paper); border-color: var(--step-line); }
 .step.done p { text-decoration: line-through; text-decoration-color: var(--clay); text-decoration-thickness: 2px; }
-.help { border: 1px solid var(--clay); border-radius: var(--r-l); padding: 18px; }
+/* Haarlinie: auf Retina 1 Gerätepixel, auf normalen Bildschirmen die dünnste mögliche Linie. */
+.help { border: 0.5px solid var(--clay); border-radius: var(--r-l); padding: 18px; }
 .help h3 { color: var(--clay-ink) !important; }
 .help p { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
 .help a.line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); text-decoration: none; font-size: 13px; }
