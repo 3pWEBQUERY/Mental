@@ -16,10 +16,21 @@ export function hasStrongAuth(v: Viewer) {
   return v.authMethod === 'passkey' || env.adminWithoutPasskey
 }
 
-export async function requireModerator(level: ModLevel = 'peer'): Promise<Viewer> {
+/** Nur die Rolle – für das Admin-Layout und den Hinweis «Passkey nötig». */
+export async function requireModeratorRole(level: ModLevel = 'peer'): Promise<Viewer> {
   const v = await getViewer()
   if (!v) redirect('/anmelden')
   if (!canModerate(v, level)) redirect('/lichtung')
+  return v
+}
+
+/**
+ * Jede Admin-Seite prüft Rolle UND Passkey-Sitzung selbst. Das Layout allein schützt nicht:
+ * Seiten laufen parallel zum Layout und landen sonst trotzdem im RSC-Payload.
+ */
+export async function requireModerator(level: ModLevel = 'peer'): Promise<Viewer> {
+  const v = await requireModeratorRole(level)
+  if (!hasStrongAuth(v)) redirect('/admin/passkey')
   return v
 }
 

@@ -81,7 +81,7 @@ export type SettingsData = {
   settings: Settings
   circles: { slug: string; name: string; color: string; state: 'follow' | 'mute' | null }[]
   sessions: SessionItem[]
-  blocked: { ref: string; since: string }[]
+  blocked: { ref: string; since: string; kind: 'member' | 'post' }[]
   quiet: { from: number; to: number }
   vapidKey: string | null
 }
@@ -120,6 +120,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
   const [pw, setPw] = useState({ current: '', next: '' })
   const [pwMsg, setPwMsg] = useState('')
   const [keyPw, setKeyPw] = useState('')
+  const [pkReauth, setPkReauth] = useState(false)
+  const [pkPw, setPkPw] = useState('')
   const [newKey, setNewKey] = useState<string[] | null>(null)
   const [keys, setKeys] = useState<PasskeyItem[] | null>(null)
   const [sessions, setSessions] = useState(data.sessions)
@@ -256,22 +258,43 @@ export function SettingsView({ data }: { data: SettingsData }) {
             </div>
           ))}
           {passkey.supported && (
-            <div>
-              <button
-                type="button"
-                className="btn ghost"
-                disabled={passkey.busy}
-                onClick={async () => {
-                  if (await passkey.setup()) {
-                    toast(s.passkeyAdded)
-                    setKeys(await listPasskeys())
-                  }
-                }}
-              >
-                {s.passkeyAdd}
-              </button>
+            <form
+              className="stack"
+              style={{ gap: 10 }}
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const r = await passkey.setup(pkReauth ? pkPw : undefined)
+                if (r === 'reauth') return setPkReauth(true)
+                if (r) {
+                  setPkReauth(false)
+                  setPkPw('')
+                  toast(s.passkeyAdded)
+                  setKeys(await listPasskeys())
+                }
+              }}
+            >
+              {pkReauth && (
+                <>
+                  <p className="fine">{s.passkeyReauth}</p>
+                  <input
+                    className="input"
+                    type="password"
+                    placeholder={s.currentPassword}
+                    aria-label={s.currentPassword}
+                    value={pkPw}
+                    onChange={(e) => setPkPw(e.target.value)}
+                    autoComplete="current-password"
+                    autoFocus
+                  />
+                </>
+              )}
+              <div>
+                <button type="submit" className="btn ghost" disabled={passkey.busy || (pkReauth && !pkPw)}>
+                  {s.passkeyAdd}
+                </button>
+              </div>
               {passkey.error && <p className="error">{passkey.error}</p>}
-            </div>
+            </form>
           )}
         </div>
 
@@ -442,10 +465,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
       <Section title={s.sections.blocked}>
         <div className="sub">
           {blocked.length === 0 && <p className="fine">{s.blockedEmpty}</p>}
-          {blocked.map((b, i) => (
+          {blocked.map((b) => (
             <div key={b.ref} className="kv">
               <span>
-                {s.blockedMember(i + 1)}
+                {b.kind === 'post' ? s.hiddenPost : s.blockedMember(blocked.filter((x) => x.kind === 'member').indexOf(b) + 1)}
                 <small>{s.sessionSince(formatDate(b.since))}</small>
               </span>
               <button
@@ -455,7 +478,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   if ((await unblock(b.ref)).ok) setBlocked((cur) => cur.filter((x) => x.ref !== b.ref))
                 }}
               >
-                {s.unblock}
+                {b.kind === 'post' ? s.unhidePost : s.unblock}
               </button>
             </div>
           ))}

@@ -34,6 +34,8 @@ export type SupportSummary = { total: number; hear: number; same: number; strong
 export type PublicPost = {
   id: string
   authorHandle: string
+  /** Ohnehin sichtbar («Anonym»); steuert, ob «Blockieren» nur diesen Gedanken ausblendet. */
+  anonymous: boolean
   glyphSeed: number
   mood: number
   circle: PublicCircle
@@ -70,6 +72,7 @@ export type PostRow = {
   editedAt: Date | null
   replyCount: number
   closed: boolean
+  visibility: 'anonymous' | 'pseudonym'
   status: 'pending' | 'visible' | 'hidden' | 'removed'
   crisisLevel: 'none' | 'concern' | 'acute'
   moderationNote: string | null
@@ -129,6 +132,7 @@ export function toPublicPost(
   return {
     id: p.id,
     authorHandle: p.authorHandle,
+    anonymous: p.visibility === 'anonymous',
     glyphSeed: p.glyphSeed,
     mood: p.mood,
     circle: { slug: p.circleSlug, name: p.circleName, color: p.circleColor },

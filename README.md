@@ -28,7 +28,7 @@ npm run dev                     # Web auf :3000
 npm run worker                  # zweites Terminal: Hintergrundjobs
 ```
 
-Moderationsrolle vergeben – lokal über die Kommandozeile, auf Railway über die Variable `ADMIN_USERNAMES` (kommagetrennt) am `web`-Service; `scripts/bootstrap-admins.ts` vergibt die Rolle beim nächsten Deploy und stuft nie herab:
+Moderationsrolle vergeben – lokal über die Kommandozeile, auf Railway über die Variable `ADMIN_USER_IDS` (Konto-IDs, kommagetrennt) am `web`-Service; `scripts/bootstrap-admins.ts` vergibt die Rolle beim nächsten Deploy und stuft nie herab. Bewusst IDs statt Benutzernamen: Ein Name wird nach einer Löschung wieder frei, eine ID nie.
 
 ```bash
 npm run admin:grant -- <benutzername> admin

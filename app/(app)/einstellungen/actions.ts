@@ -4,7 +4,7 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { db } from '@/db'
-import { blocks, exports, passkeys, profiles, pushSubscriptions, sessions, users, type Settings } from '@/db/schema'
+import { blocks, exports, passkeys, postHides, profiles, pushSubscriptions, sessions, users, type Settings } from '@/db/schema'
 import { LIMITS } from '@/lib/constants'
 import { enqueue, QUEUES } from '@/lib/jobs'
 import { hmac } from '@/lib/server/crypto'
@@ -125,19 +125,37 @@ export async function endSession(id: string | 'others'): Promise<R> {
 
 /* ----------------------------------------------------------- Blockiert */
 
-/** Blockierte erscheinen als «Mitglied 1, 2 …» – ohne ID, die etwas verraten könnte. */
-export async function listBlocked(): Promise<{ ref: string; since: string }[]> {
+/** Blockierte erscheinen als «Mitglied 1, 2 …», ausgeblendete anonyme Gedanken ohne Inhalt – ohne ID, die etwas verraten könnte. */
+export async function listBlocked(): Promise<{ ref: string; since: string; kind: 'member' | 'post' }[]> {
   const v = await viewer()
-  const rows = await db.select().from(blocks).where(eq(blocks.blockerId, v.userId)).orderBy(asc(blocks.createdAt))
-  return rows.map((b) => ({ ref: hmac(`${v.userId}:${b.blockedId}`, 'block-ref').slice(0, 24), since: b.createdAt.toISOString() }))
+  const [members, hidden] = await Promise.all([
+    db.select().from(blocks).where(eq(blocks.blockerId, v.userId)).orderBy(asc(blocks.createdAt)),
+    db.select().from(postHides).where(eq(postHides.userId, v.userId)).orderBy(asc(postHides.createdAt)),
+  ])
+  return [
+    ...members.map((b) => ({ ref: blockRef(v.userId, b.blockedId), since: b.createdAt.toISOString(), kind: 'member' as const })),
+    ...hidden.map((h) => ({ ref: blockRef(v.userId, h.postId, 'post'), since: h.createdAt.toISOString(), kind: 'post' as const })),
+  ]
+}
+
+function blockRef(viewerId: string, targetId: string, kind: 'member' | 'post' = 'member') {
+  return hmac(`${viewerId}:${kind === 'post' ? 'post:' : ''}${targetId}`, 'block-ref').slice(0, 24)
 }
 
 export async function unblock(ref: string): Promise<R> {
   const v = await viewer()
-  const rows = await db.select().from(blocks).where(eq(blocks.blockerId, v.userId))
-  const target = rows.find((b) => hmac(`${v.userId}:${b.blockedId}`, 'block-ref').slice(0, 24) === ref)
-  if (!target) return fail(m.common.error)
-  await db.delete(blocks).where(and(eq(blocks.blockerId, v.userId), eq(blocks.blockedId, target.blockedId)))
+  const [members, hidden] = await Promise.all([
+    db.select().from(blocks).where(eq(blocks.blockerId, v.userId)),
+    db.select().from(postHides).where(eq(postHides.userId, v.userId)),
+  ])
+  const member = members.find((b) => blockRef(v.userId, b.blockedId) === ref)
+  if (member) {
+    await db.delete(blocks).where(and(eq(blocks.blockerId, v.userId), eq(blocks.blockedId, member.blockedId)))
+    return { ok: true }
+  }
+  const post = hidden.find((h) => blockRef(v.userId, h.postId, 'post') === ref)
+  if (!post) return fail(m.common.error)
+  await db.delete(postHides).where(and(eq(postHides.userId, v.userId), eq(postHides.postId, post.postId)))
   return { ok: true }
 }
 

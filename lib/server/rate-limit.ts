@@ -2,6 +2,7 @@ import 'server-only'
 import { sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { db } from '@/db'
+import { clientIp } from '../client-ip'
 import { hmac } from './crypto'
 import { zurichDay } from '../time'
 
@@ -36,7 +37,5 @@ export async function clear(key: string) {
  * der Aufräumjob löscht die Zeilen.
  */
 export async function ipHash(): Promise<string> {
-  const h = await headers()
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
-  return hmac(ip, `ip:${zurichDay()}`).slice(0, 32)
+  return hmac(clientIp(await headers()), `ip:${zurichDay()}`).slice(0, 32)
 }

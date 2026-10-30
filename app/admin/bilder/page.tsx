@@ -5,9 +5,7 @@ import { requireModerator } from '@/lib/server/admin'
 import { memberRef } from '@/lib/server/crypto'
 import { relativeTime } from '@/lib/time'
 import { m } from '@/messages'
-import { reviewImage } from '../actions'
-
-const PREVIEWABLE = ['image/jpeg', 'image/png', 'image/webp']
+import { cleanImage, reviewImage } from '../actions'
 
 /** Bildfreigabe: jedes Bild an einem Gedanken wartet hier, bis die Moderation es freigibt oder ablehnt. */
 export default async function ImagesPage() {
@@ -52,26 +50,33 @@ export default async function ImagesPage() {
               <span>{relativeTime(r.createdAt)}</span>
             </div>
             <div className="image-review-body">
-              {PREVIEWABLE.includes(r.type) ? (
+              {r.status === 'review' ? (
                 <a href={`/api/admin/media/${r.id}`} target="_blank" rel="noreferrer" className="image-review-preview">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/api/admin/media/${r.id}`} alt="" width={r.width ?? undefined} height={r.height ?? undefined} />
                 </a>
               ) : (
-                <p className="image-review-preview fine">{t.noPreview}</p>
+                <div className="image-review-preview stack" style={{ gap: 12, padding: 20, textAlign: 'center', justifyItems: 'center' }}>
+                  <p className="fine">{t.quarantineHint}</p>
+                  <form action={cleanImage}>
+                    <input type="hidden" name="mediaId" value={r.id} />
+                    <button className="btn small">{t.clean}</button>
+                  </form>
+                </div>
               )}
               <div className="stack" style={{ gap: 10 }}>
                 <blockquote>{r.body || '—'}</blockquote>
-                {r.status === 'quarantine' && <p className="fine">{t.quarantineHint}</p>}
                 {r.postStatus !== 'visible' && <p className="fine">{t.postHidden}</p>}
               </div>
             </div>
             <form action={reviewImage} className="inline-form">
               <input type="hidden" name="mediaId" value={r.id} />
               <input className="input" name="reason" placeholder={t.reason} maxLength={500} aria-label={t.reason} />
-              <button className="btn small" name="decision" value="approve">
-                {t.approve}
-              </button>
+              {r.status === 'review' && (
+                <button className="btn small" name="decision" value="approve">
+                  {t.approve}
+                </button>
+              )}
               <button className="btn ghost small" name="decision" value="reject" style={{ color: 'var(--clay-ink)', borderColor: 'var(--clay)' }}>
                 {t.reject}
               </button>

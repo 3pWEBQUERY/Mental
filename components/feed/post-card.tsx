@@ -222,14 +222,15 @@ export function PostCard({
         },
         { label: f.report, onSelect: () => onReport({ type: 'post', id: post.id }) },
         {
-          label: f.block,
+          label: post.anonymous ? f.hideAnonymous : f.block,
           danger: true,
           onSelect: async () => {
-            if (!(await askConfirm(f.blockConfirm, f.block))) return
+            const label = post.anonymous ? f.hideAnonymous : f.block
+            if (!(await askConfirm(post.anonymous ? f.hideAnonymousConfirm : f.blockConfirm, label))) return
             const res = await blockAuthor({ type: 'post', id: post.id })
             if (!res.ok) return toast(res.error)
             onRemove(post.id)
-            toast(f.blocked)
+            toast(post.anonymous ? f.hiddenAnonymous : f.blocked)
           },
         },
       ]
