@@ -1,6 +1,6 @@
 'use server'
 
-import { and, count, desc, eq, gt, gte, isNull, notInArray, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
@@ -12,6 +12,7 @@ import {
   circlePresence,
   circles,
   notifications,
+  postHides,
   postMedia,
   posts,
   profiles,
@@ -66,6 +67,7 @@ async function visiblePost(viewerId: string, postId: string) {
       circleId: posts.circleId,
       authorHandle: posts.authorHandle,
       glyphSeed: posts.glyphSeed,
+      visibility: posts.visibility,
       createdAt: posts.createdAt,
     })
     .from(posts)
@@ -73,6 +75,14 @@ async function visiblePost(viewerId: string, postId: string) {
     .limit(1)
   if (!p) return null
   if (p.status !== 'visible' && p.userId !== viewerId) return null
+  const [hidden] = await db
+    .select({ x: postHides.postId })
+    .from(postHides)
+    .where(and(eq(postHides.userId, viewerId), eq(postHides.postId, postId)))
+    .limit(1)
+  if (hidden) return null
+  // Anonyme Gedanken prüfen keinen Konto-Block – eine Fehlermeldung verriete sonst, wer dahintersteht.
+  if (p.visibility === 'anonymous') return p
   const [blocked] = await db
     .select({ x: blocks.blockerId })
     .from(blocks)
@@ -202,9 +212,25 @@ export async function deletePost(id: string): Promise<Ok<object> | Fail> {
       .where(and(eq(posts.id, id), eq(posts.userId, v.userId), isNull(posts.deletedAt)))
       .returning({ id: posts.id })
     if (!res.length) return false
+    const replyIds = (await tx.select({ id: replies.id }).from(replies).where(eq(replies.postId, id))).map((r) => r.id)
     await tx.delete(replies).where(eq(replies.postId, id))
     await tx.delete(support).where(eq(support.postId, id))
     await tx.delete(postMedia).where(eq(postMedia.postId, id))
+    // «Sofort und endgültig»: auch Auszüge in Benachrichtigungen verschwinden.
+    await tx.delete(notifications).where(eq(notifications.postId, id))
+    // Offene Meldungen zu gelöschten Inhalten wären in der Warteschlange unsichtbar und blieben ewig offen.
+    await tx
+      .update(reports)
+      .set({ status: 'dismissed', resolvedAt: new Date() })
+      .where(
+        and(
+          eq(reports.status, 'open'),
+          or(
+            and(eq(reports.targetType, 'post'), eq(reports.targetId, id)),
+            ...(replyIds.length ? [and(eq(reports.targetType, 'reply'), inArray(reports.targetId, replyIds))] : []),
+          ),
+        ),
+      )
     return true
   })
   if (!done) return fail(m.common.error)
@@ -376,12 +402,27 @@ export async function reportContent(input: { type: 'post' | 'reply'; id: string;
   return { ok: true }
 }
 
+/**
+ * Blockieren unter Namen trifft das Konto. Bei anonymen Inhalten wird nur dieser Gedanke ausgeblendet:
+ * ein Konto-Block liesse sich sonst durch Vergleichen des Feeds einer Person zuordnen.
+ */
 export async function blockAuthor(input: { type: 'post' | 'reply'; id: string }): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
-  const owner = await targetOwner(input.type === 'reply' ? 'reply' : 'post', input.id)
-  if (!owner || owner === v.userId) return fail(m.common.error)
-  await db.insert(blocks).values({ blockerId: v.userId, blockedId: owner }).onConflictDoNothing()
+  const parsed = z.object({ type: z.enum(['post', 'reply']), id: z.uuid() }).safeParse(input)
+  if (!parsed.success) return fail(m.common.error)
+  const { type, id } = parsed.data
+  const [t] =
+    type === 'post'
+      ? await db.select({ owner: posts.userId, postId: posts.id, anonymous: sql<boolean>`${posts.visibility} = 'anonymous'` }).from(posts).where(eq(posts.id, id))
+      : await db
+          .select({ owner: replies.userId, postId: posts.id, anonymous: sql<boolean>`${replies.isAuthor} AND ${posts.visibility} = 'anonymous'` })
+          .from(replies)
+          .innerJoin(posts, eq(posts.id, replies.postId))
+          .where(eq(replies.id, id))
+  if (!t?.owner || t.owner === v.userId) return fail(m.common.error)
+  if (t.anonymous) await db.insert(postHides).values({ userId: v.userId, postId: t.postId }).onConflictDoNothing()
+  else await db.insert(blocks).values({ blockerId: v.userId, blockedId: t.owner }).onConflictDoNothing()
   return { ok: true }
 }
 

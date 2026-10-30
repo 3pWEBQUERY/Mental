@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
-import { blocks, bookmarks, circlePrefs, circles, postMedia, posts, replies, support, users } from '@/db/schema'
+import { blocks, bookmarks, circlePrefs, circles, postHides, postMedia, posts, replies, support, users } from '@/db/schema'
 import { LIMITS, type SupportKind } from '../constants'
 import { toPublicPost, type PostRow, type PublicMedia, type PublicPost, type ReplyRow, type SupportSummary } from '../dto'
 
@@ -20,6 +20,7 @@ const postColumns = {
   editedAt: posts.editedAt,
   replyCount: posts.replyCount,
   closed: posts.closed,
+  visibility: posts.visibility,
   status: posts.status,
   crisisLevel: posts.crisisLevel,
   moderationNote: posts.moderationNote,
@@ -28,7 +29,11 @@ const postColumns = {
   circleColor: circles.color,
 }
 
-/** Blockierte Mitglieder sehen sich gegenseitig nie. */
+/**
+ * Blockierte Mitglieder sehen sich gegenseitig nie – unter ihrem Namen.
+ * Anonyme Gedanken bleiben davon unberührt (sonst liessen sie sich über Block/Entblocken einer Person zuordnen);
+ * die blendet man einzeln über `post_hides` aus.
+ */
 export function notBlocked(viewerId: string, column: typeof posts.userId | typeof replies.userId): SQL {
   return and(
     notInArray(column, db.select({ id: blocks.blockedId }).from(blocks).where(eq(blocks.blockerId, viewerId))),
@@ -42,7 +47,8 @@ function visibleTo(viewerId: string): SQL {
     isNull(posts.deletedAt),
     or(eq(posts.status, 'visible'), and(eq(posts.userId, viewerId), ne(posts.status, 'removed'))),
     ne(users.status, 'deleting'),
-    notBlocked(viewerId, posts.userId),
+    or(eq(posts.visibility, 'anonymous'), notBlocked(viewerId, posts.userId)),
+    notInArray(posts.id, db.select({ id: postHides.postId }).from(postHides).where(eq(postHides.userId, viewerId))),
   )!
 }
 
@@ -66,6 +72,8 @@ function mutedCircles(viewerId: string) {
 export async function hydrate(rows: PostRow[], viewerId: string): Promise<PublicPost[]> {
   if (!rows.length) return []
   const ids = rows.map((r) => r.id)
+  // Antworten der Verfasserin in einem anonymen Thread tragen deren anonyme Identität – kein Konto-Block.
+  const anonIds = rows.filter((r) => r.visibility === 'anonymous').map((r) => r.id)
   const [replyRows, supportRows, bookmarkRows, mediaRows] = await Promise.all([
     db
       .select({
@@ -93,7 +101,11 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
             sql`${replies.deletedAt} IS NOT NULL`,
           ),
           or(ne(users.status, 'deleting'), sql`${replies.deletedAt} IS NOT NULL`),
-          or(isNull(replies.userId), notBlocked(viewerId, replies.userId)),
+          or(
+            isNull(replies.userId),
+            notBlocked(viewerId, replies.userId),
+            ...(anonIds.length ? [and(eq(replies.isAuthor, true), inArray(replies.postId, anonIds))] : []),
+          ),
         ),
       )
       .orderBy(asc(replies.createdAt)),

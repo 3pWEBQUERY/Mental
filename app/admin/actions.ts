@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, ne } from 'drizzle-orm'
 import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -18,7 +18,7 @@ import {
   users,
 } from '@/db/schema'
 import { processMedia, rejectMedia } from '@/lib/media'
-import { assertModerator } from '@/lib/server/admin'
+import { assertModerator, canModerate } from '@/lib/server/admin'
 import { notifyModeration } from '@/lib/server/notify'
 import { m } from '@/messages'
 
@@ -48,6 +48,10 @@ export async function moderate(form: FormData) {
       ? await db.select({ userId: posts.userId, postId: posts.id }).from(posts).where(eq(posts.id, targetId))
       : await db.select({ userId: replies.userId, postId: replies.postId }).from(replies).where(eq(replies.id, targetId))
   if (!target) throw new Error('not found')
+  if (['mute24', 'mute7', 'ban', 'warn'].includes(action) && target.userId) {
+    const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, target.userId))
+    if (u && u.role !== 'member' && !canModerate(mod, 'admin')) throw new Error('forbidden')
+  }
 
   const setStatus = async (status: 'visible' | 'hidden') => {
     if (targetType === 'post') await db.update(posts).set({ status, moderationNote: status === 'hidden' ? reason || null : null }).where(eq(posts.id, targetId))
@@ -70,7 +74,8 @@ export async function moderate(form: FormData) {
       await setStatus('hidden')
       break
     case 'cw':
-      if (targetType === 'post') await db.update(posts).set({ contentWarning: true, status: 'visible' }).where(eq(posts.id, targetId))
+      // Nur der Hinweis – sichtbar schaltet allein «Freigeben» (Rolle mod).
+      if (targetType === 'post') await db.update(posts).set({ contentWarning: true }).where(eq(posts.id, targetId))
       break
     case 'mute24':
     case 'mute7':
@@ -87,10 +92,19 @@ export async function moderate(form: FormData) {
       break
   }
 
+  // Akute Krisen-Treffer bleiben offen, bis eine Moderatorin (mod) sie gesehen hat.
+  const peerOnly = !canModerate(mod, 'mod')
   await db
     .update(reports)
     .set({ status: action === 'dismiss' ? 'dismissed' : 'resolved', resolvedAt: new Date() })
-    .where(and(eq(reports.targetType, targetType), eq(reports.targetId, targetId), eq(reports.status, 'open')))
+    .where(
+      and(
+        eq(reports.targetType, targetType),
+        eq(reports.targetId, targetId),
+        eq(reports.status, 'open'),
+        ...(peerOnly ? [ne(reports.reason, 'auto_acute')] : []),
+      ),
+    )
 
   await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType, targetId, action, reason: reason || null })
   if (target.userId && ['mute24', 'mute7', 'ban'].includes(action)) {
@@ -122,16 +136,15 @@ export async function reviewImage(form: FormData): Promise<void> {
     .where(eq(postMedia.id, mediaId))
   if (!row?.postId || (row.status !== 'quarantine' && row.status !== 'review')) return refresh()
 
+  // Freigeben nur, was die Moderation bereinigt gesehen hat.
+  if (decision === 'approve' && row.status !== 'review') return refresh()
   let result: 'ready' | 'rejected'
   if (decision === 'reject') {
     await rejectMedia(mediaId, `Moderation${reason ? `: ${reason}` : ''}`)
     result = 'rejected'
-  } else if (row.status === 'review') {
+  } else {
     await db.update(postMedia).set({ status: 'ready' }).where(and(eq(postMedia.id, mediaId), eq(postMedia.status, 'review')))
     result = 'ready'
-  } else {
-    const r = await processMedia(mediaId, 'ready')
-    result = r === 'ready' ? 'ready' : 'rejected'
   }
 
   await db.insert(moderationActions).values({
@@ -139,9 +152,18 @@ export async function reviewImage(form: FormData): Promise<void> {
     targetType: 'post',
     targetId: row.postId,
     action: result === 'ready' ? 'image_approve' : 'image_reject',
-    reason: decision === 'approve' && result === 'rejected' ? m.admin.images.failed : reason || null,
+    reason: reason || null,
   })
   await notifyModeration(row.userId, row.postId, result === 'ready' ? m.admin.images.approvedNote : m.admin.images.rejectedNote(decision === 'reject' ? reason : ''))
+  refresh()
+}
+
+/** Bereinigt ein Bild, das der Worker (noch) nicht verarbeitet hat – danach erst gibt es eine Vorschau. */
+export async function cleanImage(form: FormData): Promise<void> {
+  const mediaId = z.uuid().safeParse(form.get('mediaId'))
+  if (!mediaId.success) throw new Error('invalid')
+  await assertModerator('mod')
+  await processMedia(mediaId.data, 'review')
   refresh()
 }
 

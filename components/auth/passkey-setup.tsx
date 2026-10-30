@@ -12,12 +12,17 @@ export function usePasskeySetup() {
   const [supported, setSupported] = useState(false)
   useEffect(() => setSupported(browserSupportsWebAuthn()), [])
 
-  async function setup(): Promise<boolean> {
+  /** 'reauth': Die Sitzung ist nicht mehr frisch – erst das Passwort bestätigen, dann erneut aufrufen. */
+  async function setup(password?: string): Promise<boolean | 'reauth'> {
     setBusy(true)
     setError('')
     try {
-      const options = await passkeyRegistrationOptions()
+      const options = await passkeyRegistrationOptions(password)
       if (!options) throw new Error()
+      if ('reauth' in options) {
+        if ('failed' in options) setError(m.auth.invalid)
+        return 'reauth'
+      }
       const response = await startRegistration({ optionsJSON: options })
       const ok = await finishPasskeyRegistration(response)
       if (!ok) throw new Error()

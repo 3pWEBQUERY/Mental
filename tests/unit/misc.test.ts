@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { WORDS } from '@/lib/auth/wordlist'
+import { clientIp } from '@/lib/client-ip'
 import { glyphPath, rng } from '@/lib/glyph'
 import { sniffImage } from '@/lib/image-sniff'
 import { inQuietHours } from '@/lib/quiet-hours'
@@ -56,5 +57,18 @@ describe('Bildprüfung per Magic Bytes', () => {
     expect(sniffImage(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe('png')
     expect(sniffImage(new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 '))).toBe('webp')
     expect(sniffImage(new TextEncoder().encode('<html><script>'))).toBeNull()
+  })
+})
+
+describe('clientIp', () => {
+  const h = (o: Record<string, string>) => new Headers(o)
+  it('nimmt die von Railway gesetzte X-Real-IP', () => {
+    expect(clientIp(h({ 'x-real-ip': '203.0.113.7', 'x-forwarded-for': '1.2.3.4, 203.0.113.7' }))).toBe('203.0.113.7')
+  })
+  it('ignoriert den vom Client gefälschten ersten X-Forwarded-For-Eintrag', () => {
+    expect(clientIp(h({ 'x-forwarded-for': '6.6.6.6, 198.51.100.2' }))).toBe('198.51.100.2')
+  })
+  it('fällt ohne Header auf «unknown» zurück', () => {
+    expect(clientIp(h({}))).toBe('unknown')
   })
 })

@@ -18,6 +18,7 @@ const post: PostRow = {
   editedAt: null,
   replyCount: 1,
   closed: false,
+  visibility: 'anonymous',
   status: 'visible',
   crisisLevel: 'concern',
   moderationNote: null,

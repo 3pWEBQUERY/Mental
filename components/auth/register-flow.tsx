@@ -390,7 +390,7 @@ export function RegisterFlow() {
               className="btn"
               disabled={passkey.busy}
               onClick={async () => {
-                if (await passkey.setup()) go(6)
+                if ((await passkey.setup()) === true) go(6)
               }}
             >
               {r.passkeySetup}

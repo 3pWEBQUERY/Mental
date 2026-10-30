@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { Pool } from 'pg'
 import { register, share } from './helpers'
 
 test('Teilen, Zuspruch, Antworten, Benachrichtigung, «Das hat mir gutgetan»', async ({ browser }) => {
@@ -81,35 +82,94 @@ test('Melden mit «Ich mache mir Sorgen» zeigt, wie man selbst reagieren kann',
   await expect(b.getByRole('heading', { name: 'Was du jetzt tun kannst' })).toBeVisible()
 })
 
-test('Blockieren lässt Inhalte verschwinden', async ({ browser }) => {
+test('Blockieren unter Namen trifft das Konto – anonyme Gedanken bleiben unverknüpft', async ({ browser }) => {
   const a = await (await browser.newContext()).newPage()
   const b = await (await browser.newContext()).newPage()
-  await register(a)
+  await register(a, 'Mira')
   await register(b)
-  const text = `Ein Gedanke zum Blockieren ${Date.now()}`
-  await share(a, text)
+  const t = Date.now()
+  const named = `Unter meinem Namen ${t}`
+  const anon = `Ganz anonym ${t}`
+  await share(a, named, { anonymous: false })
+  await share(a, anon, { anonymous: true })
+
   await b.goto('/lichtung')
-  const card = b.locator('article', { hasText: text })
+  const card = b.locator('article', { hasText: named })
   await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
   await b.getByRole('menuitem', { name: 'Blockieren' }).click()
   await b.getByRole('dialog').getByRole('button', { name: 'Blockieren' }).click()
   await expect(card).toHaveCount(0)
   await b.reload()
-  await expect(b.locator('article', { hasText: text })).toHaveCount(0)
+  await expect(b.locator('article', { hasText: named })).toHaveCount(0)
+  // Der anonyme Gedanke derselben Person bleibt – sonst liesse er sich «Mira» zuordnen.
+  await expect(b.locator('article', { hasText: anon })).toHaveCount(1)
+  // Auch umgekehrt: A sieht ihre eigenen Inhalte, B kann auf den anonymen Gedanken weiter reagieren.
+  await b.locator('article', { hasText: anon }).getByRole('button', { name: 'Ich höre dich' }).click()
+  await expect(b.locator('article', { hasText: anon }).getByRole('button', { name: 'Ich höre dich' })).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('Löschen ist sofort und endgültig', async ({ page }) => {
-  await register(page)
-  const text = `Wird gleich gelöscht ${Date.now()}`
-  await share(page, text)
-  const card = page.locator('article', { hasText: text })
+test('Anonymen Gedanken ausblenden trifft nur diesen Gedanken', async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage()
+  const b = await (await browser.newContext()).newPage()
+  await register(a, 'Noa')
+  await register(b)
+  const t = Date.now()
+  const named = `Noa schreibt ${t}`
+  const anon = `Anonym zum Ausblenden ${t}`
+  await share(a, named, { anonymous: false })
+  await share(a, anon, { anonymous: true })
+
+  await b.goto('/lichtung')
+  const card = b.locator('article', { hasText: anon })
   await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
-  await page.getByRole('menuitem', { name: 'Löschen' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
-  await expect(card).toHaveCount(0)
-  await page.reload()
-  await expect(page.locator('article', { hasText: text })).toHaveCount(0)
+  await b.getByRole('menuitem', { name: 'Ausblenden' }).click()
+  await b.getByRole('dialog').getByRole('button', { name: 'Ausblenden' }).click()
+  await b.reload()
+  await expect(b.locator('article', { hasText: anon })).toHaveCount(0)
+  await expect(b.locator('article', { hasText: named })).toHaveCount(1)
+
+  await b.goto('/einstellungen')
+  await expect(b.getByText('Ein ausgeblendeter anonymer Gedanke')).toBeVisible()
+  await b.getByRole('button', { name: 'Wieder zeigen' }).click()
+  await b.goto('/lichtung')
+  await expect(b.locator('article', { hasText: anon })).toHaveCount(1)
 })
+
+test('Löschen ist sofort und endgültig – auch in Benachrichtigungen', async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage()
+  const b = await (await browser.newContext()).newPage()
+  await register(a)
+  await register(b)
+  const text = `Wird gleich gelöscht ${Date.now()}`
+  await share(a, text)
+  // Eine Antwort erzeugt eine Benachrichtigung mit Auszug für die Verfasserin.
+  await b.goto('/lichtung')
+  const other = b.locator('article', { hasText: text })
+  await other.locator('.reply-toggle').click()
+  await other.getByRole('button', { name: 'Du bist damit nicht allein.' }).click()
+  await other.getByRole('button', { name: 'Antwort senden' }).click()
+  await expect(other.locator('.replies')).toContainText('Du bist damit nicht allein.')
+  await expect.poll(() => excerpts(text)).toBe(1)
+
+  const card = a.locator('article', { hasText: text })
+  await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
+  await a.getByRole('menuitem', { name: 'Löschen' }).click()
+  await a.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
+  await expect(card).toHaveCount(0)
+  await a.reload()
+  await expect(a.locator('article', { hasText: text })).toHaveCount(0)
+  expect(await excerpts(text)).toBe(0)
+})
+
+async function excerpts(text: string) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const r = await pool.query(`SELECT count(*)::int AS n FROM notifications WHERE payload->>'excerpt' LIKE $1`, [`%${text.slice(0, 30)}%`])
+    return r.rows[0].n as number
+  } finally {
+    await pool.end()
+  }
+}
 
 test('Gedanke per Klick gross öffnen – 75 % des Bildschirms, Antworten darin', async ({ page }) => {
   await register(page)

@@ -47,8 +47,11 @@ export async function login(page: Page, username: string, password = PASSWORD) {
 export async function share(page: Page, text: string, opts: { anonymous?: boolean } = {}) {
   await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
   await page.locator('#composer-text').fill(text)
+  // Die Checkbox ist visuell versteckt – geklickt wird der sichtbare Schalter.
   const toggle = page.getByLabel(/Ganz anonym teilen/)
-  if (opts.anonymous === false && (await toggle.isChecked())) await toggle.uncheck()
-  if (opts.anonymous === true && !(await toggle.isChecked())) await toggle.check()
+  if (opts.anonymous !== undefined && (await toggle.isChecked()) !== opts.anonymous) {
+    await page.locator('label.switch', { hasText: 'Ganz anonym teilen' }).click()
+    await expect(toggle).toBeChecked({ checked: opts.anonymous })
+  }
   await page.getByRole('button', { name: 'Teilen', exact: true }).click()
 }

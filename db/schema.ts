@@ -393,6 +393,20 @@ export const blocks = pgTable(
   (t) => [primaryKey({ columns: [t.blockerId, t.blockedId] }), index('blocks_blocked_idx').on(t.blockedId)],
 )
 
+/**
+ * Einzelne anonyme Gedanken ausblenden. Ein Konto-Block darf anonyme Gedanken nicht treffen –
+ * sonst verriete der Unterschied im Feed, welche anonymen Gedanken von derselben Person stammen.
+ */
+export const postHides = pgTable(
+  'post_hides',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.postId] }), index('post_hides_post_idx').on(t.postId)],
+)
+
 /** Audit-Log. Ein Trigger verhindert UPDATE und DELETE. */
 export const moderationActions = pgTable(
   'moderation_actions',

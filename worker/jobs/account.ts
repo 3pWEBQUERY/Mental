@@ -15,6 +15,7 @@ import {
   profiles,
   replies,
   reservedUsernames,
+  sessions,
   stepLog,
   support,
   users,
@@ -122,12 +123,22 @@ export async function purgeDueAccounts() {
   for (const { id } of due) await purgeAccount({ userId: id })
 }
 
-/** Automatische Löschung nach 24 Monaten ohne Login. */
+/**
+ * Automatische Löschung nach 24 Monaten ohne Nutzung. «Letzter Login» allein reicht nicht:
+ * Sitzungen gleiten, wer täglich eingeloggt bleibt, meldet sich nie neu an. Darum zählt auch
+ * jede Sitzung, die in dieser Zeit benutzt wurde (sessions.last_seen_at).
+ */
 export async function purgeInactiveAccounts() {
   const cutoff = new Date(Date.now() - 730 * DAY)
   const stale = await db
     .select({ id: users.id })
     .from(users)
-    .where(and(or(lt(users.lastLoginAt, cutoff), and(sql`${users.lastLoginAt} IS NULL`, lt(users.createdAt, cutoff)))!, inArray(users.role, ['member'])))
+    .where(
+      and(
+        or(lt(users.lastLoginAt, cutoff), and(sql`${users.lastLoginAt} IS NULL`, lt(users.createdAt, cutoff)))!,
+        inArray(users.role, ['member']),
+        sql`NOT EXISTS (SELECT 1 FROM ${sessions} WHERE ${sessions.userId} = ${users.id} AND ${sessions.lastSeenAt} >= ${cutoff})`,
+      ),
+    )
   for (const { id } of stale) await purgeAccount({ userId: id, reason: 'inactive' })
 }
