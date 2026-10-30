@@ -210,7 +210,7 @@ export function Composer() {
   const c = m.composer
   return (
     <>
-      <Dialog open={open} onClose={() => setOpen(false)} title={edit ? c.editTitle : c.title}>
+      <Dialog open={open} onClose={() => setOpen(false)} title={edit ? c.editTitle : c.title} className="dlg-large">
         <form className="composer" onSubmit={submit} noValidate>
           {restored && <p className="fine" style={{ marginBottom: 6 }}>{c.draftRestored}</p>}
           <div className="field">
