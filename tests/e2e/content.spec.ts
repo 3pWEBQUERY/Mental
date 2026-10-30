@@ -35,6 +35,7 @@ test('Teilen, Zuspruch, Antworten, Benachrichtigung, «Das hat mir gutgetan»', 
 
   await after.locator('.reply-toggle').click()
   await after.getByRole('button', { name: 'Das hat mir gutgetan' }).click()
+  await expect(after.getByRole('button', { name: 'Das hat mir gutgetan' })).toHaveAttribute('aria-pressed', 'true')
   await a.goto('/ich?tab=gutgetan')
   await expect(a.locator('.saved-reply')).toContainText('Du bist damit nicht allein.')
 })
@@ -180,6 +181,7 @@ test('Anonymen Gedanken ausblenden trifft nur diesen Gedanken', async ({ browser
   await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
   await b.getByRole('menuitem', { name: 'Ausblenden' }).click()
   await b.getByRole('dialog').getByRole('button', { name: 'Ausblenden' }).click()
+  await expect(card).toHaveCount(0)
   await b.reload()
   await expect(b.locator('article', { hasText: anon })).toHaveCount(0)
   await expect(b.locator('article', { hasText: named })).toHaveCount(1)
@@ -187,6 +189,8 @@ test('Anonymen Gedanken ausblenden trifft nur diesen Gedanken', async ({ browser
   await b.goto('/einstellungen')
   await expect(b.getByText('Ein ausgeblendeter anonymer Gedanke')).toBeVisible()
   await b.getByRole('button', { name: 'Wieder zeigen' }).click()
+  // Erst weiter, wenn die Aktion durch ist – sonst bricht die Navigation sie ab.
+  await expect(b.getByText('Ein ausgeblendeter anonymer Gedanke')).toHaveCount(0)
   await b.goto('/lichtung')
   await expect(b.locator('article', { hasText: anon })).toHaveCount(1)
 })
