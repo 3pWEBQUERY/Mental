@@ -179,7 +179,7 @@ export function Composer() {
     setBusy(true)
     setError('')
     if (edit) {
-      const res = await updatePost({ id: edit.id, body: text, need, circle, contentWarning: cw })
+      const res = await updatePost({ id: edit.id, body: text, need, circle, contentWarning: cw }).catch(() => ({ ok: false as const, error: m.common.error }))
       setBusy(false)
       if (!res.ok) return setError(res.error)
       emit('post-updated', res.post)
@@ -188,6 +188,7 @@ export function Composer() {
       setOpen(false)
       return
     }
+    // Wirft die Server Action (Netz, Deploy), darf der Dialog nicht eingefroren bleiben.
     const res = await createPost({
       body: text,
       need,
@@ -196,7 +197,7 @@ export function Composer() {
       visibility: anonymous ? 'anonymous' : 'pseudonym',
       contentWarning: cw,
       mediaId: upload && 'mediaId' in upload ? upload.mediaId : null,
-    })
+    }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
     emit('post-created', res.post)

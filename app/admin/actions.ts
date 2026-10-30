@@ -18,6 +18,7 @@ import {
   users,
 } from '@/db/schema'
 import { processMedia, rejectMedia } from '@/lib/media'
+import { syncReplyCount } from '@/lib/reply-count'
 import { assertModerator, canModerate } from '@/lib/server/admin'
 import { notifyModeration } from '@/lib/server/notify'
 import { m } from '@/messages'
@@ -56,13 +57,9 @@ export async function moderate(form: FormData) {
   const setStatus = async (status: 'visible' | 'hidden') => {
     if (targetType === 'post') await db.update(posts).set({ status, moderationNote: status === 'hidden' ? reason || null : null }).where(eq(posts.id, targetId))
     else {
-      const [before] = await db.select({ status: replies.status, isAuthor: replies.isAuthor }).from(replies).where(eq(replies.id, targetId))
       await db.update(replies).set({ status }).where(eq(replies.id, targetId))
-      // Freigegebene Antworten zählen jetzt für «Braucht Zuspruch».
-      if (status === 'visible' && before?.status !== 'visible' && !before?.isAuthor) {
-        const [p] = await db.select({ n: posts.replyCount }).from(posts).where(eq(posts.id, target.postId))
-        await db.update(posts).set({ replyCount: (p?.n ?? 0) + 1 }).where(eq(posts.id, target.postId))
-      }
+      // Neu gezählt statt ±1: Freigeben, Ausblenden und erneutes Freigeben ergeben immer den richtigen Wert.
+      await syncReplyCount(target.postId)
     }
   }
 
@@ -138,14 +135,19 @@ export async function reviewImage(form: FormData): Promise<void> {
 
   // Freigeben nur, was die Moderation bereinigt gesehen hat.
   if (decision === 'approve' && row.status !== 'review') return refresh()
-  let result: 'ready' | 'rejected'
-  if (decision === 'reject') {
-    await rejectMedia(mediaId, `Moderation${reason ? `: ${reason}` : ''}`)
-    result = 'rejected'
-  } else {
-    await db.update(postMedia).set({ status: 'ready' }).where(and(eq(postMedia.id, mediaId), eq(postMedia.status, 'review')))
-    result = 'ready'
+  // Wirkt nur, wenn der Status noch stimmt – zwei Moderator:innen oder der Worker gleichzeitig ändern nichts doppelt.
+  let changed: boolean
+  if (decision === 'reject') changed = await rejectMedia(mediaId, `Moderation${reason ? `: ${reason}` : ''}`)
+  else {
+    const done = await db
+      .update(postMedia)
+      .set({ status: 'ready' })
+      .where(and(eq(postMedia.id, mediaId), eq(postMedia.status, 'review')))
+      .returning({ id: postMedia.id })
+    changed = done.length > 0
   }
+  if (!changed) return refresh()
+  const result = decision === 'approve' ? 'ready' : 'rejected'
 
   await db.insert(moderationActions).values({
     moderatorId: mod.userId,
@@ -163,7 +165,8 @@ export async function cleanImage(form: FormData): Promise<void> {
   const mediaId = z.uuid().safeParse(form.get('mediaId'))
   if (!mediaId.success) throw new Error('invalid')
   await assertModerator('mod')
-  await processMedia(mediaId.data, 'review')
+  // Bucket oder Anbieter kurz weg: Bild bleibt in der Quarantäne, die Seite zeigt es weiter an.
+  await processMedia(mediaId.data, 'review').catch((e) => console.error(`[media] ${mediaId.data} bereinigen fehlgeschlagen:`, (e as Error).message))
   refresh()
 }
 
@@ -225,8 +228,12 @@ export async function saveTerm(form: FormData) {
   const d = z
     .object({ term: str(80), level: z.enum(['concern', 'acute']), remove: z.string().optional(), id: z.uuid().optional().or(z.literal('')) })
     .parse(Object.fromEntries(form))
-  if (d.id && d.remove) await db.delete(crisisTerms).where(eq(crisisTerms.id, d.id))
-  else await db.insert(crisisTerms).values({ term: d.term.toLowerCase(), level: d.level }).onConflictDoUpdate({ target: [crisisTerms.language, crisisTerms.term], set: { level: d.level } })
+  if (d.id && d.remove) await db.update(crisisTerms).set({ active: false }).where(eq(crisisTerms.id, d.id))
+  else
+    await db
+      .insert(crisisTerms)
+      .values({ term: d.term.toLowerCase(), level: d.level })
+      .onConflictDoUpdate({ target: [crisisTerms.language, crisisTerms.term], set: { level: d.level, active: true } })
   await audit(admin.userId, 'crisis-terms:update', admin.userId, d.term)
   updateTag('crisis-terms')
 }

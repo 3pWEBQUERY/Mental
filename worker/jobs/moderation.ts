@@ -3,9 +3,10 @@ import { db } from '../../db'
 import { crisisTerms, posts, replies, reports } from '../../db/schema'
 import { DEFAULT_CRISIS_TERMS, maxLevel } from '../../lib/crisis'
 import { classify } from '../../lib/moderation'
+import { syncReplyCount } from '../../lib/reply-count'
 
 async function terms() {
-  const rows = await db.select({ term: crisisTerms.term, level: crisisTerms.level }).from(crisisTerms)
+  const rows = await db.select({ term: crisisTerms.term, level: crisisTerms.level }).from(crisisTerms).where(eq(crisisTerms.active, true))
   return rows.length ? rows : DEFAULT_CRISIS_TERMS
 }
 
@@ -39,6 +40,10 @@ export async function moderateContent({ targetType, targetId }: { targetType: 'p
       .update(table)
       .set({ crisisLevel: level, ...(level === 'acute' && row.status === 'visible' ? { status: 'pending' as const } : {}) })
       .where(eq(table.id, targetId))
+    if (targetType === 'reply' && level === 'acute' && row.status === 'visible') {
+      const [r] = await db.select({ postId: replies.postId }).from(replies).where(eq(replies.id, targetId))
+      if (r) await syncReplyCount(r.postId)
+    }
   }
   if (level === 'acute' && !(await openReportExists(targetType, targetId, 'auto_acute'))) {
     await db.insert(reports).values({ targetType, targetId, reason: 'auto_acute', priority: 0 })

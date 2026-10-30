@@ -1,4 +1,4 @@
-import { asc } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { crisisTerms } from '@/db/schema'
 import { requireModerator } from '@/lib/server/admin'
@@ -8,7 +8,7 @@ import { saveTerm } from '../actions'
 /** Wortliste für Stufe 1 (Browser) und Stufe 2 (Server). Vor dem Launch von einer Fachperson abzunehmen. */
 export default async function TermsAdmin() {
   await requireModerator('admin')
-  const rows = await db.select().from(crisisTerms).orderBy(asc(crisisTerms.level), asc(crisisTerms.term))
+  const rows = await db.select().from(crisisTerms).where(eq(crisisTerms.active, true)).orderBy(asc(crisisTerms.level), asc(crisisTerms.term))
   return (
     <div className="stack">
       <h1 className="page-title">{m.admin.nav.terms}</h1>

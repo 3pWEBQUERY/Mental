@@ -74,6 +74,7 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
   const ids = rows.map((r) => r.id)
   // Antworten der Verfasserin in einem anonymen Thread tragen deren anonyme Identität – kein Konto-Block.
   const anonIds = rows.filter((r) => r.visibility === 'anonymous').map((r) => r.id)
+  const mineIds = rows.filter((r) => r.userId === viewerId).map((r) => r.id)
   const [replyRows, supportRows, bookmarkRows, mediaRows] = await Promise.all([
     db
       .select({
@@ -109,10 +110,16 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
         ),
       )
       .orderBy(asc(replies.createdAt)),
+    // Nur was gebraucht wird: eigener Zuspruch – und für eigene Gedanken die private Zusammenfassung.
     db
       .select({ postId: support.postId, userId: support.userId, kind: support.kind })
       .from(support)
-      .where(inArray(support.postId, ids)),
+      .where(
+        and(
+          inArray(support.postId, ids),
+          or(eq(support.userId, viewerId), ...(mineIds.length ? [inArray(support.postId, mineIds)] : []))!,
+        ),
+      ),
     db
       .select({ postId: bookmarks.postId })
       .from(bookmarks)
@@ -162,7 +169,8 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
 
 /* ----------------------------------------------------------------- Feed */
 
-type Cursor = { t?: string; i?: string; o?: number; u?: string[]; n: number }
+/** t/i: letzter Gedanke (Zeit, ID); k: war er «Sorge» (nur «Braucht Zuspruch»); u: eingestreute IDs; n: bisher gezeigt. */
+type Cursor = { t?: string; i?: string; k?: boolean; u?: string[]; n: number }
 
 const encode = (c: Cursor) => Buffer.from(JSON.stringify(c)).toString('base64url')
 function decode(raw: string | null | undefined): Cursor {
@@ -207,18 +215,28 @@ export async function getFeed(opts: {
   else scope.push(notInArray(posts.circleId, mutedCircles(viewerId)))
 
   if (view === 'unheard') {
-    const offset = c.o ?? 0
+    // Keyset statt OFFSET: Bekommt ein Gedanke auf Seite 1 eine Antwort, fällt er heraus –
+    // mit OFFSET rutschte dann einer unbemerkt über die Seitengrenze und würde nie gezeigt.
+    const after: SQL[] = []
+    if (c.t && c.i) {
+      const t = new Date(c.t)
+      // Der Cursor kennt nur Millisekunden, Postgres speichert Mikrosekunden – darum auf ms gekürzt vergleichen.
+      const ms = sql`date_trunc('milliseconds', ${posts.createdAt})`
+      const later = or(sql`${ms} > ${t}`, and(sql`${ms} = ${t}`, gt(posts.id, c.i)))!
+      const concern = sql`${posts.crisisLevel} = 'concern'`
+      after.push(c.k ? or(and(concern, later)!, sql`NOT (${concern})`)! : and(sql`NOT (${concern})`, later)!)
+    }
     const rows = await baseQuery()
-      .where(and(...scope, unheardWhere(viewerId)))
+      .where(and(...scope, unheardWhere(viewerId), ...after))
       .orderBy(...unheardOrder)
       .limit(take + 1)
-      .offset(offset)
     const page = rows.slice(0, take)
     const n = c.n + page.length
     const more = rows.length > take && n < LIMITS.feedDailyCap
+    const last = page.at(-1)
     return {
       posts: await hydrate(page, viewerId),
-      nextCursor: more ? encode({ o: offset + page.length, n }) : null,
+      nextCursor: more && last ? encode({ t: last.createdAt.toISOString(), i: last.id, k: last.crisisLevel === 'concern', n }) : null,
       caughtUp: n >= LIMITS.feedDailyCap,
     }
   }

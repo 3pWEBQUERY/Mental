@@ -72,7 +72,8 @@ async function main() {
     await db
       .insert(circles)
       .values({ ...c, sort: i })
-      .onConflictDoUpdate({ target: circles.slug, set: { name: c.name, color: c.color, sort: i } })
+      // Nur anlegen: Namen, Farben und Reihenfolge pflegt das Admin-Team, ein Deploy überschreibt sie nicht.
+      .onConflictDoNothing({ target: circles.slug })
   }
 
   const [{ n: helpCount } = { n: 0 }] = (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM help_resources`)).rows
@@ -84,6 +85,7 @@ async function main() {
     ])
   }
 
+  // Neue Standardbegriffe kommen dazu; entfernte bleiben als inaktiv bestehen und werden nicht reaktiviert.
   await db
     .insert(crisisTerms)
     .values(DEFAULT_CRISIS_TERMS.map((t) => ({ term: t.term, level: t.level, language: 'de' })))

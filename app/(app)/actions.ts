@@ -23,6 +23,7 @@ import {
   support,
 } from '@/db/schema'
 import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
+import { syncReplyCount } from '@/lib/reply-count'
 import { detectCrisis } from '@/lib/crisis'
 import { toPublicReply, type PublicPost, type PublicReply } from '@/lib/dto'
 import { enqueue, QUEUES } from '@/lib/jobs'
@@ -152,7 +153,8 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
       .set({ postId })
       .where(and(eq(postMedia.id, d.mediaId), eq(postMedia.userId, v.userId), isNull(postMedia.postId)))
       .returning({ id: postMedia.id })
-    if (attached.length) await enqueue(QUEUES.processImage, { mediaId: d.mediaId })
+    // Der Gedanke ist gespeichert; scheitert nur der Auftrag, holt der Worker das Bild per Zeitplan nach.
+    if (attached.length) await enqueue(QUEUES.processImage, { mediaId: d.mediaId }).catch((e) => console.error('[process-image] enqueue', e))
   }
   await enqueue(QUEUES.moderate, { targetType: 'post', targetId: postId }).catch((e) => console.error('[moderate]', e))
   await touchPresence(v.userId, circle.id)
@@ -192,7 +194,7 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     })
     .where(eq(posts.id, d.id))
   if (level === 'acute') await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
-  await enqueue(QUEUES.moderate, { targetType: 'post', targetId: d.id }).catch(() => {})
+  await enqueue(QUEUES.moderate, { targetType: 'post', targetId: d.id }).catch((e) => console.error('[moderate] enqueue', e))
   return { ok: true, post: (await getPostById(v.userId, d.id))! }
 }
 
@@ -313,11 +315,9 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
     .insert(replies)
     .values({ postId, userId: v.userId, body: text.data, authorHandle: handle, glyphSeed: seed, isAuthor, status, crisisLevel: level })
     .returning()
-  if (status === 'visible' && !isAuthor) {
-    await db.update(posts).set({ replyCount: sql`${posts.replyCount} + 1` }).where(eq(posts.id, postId))
-  }
+  if (status === 'visible' && !isAuthor) await syncReplyCount(postId)
   if (level === 'acute') await db.insert(reports).values({ targetType: 'reply', targetId: r!.id, reason: 'auto_acute', priority: 0 })
-  await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch(() => {})
+  await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', e))
   if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
   return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId) }
@@ -397,7 +397,14 @@ export async function reportContent(input: { type: 'post' | 'reply'; id: string;
     .where(and(eq(reports.targetType, d.type), eq(reports.targetId, d.id), eq(reports.status, 'open'), sql`${reports.reporterId} IS NOT NULL`))
   if (n >= AUTO_HIDE_REPORTS) {
     if (d.type === 'post') await db.update(posts).set({ status: 'hidden' }).where(and(eq(posts.id, d.id), eq(posts.status, 'visible')))
-    else await db.update(replies).set({ status: 'hidden' }).where(and(eq(replies.id, d.id), eq(replies.status, 'visible')))
+    else {
+      const [hidden] = await db
+        .update(replies)
+        .set({ status: 'hidden' })
+        .where(and(eq(replies.id, d.id), eq(replies.status, 'visible')))
+        .returning({ postId: replies.postId })
+      if (hidden) await syncReplyCount(hidden.postId)
+    }
   }
   return { ok: true }
 }

@@ -43,6 +43,8 @@ npm test                        # Unit, inkl. Test gegen Datenlecks in öffentli
 npm run build && npm run test:e2e
 ```
 
+E2E läuft jedes Mal gegen eine frisch angelegte Datenbank `<name>_e2e` neben `DATABASE_URL` (siehe `playwright.config.ts`); die Rolle braucht dafür das Recht, Datenbanken anzulegen.
+
 E2E deckt Registrierung, Login, Wiederherstellung, Teilen, Zuspruch, Antworten, Benachrichtigungen, Krisenerkennung, Datenmarkierung, Melden, Blockieren, Löschen, Hilfe-Erreichbarkeit, Schnell-Ausblenden, Kontolöschung und das mobile Layout ab.
 
 ## Deployment auf Railway
@@ -52,9 +54,11 @@ Projekt «Lichtung», alles in **EU West (Amsterdam)**. Config-as-Code (`railway
 | Service | Einstellungen |
 | --- | --- |
 | `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts && npx tsx scripts/bootstrap-admins.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
-| `worker` | Start `npm run worker`, Restart immer, 1 Replika, Region `europe-west4-drams3a` |
+| `worker` | Start `npm run worker`, Restart immer, 1 Replika, Region `europe-west4-drams3a`. Wartet beim Start, bis alle Migrationen angewendet sind (die laufen im Pre-Deploy von `web`). |
 | `Postgres` | Railway-Template, Volume in `europe-west4-drams3a` |
 | `media` | Storage Bucket (privat), Region `ams` |
+
+**Überwachung:** `/api/health` prüft nur die Datenbank (Railway-Healthcheck des Web-Service). `/api/health/worker` antwortet mit 503, wenn der Worker seit 3 Minuten kein Lebenszeichen gegeben hat – diese URL gehört in einen externen Uptime-Dienst. Fehlgeschlagene Jobs und pg-boss-Warnungen stehen im Log des Workers.
 
 Variablen beider Services: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `BUCKET`/`ACCESS_KEY_ID`/`SECRET_ACCESS_KEY`/`REGION`/`ENDPOINT` als `${{media.*}}`-Referenzen, `APP_URL`, `VAPID_*`; im Web zusätzlich `SESSION_SECRET`. Die CORS-Regel des Buckets (PUT, nur `APP_URL`) setzt `scripts/bucket-cors.ts` bei jedem Deploy selbst. VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
 

@@ -9,7 +9,7 @@
     "worker": "tsx worker/index.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx db/migrate.ts",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx db/seed.ts",
     "db:demo": "tsx db/demo.ts",
     "admin:grant": "tsx scripts/grant-role.ts",
