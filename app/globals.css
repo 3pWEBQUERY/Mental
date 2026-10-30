@@ -254,7 +254,7 @@ ul, ol { list-style: none; }
 
 /* ---------- Menüs ---------- */
 .menu-wrap { position: relative; }
-.menu { --inset: 6px; --bw: 0.5px; position: absolute; right: 0; top: 36px; z-index: 20; min-width: 210px; background: var(--card); border: var(--bw) solid var(--ink); border-radius: var(--r-m); padding: var(--inset); }
+.menu { --inset: 6px; --bw: 0.5px; position: absolute; right: 0; top: 36px; z-index: 20; min-width: 210px; background: var(--card); border: var(--bw) solid color-mix(in srgb, var(--ink) 55%, transparent); border-radius: var(--r-m); padding: var(--inset); }
 .menu button { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: calc(var(--r-m) - var(--bw) - var(--inset)); font-size: 14px; color: var(--ink); }
 .menu button:hover, .menu button:focus-visible { background: var(--paper-2); }
 .menu button.danger { color: var(--clay-ink); }
