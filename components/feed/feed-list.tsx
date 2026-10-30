@@ -7,6 +7,7 @@ import type { PublicPost } from '@/lib/dto'
 import type { FeedView } from '@/lib/server/posts'
 import { m } from '@/messages'
 import { PostCard } from './post-card'
+import { PostDialog } from './post-dialog'
 import { ReportDialog, type ReportTarget } from './report-dialog'
 
 /**
@@ -31,6 +32,7 @@ export function FeedList({
   const [caughtUp, setCaughtUp] = useState(initialCaughtUp)
   const [report, setReport] = useState<ReportTarget>(null)
   const [pending, start] = useTransition()
+  const [openId, setOpenId] = useState<string | null>(null)
 
   // Kein Zurücksetzen bei Server-Refresh: Eine Karte, auf die gerade geantwortet wird, bleibt stehen –
   // auch wenn sie danach nicht mehr zu «Braucht Zuspruch» gehört. Ansicht- und Kreiswechsel setzen per key neu.
@@ -77,6 +79,7 @@ export function FeedList({
               onChange={(np) => setPosts((cur) => cur.map((x) => (x.id === np.id ? np : x)))}
               onRemove={(id) => setPosts((cur) => cur.filter((x) => x.id !== id))}
               onReport={setReport}
+              onOpen={() => setOpenId(p.id)}
             />
           ))
         )}
@@ -100,6 +103,13 @@ export function FeedList({
           </div>
         )
       )}
+      <PostDialog
+        post={posts.find((p) => p.id === openId) ?? null}
+        onClose={() => setOpenId(null)}
+        onChange={(np) => setPosts((cur) => cur.map((x) => (x.id === np.id ? np : x)))}
+        onRemove={(id) => setPosts((cur) => cur.filter((x) => x.id !== id))}
+        onReport={setReport}
+      />
       <ReportDialog target={report} onClose={() => setReport(null)} />
     </>
   )
