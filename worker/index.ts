@@ -17,8 +17,16 @@ async function main() {
 
   const each =
     <K extends keyof JobData>(fn: (d: JobData[K]) => Promise<void>) =>
-    async (jobs: { data: JobData[K] }[]) => {
-      for (const job of jobs) await fn(job.data)
+    async (jobs: { name: string; id: string; data: JobData[K] }[]) => {
+      for (const job of jobs) {
+        try {
+          await fn(job.data)
+        } catch (e) {
+          // pg-boss wiederholt den Job; ohne Log wäre ein Fehler hier unsichtbar.
+          console.error(`[${job.name}] ${job.id} fehlgeschlagen:`, (e as Error).message)
+          throw e
+        }
+      }
     }
 
   await boss.work(QUEUES.processImage, { batchSize: 2 }, each<'process-image'>(processImage))

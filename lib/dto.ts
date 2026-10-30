@@ -8,7 +8,7 @@ export type PublicCircle = { slug: string; name: string; color: string }
 
 export type PublicMedia = {
   id: string
-  status: 'quarantine' | 'ready' | 'rejected'
+  status: 'quarantine' | 'review' | 'ready' | 'rejected'
   width: number | null
   height: number | null
   blurhash: string | null
