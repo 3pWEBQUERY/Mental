@@ -19,7 +19,14 @@ export default function ImprintPage() {
           8180 Bülach
           <br />
           Schweiz
+          <br />
+          <br />
+          E-Mail: <a href="mailto:kontakt@lichtung.ch">kontakt@lichtung.ch</a>
         </address>
+        <p className="fine">
+          Per E-Mail gibt es keine Krisenberatung, und wir lesen sie nicht rund um die Uhr. Wenn es dir gerade schlecht geht:
+          Die Nummern unten erreichst du sofort.
+        </p>
 
         <h2>Kein Notfalldienst</h2>
         <p>
