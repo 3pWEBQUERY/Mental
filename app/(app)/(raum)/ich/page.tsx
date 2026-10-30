@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
 import { Suspense } from 'react'
+import { Loading } from '@/components/ui'
 import { PostList } from '@/components/feed/post-list'
 import { Journal } from '@/components/me/journal'
 import { db } from '@/db'
@@ -27,7 +28,7 @@ const LABEL: Record<Tab, string> = {
 export default function MePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   return (
     <main className="page" id="inhalt">
-      <Suspense>
+      <Suspense fallback={<Loading />}>
         <Me searchParams={searchParams} />
       </Suspense>
     </main>
@@ -92,12 +93,17 @@ async function History({ v }: { v: Viewer }) {
         <p className="notice">{m.me.historyEmpty}</p>
       ) : (
         <>
-          <div className="history" role="img" aria-label={`${rows.length} Check-ins in den letzten 30 Tagen`}>
+          {/* Nicht nur Farbe: jeder Tag nennt seine Stimmungen auch als Text (für Screenreader). */}
+          <div className="history" aria-label={m.me.historyLabel(rows.length)} role="list">
             {days.map((d) => (
-              <div key={d.key} className="day" title={formatDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}>
-                <span>{d.date.getDate() === 1 || d.key === days[0]!.key ? formatDate(d.date, { day: 'numeric', month: 'short' }) : ''}</span>
+              <div key={d.key} className="day" role="listitem" title={formatDate(d.date, { weekday: 'short', day: 'numeric', month: 'short' })}>
+                <span className="sr-only">
+                  {formatDate(d.date, { weekday: 'long', day: 'numeric', month: 'long' })}:{' '}
+                  {(byDay.get(d.key) ?? []).map((mood) => m.moods.labels[mood]).join(', ') || m.me.historyNone}
+                </span>
+                <span aria-hidden="true">{d.date.getDate() === 1 || d.key === days[0]!.key ? formatDate(d.date, { day: 'numeric', month: 'short' }) : ''}</span>
                 {(byDay.get(d.key) ?? []).map((mood, i) => (
-                  <i key={i} style={{ background: `var(--mood-${mood})` }} title={m.moods.labels[mood]} />
+                  <i key={i} aria-hidden="true" style={{ background: `var(--mood-${mood})` }} title={m.moods.labels[mood]} />
                 ))}
               </div>
             ))}

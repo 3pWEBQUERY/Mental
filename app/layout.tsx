@@ -31,6 +31,8 @@ export const viewport: Viewport = {
   themeColor: '#EFECE4',
   width: 'device-width',
   initialScale: 1,
+  // Bis an den Rand (iPhone); die untere Leiste hält per env(safe-area-inset-bottom) Abstand zum Home-Indikator.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

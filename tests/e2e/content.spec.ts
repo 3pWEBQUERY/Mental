@@ -264,7 +264,7 @@ test('«Meine Kreise»: gefolgte Kreise als Filter', async ({ page }) => {
   for (const [text, circle] of [[inAngst, 'Angst'], [elsewhere, 'Trauer']] as const) {
     await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
     await page.locator('#composer-text').fill(text)
-    await page.getByRole('dialog').getByRole('button', { name: circle, exact: true }).click()
+    await page.getByRole('dialog').getByRole('radio', { name: circle, exact: true }).click()
     await page.getByRole('button', { name: 'Teilen', exact: true }).click()
     await expect(page.locator('dialog[open]')).toHaveCount(0)
   }
@@ -272,4 +272,46 @@ test('«Meine Kreise»: gefolgte Kreise als Filter', async ({ page }) => {
   await page.waitForURL('**kreis=meine**')
   await expect(page.locator('article', { hasText: inAngst })).toHaveCount(1)
   await expect(page.locator('article', { hasText: elsewhere })).toHaveCount(0)
+})
+
+test('Tastatur: Menü, Bestätigung und Auswahlgruppen', async ({ page }) => {
+  await register(page)
+  const text = `Tastatur-Gedanke ${Date.now()}`
+  // Auswahlgruppen: Pfeiltasten wählen die nächste Option
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  // Beim Öffnen steht der Cursor direkt im Textfeld, nicht auf «×».
+  await expect(page.locator('#composer-text')).toBeFocused()
+  const needs = page.getByRole('radiogroup', { name: 'Was brauchst du gerade?' })
+  await needs.getByRole('radio', { checked: true }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(needs.getByRole('radio', { name: 'Ermutigung' })).toHaveAttribute('aria-checked', 'true')
+  await expect(needs.getByRole('radio', { name: 'Ermutigung' })).toBeFocused()
+  await page.locator('#composer-text').fill(text)
+  await page.getByRole('button', { name: 'Teilen', exact: true }).click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+
+  // Gedanke gross öffnen, Menü per Tastatur: Esc schliesst nur das Menü
+  await page.locator('article', { hasText: text }).locator('.post-text').click()
+  const dlg = page.locator('dialog[open]')
+  const dots = dlg.getByRole('button', { name: 'Weitere Aktionen' })
+  await dots.focus()
+  await page.keyboard.press('Enter')
+  await expect(dlg.getByRole('menuitem').first()).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(dlg.getByRole('menuitem').nth(1)).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(dlg.getByRole('menu')).toHaveCount(0)
+  await expect(dots).toBeFocused()
+  await expect(page.locator('dialog[open]')).toHaveCount(1)
+
+  // Bestätigung: Fokus auf «Abbrechen», Enter löscht nichts
+  await page.keyboard.press('Enter')
+  await dlg.getByRole('menuitem', { name: 'Löschen' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Löschen' })
+  await expect(confirm.getByRole('button', { name: 'Abbrechen' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(confirm).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.reload()
+  await expect(page.locator('article', { hasText: text })).toHaveCount(1)
 })

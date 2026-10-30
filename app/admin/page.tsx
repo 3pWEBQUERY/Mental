@@ -102,7 +102,7 @@ export default async function QueuePage() {
                   <button className="btn ghost small" name="action" value="mute7">
                     {a.mute7}
                   </button>
-                  <button className="btn ghost small" name="action" value="ban" style={{ color: 'var(--clay-ink)', borderColor: 'var(--clay)' }}>
+                  <button className="btn ghost small danger" name="action" value="ban">
                     {a.ban}
                   </button>
                   <button className="btn ghost small" name="action" value="dismiss">

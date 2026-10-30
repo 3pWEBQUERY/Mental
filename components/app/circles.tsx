@@ -25,7 +25,7 @@ export function CirclesList({ presence, onPick }: { presence: Record<string, num
           <Link
             className="circle mine"
             href={`/lichtung${mineQ.size ? `?${mineQ}` : ''}`}
-            aria-current={active === 'meine' ? 'page' : undefined}
+            aria-current={active === 'meine' ? 'true' : undefined}
             onClick={onPick}
             scroll={false}
           >
@@ -47,7 +47,7 @@ export function CirclesList({ presence, onPick }: { presence: Record<string, num
             <Link
               className="circle"
               href={`/lichtung${q.size ? `?${q}` : ''}`}
-              aria-current={on ? 'page' : undefined}
+              aria-current={on ? 'true' : undefined}
               onClick={onPick}
               scroll={false}
             >

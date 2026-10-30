@@ -14,6 +14,7 @@ import { LIMITS } from '@/lib/constants'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { askConfirm } from '../confirm'
+import { attempt } from '@/lib/client/attempt'
 
 type Entry = JournalCipher & { text: string | null }
 
@@ -87,9 +88,9 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
   return (
     <section aria-labelledby="journal-title">
       <div className="row-actions" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-        <h3 id="journal-title" className="section-label" style={{ margin: 0 }}>
+        <h2 id="journal-title" className="section-label" style={{ margin: 0 }}>
           {j.title}
-        </h3>
+        </h2>
         {master && (
           <button
             type="button"
@@ -110,7 +111,7 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
 
       {!setup && (
         <form className="card stack" onSubmit={create}>
-          <h4 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 'calc(26px * var(--fz))' }}>{j.setupTitle}</h4>
+          <h3 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 'calc(26px * var(--fz))' }}>{j.setupTitle}</h3>
           <p className="notice warn">{j.setupHint}</p>
           <div>
             <label className="field-label" htmlFor="pin">
@@ -135,7 +136,7 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
 
       {setup && !master && (
         <form className="card stack" onSubmit={unlock}>
-          <h4 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 'calc(26px * var(--fz))' }}>{j.unlockTitle}</h4>
+          <h3 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 'calc(26px * var(--fz))' }}>{j.unlockTitle}</h3>
           <div>
             <label className="field-label" htmlFor="pin-unlock">
               {j.pin}
@@ -201,7 +202,7 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
                     className="linkish"
                     onClick={async () => {
                       if (!(await askConfirm(j.deleteConfirm, m.common.delete))) return
-                      if (await deleteJournalEntry(en.id)) setEntries((cur) => cur.filter((x) => x.id !== en.id))
+                      if (await attempt(() => deleteJournalEntry(en.id))) setEntries((cur) => cur.filter((x) => x.id !== en.id))
                     }}
                   >
                     {m.common.delete}

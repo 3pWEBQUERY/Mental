@@ -51,7 +51,7 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
   return (
     <>
       <div className="feed-head">
-        <h2>{m.feed.title}</h2>
+        <h1>{m.feed.title}</h1>
         <nav className="tabs" aria-label={m.feed.tabsLabel}>
           {VIEWS.map((t) => (
             <Link key={t.key} className="tab" href={q(t.key)} aria-current={view === t.key ? 'page' : undefined} scroll={false}>

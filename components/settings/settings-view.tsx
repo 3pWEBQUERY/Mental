@@ -32,6 +32,8 @@ import { usePasskeySetup } from '../auth/passkey-setup'
 import { askConfirm } from '../confirm'
 import { PanicButton } from '../panic'
 import { circleColor } from '../app/circles'
+import { attempt } from '@/lib/client/attempt'
+import { RadioGroup } from '../radio-group'
 
 const s = m.settings
 
@@ -46,13 +48,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Segment<T extends string>({ value, options, onChange, label }: { value: T; options: Record<T, string>; onChange: (v: T) => void; label: string }) {
   return (
-    <div className="segment" role="radiogroup" aria-label={label}>
-      {(Object.keys(options) as T[]).map((k) => (
-        <button key={k} type="button" role="radio" aria-checked={value === k} onClick={() => onChange(k)}>
-          {options[k]}
-        </button>
-      ))}
-    </div>
+    <RadioGroup className="segment" label={label} value={value} onChange={onChange} options={(Object.keys(options) as T[]).map((k) => ({ value: k, label: options[k] }))} />
   )
 }
 
@@ -249,7 +245,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 className="btn ghost small"
                 onClick={async () => {
                   if (!(await askConfirm(k.label, s.passkeyRemove))) return
-                  await removePasskey(k.id)
+                  if (!(await attempt(() => removePasskey(k.id)))) return
                   setKeys((cur) => cur?.filter((x) => x.id !== k.id) ?? null)
                 }}
               >
@@ -348,7 +344,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   type="button"
                   className="btn ghost small"
                   onClick={async () => {
-                    await endSession(x.id)
+                    if (!(await attempt(() => endSession(x.id)))) return
                     setSessions((cur) => cur.filter((y) => y.id !== x.id))
                   }}
                 >
@@ -363,7 +359,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 type="button"
                 className="btn ghost small"
                 onClick={async () => {
-                  await endSession('others')
+                  if (!(await attempt(() => endSession('others')))) return
                   setSessions((cur) => cur.filter((y) => y.current))
                 }}
               >
@@ -392,8 +388,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 label={c.name}
                 onChange={async (val) => {
                   const state = val === 'none' ? null : val
+                  const before = c.state
                   setCircles((cur) => cur.map((x) => (x.slug === c.slug ? { ...x, state } : x)))
-                  await setCirclePref(c.slug, state)
+                  // Optimistisch – schlägt es fehl, springt die Wahl zurück.
+                  if (!(await attempt(() => setCirclePref(c.slug, state)))) setCircles((cur) => cur.map((x) => (x.slug === c.slug ? { ...x, state: before } : x)))
                 }}
               />
             </div>
@@ -475,7 +473,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 type="button"
                 className="btn ghost small"
                 onClick={async () => {
-                  if ((await unblock(b.ref)).ok) setBlocked((cur) => cur.filter((x) => x.ref !== b.ref))
+                  if (await attempt(() => unblock(b.ref))) setBlocked((cur) => cur.filter((x) => x.ref !== b.ref))
                 }}
               >
                 {b.kind === 'post' ? s.unhidePost : s.unblock}
@@ -530,7 +528,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           </p>
           <div className="input-row">
             <input className="input" type="password" placeholder={s.deleteConfirm} aria-label={s.deleteConfirm} value={delPw} onChange={(e) => setDelPw(e.target.value)} autoComplete="current-password" />
-            <button className="btn ghost" style={{ color: 'var(--clay-ink)', borderColor: 'var(--clay)' }} disabled={!delPw}>
+            <button className="btn ghost danger" disabled={!delPw}>
               {s.deleteButton}
             </button>
           </div>

@@ -12,6 +12,7 @@ import {
   toggleBookmark,
   toggleSupport,
 } from '@/app/(app)/actions'
+import { attempt } from '@/lib/client/attempt'
 import { emit, pulse, toast } from '@/lib/client/bus'
 import { LIMITS, NO_ADVICE_NEEDS, SUPPORT_KINDS, type SupportKind } from '@/lib/constants'
 import { detectCrisis } from '@/lib/crisis'
@@ -42,40 +43,78 @@ function rememberReveal(id: string) {
   } catch {}
 }
 
+/**
+ * «⋯»-Menü nach dem ARIA-Menü-Muster: Fokus springt hinein, Pfeiltasten/Pos1/Ende bewegen ihn,
+ * Esc schliesst nur das Menü (nicht den umgebenden Dialog) und gibt den Fokus an «⋯» zurück, Tab schliesst.
+ */
 function Menu({ items, label }: { items: { label: string; onSelect: () => void; danger?: boolean }[]; label: string }) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
   const id = useId()
   useEffect(() => {
     if (!open) return
-    const close = (e: Event) => {
-      if (e instanceof KeyboardEvent && e.key !== 'Escape') return
-      if (e instanceof MouseEvent && wrap.current?.contains(e.target as Node)) return
-      setOpen(false)
+    wrap.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    const outside = (e: MouseEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('keydown', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('keydown', close)
-    }
+    document.addEventListener('mousedown', outside)
+    return () => document.removeEventListener('mousedown', outside)
   }, [open])
   if (!items.length) return null
+
+  function onKey(e: KeyboardEvent<HTMLDivElement>) {
+    const list = [...(wrap.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])]
+    const i = list.indexOf(document.activeElement as HTMLButtonElement)
+    const go = (n: number) => list[(n + list.length) % list.length]?.focus()
+    if (e.key === 'ArrowDown') go(i + 1)
+    else if (e.key === 'ArrowUp') go(i - 1)
+    else if (e.key === 'Home') go(0)
+    else if (e.key === 'End') go(list.length - 1)
+    else if (e.key === 'Escape') {
+      setOpen(false)
+      trigger.current?.focus()
+    } else if (e.key === 'Tab') {
+      setOpen(false)
+      return
+    } else return
+    // Esc soll nicht auch noch den umgebenden <dialog> schliessen; Pfeile nicht scrollen.
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
   return (
     <div className="menu-wrap" ref={wrap}>
-      <button type="button" className="dots" aria-label={label} aria-haspopup="menu" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+      <button
+        ref={trigger}
+        type="button"
+        className="dots"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' && !open) {
+            e.preventDefault()
+            setOpen(true)
+          }
+        }}
+      >
         ⋯
       </button>
       {open && (
-        <div className="menu" role="menu" id={id}>
+        <div className="menu" role="menu" id={id} aria-label={label} onKeyDown={onKey}>
           {items.map((it) => (
             <button
               key={it.label}
               type="button"
               role="menuitem"
+              tabIndex={-1}
               className={it.danger ? 'danger' : undefined}
               onClick={() => {
                 setOpen(false)
+                trigger.current?.focus()
                 it.onSelect()
               }}
             >
@@ -218,8 +257,7 @@ export function PostCard({
         {
           label: post.closed ? f.openThread : f.closeThread,
           onSelect: async () => {
-            const res = await setClosed(post.id, !post.closed)
-            if (res.ok) onChange({ ...post, closed: !post.closed })
+            if (await attempt(() => setClosed(post.id, !post.closed))) onChange({ ...post, closed: !post.closed })
           },
         },
         {

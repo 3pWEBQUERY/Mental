@@ -27,7 +27,12 @@ export function Dialog({
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (open && !d.open) d.showModal()
+    if (open && !d.open) {
+      d.showModal()
+      // showModal() fokussiert das erste Element (meist «×»). React-autoFocus läuft davor und geht verloren –
+      // darum gezielt das mit data-autofocus markierte Element.
+      d.querySelector<HTMLElement>('[data-autofocus]')?.focus()
+    }
     if (!open && d.open) d.close()
   }, [open])
 

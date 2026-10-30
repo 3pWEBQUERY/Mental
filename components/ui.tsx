@@ -22,10 +22,10 @@ export function Glyph({ seed, mood, small }: { seed: number; mood: number; small
   )
 }
 
-export function HelpList({ resources, intro = true }: { resources: HelpResource[]; intro?: boolean }) {
+export function HelpList({ resources, intro = true, eyebrow = true }: { resources: HelpResource[]; intro?: boolean; eyebrow?: boolean }) {
   return (
     <>
-      <h3>{m.help.eyebrow}</h3>
+      {eyebrow && <h3>{m.help.eyebrow}</h3>}
       {intro && <p>{m.help.intro}</p>}
       {resources.map((h) =>
         h.phone ? (
@@ -90,5 +90,14 @@ export function PublicShell({ children, active }: { children: ReactNode; active?
         <Link href="/hilfe">{m.landing.help}</Link>
       </footer>
     </div>
+  )
+}
+
+/** Ruhiger Platzhalter, solange eine Seite lädt – statt eines leeren Bildschirms. */
+export function Loading() {
+  return (
+    <p className="loading" role="status">
+      {m.common.loading}
+    </p>
   )
 }

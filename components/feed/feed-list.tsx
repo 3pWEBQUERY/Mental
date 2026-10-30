@@ -10,6 +10,7 @@ import { useViewer } from '../viewer'
 import { PostCard } from './post-card'
 import { PostDialog } from './post-dialog'
 import { ReportDialog, type ReportTarget } from './report-dialog'
+import { attempt } from '@/lib/client/attempt'
 
 /**
  * Kein endloses Scrollen: 20 Gedanken pro Seite, nach 60 ist für heute Schluss –
@@ -52,7 +53,7 @@ export function FeedList({
 
   function more() {
     start(async () => {
-      const page = await loadFeed(view, circle, cursor)
+      const page = await attempt(() => loadFeed(view, circle, cursor))
       if (!page) return
       setPosts((cur) => [...cur, ...page.posts.filter((p) => !cur.some((c) => c.id === p.id))])
       setCursor(page.nextCursor)
@@ -67,12 +68,14 @@ export function FeedList({
         {posts.length === 0 ? (
           <div className="empty">
             <b>{view === 'unheard' ? f.emptyUnheard : f.empty}</b>
-            {f.emptyHint}
-            <div>
-              <button type="button" className="btn" onClick={() => emit('compose')}>
-                {m.composer.title}
-              </button>
-            </div>
+            {view === 'unheard' ? f.emptyUnheardHint : f.emptyHint}
+            {view !== 'unheard' && (
+              <div>
+                <button type="button" className="btn" onClick={() => emit('compose')}>
+                  {m.composer.title}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           posts.map((p) => (

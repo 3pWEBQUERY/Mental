@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { stepAction, type StepView } from '@/app/(app)/actions'
 import { pulse, toast } from '@/lib/client/bus'
 import { m } from '@/messages'
+import { attempt } from '@/lib/client/attempt'
 
 /** Ein kleiner Schritt für heute. Keine Streaks, keine Strafe beim Auslassen. */
 export function StepCard({ initial }: { initial: StepView }) {
@@ -23,7 +24,9 @@ export function StepCard({ initial }: { initial: StepView }) {
             disabled={pending}
             onClick={() =>
               start(async () => {
-                setStep(await stepAction(step.id, 'done'))
+                const next = await attempt(() => stepAction(step.id, 'done'))
+                if (!next) return
+                setStep(next)
                 pulse()
                 toast(s.toast)
               })
@@ -31,7 +34,12 @@ export function StepCard({ initial }: { initial: StepView }) {
           >
             {s.done}
           </button>
-          <button type="button" className="btn ghost" disabled={pending} onClick={() => start(async () => setStep(await stepAction(step.id, 'skip')))}>
+          <button type="button" className="btn ghost" disabled={pending} onClick={() =>
+              start(async () => {
+                const next = await attempt(() => stepAction(step.id, 'skip'))
+                if (next) setStep(next)
+              })
+            }>
             {s.other}
           </button>
         </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { asc, eq } from 'drizzle-orm'
 import { Suspense } from 'react'
+import { Loading } from '@/components/ui'
 import { SettingsView } from '@/components/settings/settings-view'
 import { db } from '@/db'
 import { circlePrefs, circles, pushSubscriptions } from '@/db/schema'
@@ -16,7 +17,7 @@ export default function SettingsPage() {
       <div className="page-head">
         <h1 className="page-title">{m.settings.title}</h1>
       </div>
-      <Suspense>
+      <Suspense fallback={<Loading />}>
         <Data />
       </Suspense>
     </main>
