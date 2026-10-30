@@ -26,7 +26,7 @@ export function ConfirmHost() {
   }
   return (
     <Dialog open={req !== null} onClose={() => answer(false)} title={req?.confirmLabel}>
-      <p style={{ fontFamily: 'var(--serif)', fontSize: 22, lineHeight: 1.25 }}>{req?.message}</p>
+      <p style={{ fontFamily: 'var(--serif)', fontSize: 'calc(22px * var(--fz))', lineHeight: 1.25 }}>{req?.message}</p>
       <div className="dlg-foot">
         <button type="button" className="btn ghost" onClick={() => answer(false)}>
           {m.common.cancel}

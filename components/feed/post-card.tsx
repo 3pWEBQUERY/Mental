@@ -4,6 +4,7 @@ import { startTransition, useEffect, useId, useOptimistic, useRef, useState, typ
 import {
   blockAuthor,
   createReply,
+  deleteReply,
   deletePost,
   hideReply,
   markHelpful,
@@ -19,7 +20,7 @@ import type { PublicPost, PublicReply } from '@/lib/dto'
 import { detectPii } from '@/lib/pii'
 import { relativeTime } from '@/lib/time'
 import { m } from '@/messages'
-import { CareNote } from '../app/care'
+import { AcuteDialog, CareNote } from '../app/care'
 import { askConfirm } from '../confirm'
 import { Glyph } from '../ui'
 import { useViewer } from '../viewer'
@@ -109,6 +110,7 @@ export function PostCard({
   const [reply, setReply] = useState('')
   const [derogationAck, setDerogationAck] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [acute, setAcute] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -174,7 +176,9 @@ export function PostCard({
       }
       onChange({ ...post, replies: [...post.replies, res.reply], replyCount: post.replyCount + (post.isMine ? 0 : 1) })
       pulse()
-      toast(res.reply.pending ? m.replies.pending : m.replies.sent)
+      // Krisensprache in der eigenen Antwort: derselbe Vollbild-Hinweis wie nach einem Gedanken.
+      if (res.acute) setAcute(true)
+      else toast(res.reply.pending ? m.replies.pending : m.replies.sent)
       input.current?.focus({ preventScroll: true })
     })
   }
@@ -185,6 +189,26 @@ export function PostCard({
     if (!res.ok) return toast(res.error)
     onChange({ ...post, replies: post.replies.map((x) => (x.id === r.id ? { ...x, [kind === 'helpful' ? 'helpful' : 'hiddenByAuthor']: value } : x)) })
     if (kind === 'helpful' && value) toast(m.replies.helpfulMarked)
+  }
+
+  async function removeOwnReply(r: PublicReply) {
+    if (!(await askConfirm(m.replies.deleteConfirm, m.replies.delete))) return
+    const res = await deleteReply(r.id)
+    if (!res.ok) return toast(res.error)
+    onChange({ ...post, replies: post.replies.map((x) => (x.id === r.id ? { ...x, deleted: true, body: null } : x)) })
+    toast(m.replies.deleted)
+  }
+
+  /** Antwort unter Namen: Konto blockieren. Antwort der Verfasserin eines anonymen Gedankens: nur diesen ausblenden. */
+  async function blockReplyAuthor(r: PublicReply) {
+    const anon = r.isAuthor && post.anonymous
+    const f = m.feed
+    if (!(await askConfirm(anon ? f.hideAnonymousConfirm : f.blockConfirm, anon ? f.hideAnonymous : f.block))) return
+    const res = await blockAuthor({ type: 'reply', id: r.id })
+    if (!res.ok) return toast(res.error)
+    if (anon) onRemove(post.id)
+    else onChange({ ...post, replies: post.replies.filter((x) => x.id !== r.id) })
+    toast(anon ? f.hiddenAnonymous : f.blocked)
   }
 
   const f = m.feed
@@ -365,10 +389,22 @@ export function PostCard({
                       </button>
                     </div>
                   )}
-                  {!post.isMine && !r.isMine && !r.id.startsWith('tmp-') && (
+                  {!r.isMine && !r.id.startsWith('tmp-') && (
                     <div className="reply-actions">
-                      <button type="button" onClick={() => onReport({ type: 'reply', id: r.id })}>
-                        {f.report}
+                      {!post.isMine && (
+                        <button type="button" onClick={() => onReport({ type: 'reply', id: r.id })}>
+                          {f.report}
+                        </button>
+                      )}
+                      <button type="button" onClick={() => blockReplyAuthor(r)}>
+                        {r.isAuthor && post.anonymous ? f.hideAnonymous : f.block}
+                      </button>
+                    </div>
+                  )}
+                  {r.isMine && !r.id.startsWith('tmp-') && (
+                    <div className="reply-actions">
+                      <button type="button" onClick={() => removeOwnReply(r)}>
+                        {m.replies.delete}
                       </button>
                     </div>
                   )}
@@ -429,6 +465,7 @@ export function PostCard({
           </>
         )}
       </div>
+      <AcuteDialog open={acute} onClose={() => setAcute(false)} />
     </article>
   )
 }

@@ -13,6 +13,32 @@ export type OrbApi = {
 
 export type Motion = 'on' | 'reduced' | 'off'
 
+/** Funken: Position ganz im Shader – steigen von unterhalb der Mitte auf, schwanken leicht, verglimmen. */
+const EMBER_VS = /* glsl */ `
+attribute float aSeed;
+uniform float uTime;
+uniform float uPR;
+varying float vAlpha;
+void main(){
+  float life = fract(uTime * (0.035 + aSeed * 0.03) + aSeed * 7.31);
+  float ang = aSeed * 6.2831;
+  float r = 0.55 + 0.6 * fract(aSeed * 13.7);
+  vec3 p = vec3(cos(ang) * r, mix(-0.4, 2.1, life), sin(ang) * r * 0.5);
+  p.x += sin(uTime * 0.7 + aSeed * 20.0) * 0.08 * life;
+  vAlpha = sin(3.14159 * life) * (0.5 + 0.45 * fract(aSeed * 5.3));
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_PointSize = (3.5 + 3.5 * fract(aSeed * 3.1)) * uPR * (6.0 / -mv.z);
+  gl_Position = projectionMatrix * mv;
+}`
+const EMBER_FS = /* glsl */ `
+uniform vec3 uColor;
+varying float vAlpha;
+void main(){
+  float d = length(gl_PointCoord - 0.5);
+  if (d > 0.5) discard;
+  gl_FragColor = vec4(uColor, vAlpha * smoothstep(0.5, 0.1, d));
+}`
+
 const NOISE = /* glsl */ `
 vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
 vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
@@ -106,8 +132,8 @@ function chime(ctx: AudioContext | null, freq: number) {
 }
 
 /**
- * Der Raum: eine Kugel aus 9000 Partikeln (Fibonacci-Verteilung), verformt durch Simplex-Noise,
- * mit zwei Umlaufbahnen und kleinen «Gedanken»-Satelliten.
+ * Der Raum: eine weiche Form aus 9000 Partikeln (Fibonacci-Verteilung), verformt durch Simplex-Noise,
+ * in der Farbe der eigenen Stimmung – darüber steigen ein paar warme Funken auf.
  * Wird per next/dynamic ohne SSR geladen. Rendering pausiert ausserhalb des Viewports und im Hintergrund-Tab.
  */
 export default function Orb({
@@ -181,31 +207,27 @@ export default function Orb({
     group.add(new THREE.Points(geo, mat))
     scene.add(group)
 
-    const ringMat = new THREE.LineBasicMaterial({ color: startColor.clone(), transparent: true, opacity: 0.2 })
-    const satMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(cssColor('--clay')) })
-    const satGeo = new THREE.SphereGeometry(0.035, 16, 16)
-    const sats: { m: THREE.Mesh; r: number; off: number; sp: number }[] = []
-    const disposables: { dispose(): void }[] = [geo, mat, ringMat, satMat, satGeo]
-    function ring(r: number, rx: number, rz: number, count: number) {
-      const a: number[] = []
-      for (let i = 0; i <= 256; i++) {
-        const t = (i / 256) * Math.PI * 2
-        a.push(Math.cos(t) * r, 0, Math.sin(t) * r)
-      }
-      const g = new THREE.BufferGeometry()
-      g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3))
-      disposables.push(g)
-      const line = new THREE.Line(g, ringMat)
-      line.rotation.set(rx, 0, rz)
-      for (let s = 0; s < count; s++) {
-        const mesh = new THREE.Mesh(satGeo, satMat)
-        line.add(mesh)
-        sats.push({ m: mesh, r, off: Math.random() * Math.PI * 2, sp: 0.15 + Math.random() * 0.15 })
-      }
-      group.add(line)
-    }
-    ring(1.55, 1.25, 0.3, 2)
-    ring(1.88, 1.05, -0.5, 1)
+    // Statt Umlaufbahnen: ein paar warme Funken steigen langsam auf und verglimmen –
+    // dieselbe Sprache wie die Szene «Beieinander» auf der Startseite. Kein Kreisen, keine Planeten.
+    const EMBERS = 28
+    const seeds = new Float32Array(EMBERS)
+    const emberPos = new Float32Array(EMBERS * 3)
+    for (let i = 0; i < EMBERS; i++) seeds[i] = Math.random()
+    const emberGeo = new THREE.BufferGeometry()
+    emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPos, 3))
+    emberGeo.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
+    const emberColor = new THREE.Color(cssColor('--clay'))
+    const emberMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: uniforms.uTime, uPR: uniforms.uPR, uColor: { value: emberColor } },
+      vertexShader: EMBER_VS,
+      fragmentShader: EMBER_FS,
+      transparent: true,
+      depthWrite: false,
+    })
+    const embers = new THREE.Points(emberGeo, emberMat)
+    embers.frustumCulled = false
+    scene.add(embers)
+    const disposables: { dispose(): void }[] = [geo, mat, emberGeo, emberMat]
 
     const target = { amp: MOODS[startMood]!.amp, speed: MOODS[startMood]!.speed, color: startColor.clone(), mood: startMood }
     let time = 0
@@ -263,7 +285,6 @@ export default function Orb({
       uniforms.uTime.value = time
       uniforms.uAmp.value += (target.amp - uniforms.uAmp.value) * 0.03
       uniforms.uColor.value.lerp(target.color, 0.03)
-      ringMat.color.lerp(target.color, 0.03)
       uniforms.uPulse.value *= 0.965
 
       let b = 0.015 * Math.sin(now / 1600)
@@ -296,10 +317,6 @@ export default function Orb({
       rx += (my * 0.35 - rx) * 0.04
       ry += (mx * 0.5 - ry) * 0.04
       group.rotation.set(0.25 + rx, spin + ry, 0)
-      for (const s of sats) {
-        const a = s.off + time * s.sp * 2
-        s.m.position.set(Math.cos(a) * s.r, 0, Math.sin(a) * s.r)
-      }
       renderer.render(scene, camera)
       raf = requestAnimationFrame(frame)
     }
@@ -327,7 +344,7 @@ export default function Orb({
     // Farbschema-Wechsel: Farben neu aus den CSS-Tokens lesen.
     const recolor = () => {
       target.color.set(cssColor(MOODS[target.mood]!.token))
-      satMat.color.set(cssColor('--clay'))
+      emberColor.set(cssColor('--clay'))
     }
     const mq = matchMedia('(prefers-color-scheme: dark)')
     mq.addEventListener('change', recolor)

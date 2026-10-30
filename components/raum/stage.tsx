@@ -78,7 +78,8 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     setBreathing(true)
     setPhase('inhale')
     started.current = performance.now()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const still = document.documentElement.dataset.motion || matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' })
     const tick = (p: Phase, l: number) => {
       setPhase(p)
       setLeft(l)

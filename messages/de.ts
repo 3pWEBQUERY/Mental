@@ -85,6 +85,7 @@ export const de = {
     prompt: 'Was trägst du heute mit dir?',
     circle: 'Kreis:',
     clearCircle: (name: string) => `${name} ×`,
+    clearFilter: (name: string) => `${name} – Filter entfernen`,
     unheard: 'Noch ohne Antwort – vielleicht bist du die erste Stimme.',
     emptyUnheard: 'Gerade sind alle gehalten.',
     empty: 'Hier ist es noch still.',
@@ -170,6 +171,9 @@ export const de = {
     derogation:
       'Das könnte abwertend ankommen. Wer hier schreibt, ist gerade verletzlich. Magst du es anders formulieren?',
     sendAnyway: 'Trotzdem senden',
+    delete: 'Löschen',
+    deleteConfirm: 'Deine Antwort wird gelöscht. Im Thread steht danach nur noch «gelöscht».',
+    deleted: 'Antwort gelöscht.',
     closed: 'Dieser Gedanke ist für weitere Antworten geschlossen.',
     pending: 'Deine Antwort wird kurz geprüft.',
   },
@@ -253,6 +257,8 @@ export const de = {
     muted: 'Stumm',
     rules: 'Hausregeln im Kreis',
     showAll: 'Alle Kreise',
+    mine: 'Meine Kreise',
+    mineHint: 'Gedanken aus den Kreisen, denen du folgst.',
   },
   step: {
     eyebrow: 'Ein kleiner Schritt für heute',
@@ -535,6 +541,16 @@ export const de = {
     ],
     moderation:
       'Jeder Gedanke und jede Antwort wird nach dem Teilen automatisch geprüft. Ein Moderationsteam sieht sich Meldungen an. Es sieht nur den Inhalt, nie deinen Benutzernamen.',
+  },
+  errors: {
+    notFoundLead: 'Diese Seite',
+    notFoundEm: 'gibt es nicht.',
+    notFoundBody: 'Vielleicht wurde der Gedanke gelöscht oder der Link ist unvollständig.',
+    back: 'Zur Lichtung',
+    errorLead: 'Hier ist etwas',
+    errorEm: 'schiefgegangen.',
+    errorBody: 'Das liegt an uns, nicht an dir. Versuch es gleich noch einmal. Wenn es gerade zu viel ist: Die Nummern unten erreichst du immer.',
+    retry: 'Noch einmal versuchen',
   },
   offline: {
     titleLead: 'Gerade',

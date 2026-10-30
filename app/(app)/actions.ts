@@ -273,7 +273,7 @@ export async function toggleSupport(postId: string, kind: string): Promise<Ok<{ 
 
 /* -------------------------------------------------------------- Antworten */
 
-export async function createReply(postId: string, body: string): Promise<Ok<{ reply: PublicReply }> | Fail> {
+export async function createReply(postId: string, body: string): Promise<Ok<{ reply: PublicReply; acute: boolean }> | Fail> {
   const v = await writer()
   if (isFail(v)) return v
   const text = z.string().trim().min(1).max(LIMITS.replyMax).safeParse(body)
@@ -320,7 +320,7 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
   await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', e))
   if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
-  return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId) }
+  return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId), acute: level === 'acute' }
 }
 
 async function ownReplyTarget(viewerId: string, replyId: string) {
@@ -347,6 +347,32 @@ export async function hideReply(replyId: string, hidden: boolean): Promise<Ok<ob
   if (!(await ownReplyTarget(v.userId, replyId))) return fail(m.common.error)
   await db.update(replies).set({ hiddenByAuthor: hidden }).where(eq(replies.id, replyId))
   return { ok: true }
+}
+
+/**
+ * Eigene Antwort löschen – etwa wenn man zu viel von sich preisgegeben hat. Der Text verschwindet sofort,
+ * im Thread steht nur noch «gelöscht»; offene Meldungen dazu werden geschlossen.
+ */
+export async function deleteReply(replyId: string): Promise<Ok<object> | Fail> {
+  const v = await getViewer()
+  if (!v) return fail(m.common.sessionEnded)
+  const id = z.uuid().safeParse(replyId)
+  if (!id.success) return fail(m.common.error)
+  const done = await db.transaction(async (tx) => {
+    const [r] = await tx
+      .update(replies)
+      .set({ body: '', deletedAt: new Date() })
+      .where(and(eq(replies.id, id.data), eq(replies.userId, v.userId), isNull(replies.deletedAt)))
+      .returning({ postId: replies.postId })
+    if (!r) return false
+    await tx
+      .update(reports)
+      .set({ status: 'dismissed', resolvedAt: new Date() })
+      .where(and(eq(reports.targetType, 'reply'), eq(reports.targetId, id.data), eq(reports.status, 'open')))
+    await syncReplyCount(r.postId, tx)
+    return true
+  })
+  return done ? { ok: true } : fail(m.common.error)
 }
 
 /* ------------------------------------------------------ Merken, Melden, Blockieren */

@@ -20,7 +20,8 @@ if (!process.env.E2E_ADMIN_DATABASE_URL) {
 
 export default defineConfig({
   testDir: 'tests/e2e',
-  timeout: 60_000,
+  // Tests mit zwei Konten registrieren doppelt (Argon2) – gegen Ende eines vollen Laufs wird es eng.
+  timeout: 90_000,
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,

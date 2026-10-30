@@ -15,10 +15,15 @@ export type ClientViewer = {
   muted: boolean
   lastMood: number | null
   motion: 'on' | 'reduced' | 'off'
+  /** Gespeicherte Darstellung – gilt auf einem neuen Gerät, bis dort lokal etwas gewählt wird. */
+  theme: 'system' | 'light' | 'dark'
+  fontSize: 'normal' | 'large' | 'xlarge'
   breathSound: boolean
   collapseWarnings: boolean
   hidePresence: boolean
   circles: ClientCircle[]
+  /** Slugs der Kreise, denen die Person folgt – für den Filter «Meine Kreise». */
+  following: string[]
   crisisTerms: CrisisTerm[]
   help: HelpResource[]
 }

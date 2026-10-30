@@ -110,7 +110,7 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
 
       {!setup && (
         <form className="card stack" onSubmit={create}>
-          <h4 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 26 }}>{j.setupTitle}</h4>
+          <h4 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 'calc(26px * var(--fz))' }}>{j.setupTitle}</h4>
           <p className="notice warn">{j.setupHint}</p>
           <div>
             <label className="field-label" htmlFor="pin">
@@ -135,7 +135,7 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
 
       {setup && !master && (
         <form className="card stack" onSubmit={unlock}>
-          <h4 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 26 }}>{j.unlockTitle}</h4>
+          <h4 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 'calc(26px * var(--fz))' }}>{j.unlockTitle}</h4>
           <div>
             <label className="field-label" htmlFor="pin-unlock">
               {j.pin}

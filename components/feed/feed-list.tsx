@@ -6,6 +6,7 @@ import { emit, on } from '@/lib/client/bus'
 import type { PublicPost } from '@/lib/dto'
 import type { FeedView } from '@/lib/server/posts'
 import { m } from '@/messages'
+import { useViewer } from '../viewer'
 import { PostCard } from './post-card'
 import { PostDialog } from './post-dialog'
 import { ReportDialog, type ReportTarget } from './report-dialog'
@@ -27,6 +28,7 @@ export function FeedList({
   view: FeedView
   circle: string | null
 }) {
+  const { following } = useViewer()
   const [posts, setPosts] = useState(initial)
   const [cursor, setCursor] = useState(initialCursor)
   const [caughtUp, setCaughtUp] = useState(initialCaughtUp)
@@ -40,10 +42,11 @@ export function FeedList({
     () =>
       on('post-created', (p) => {
         if (view === 'all' || (view === 'brave' && p.need === 'brave')) {
-          if (!circle || circle === p.circle.slug) setPosts((cur) => [p, ...cur])
+          const fits = !circle || circle === p.circle.slug || (circle === 'meine' && following.includes(p.circle.slug))
+          if (fits) setPosts((cur) => [p, ...cur])
         }
       }),
-    [view, circle],
+    [view, circle, following],
   )
   useEffect(() => on('post-updated', (p) => setPosts((cur) => cur.map((x) => (x.id === p.id ? p : x)))), [])
 
