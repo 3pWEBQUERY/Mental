@@ -28,6 +28,7 @@ export const de = {
   },
   nav: {
     label: 'Hauptnavigation',
+    skip: 'Zum Inhalt',
     feed: 'Lichtung',
     share: 'Gedanken teilen',
     breathe: '1 Minute atmen',
@@ -247,6 +248,8 @@ export const de = {
   },
   help: {
     title: 'Sofort Hilfe',
+    otherLanguage: 'En français',
+    otherLanguageHref: '/aide',
     eyebrow: 'Sofort Hilfe',
     intro: 'Wenn es gerade zu viel ist, musst du nicht warten, bis jemand hier antwortet.',
     chat: 'Chat',

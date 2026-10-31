@@ -1,10 +1,10 @@
 import 'server-only'
 import { cacheLife, cacheTag } from 'next/cache'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { circles, crisisTerms, helpResources } from '@/db/schema'
-import { DEFAULT_CRISIS_TERMS, type CrisisTerm } from '../crisis'
-import { DEFAULT_HELP, type HelpResource } from '../help'
+import { ALL_DEFAULT_CRISIS_TERMS, type CrisisTerm } from '../crisis'
+import { defaultHelp, type HelpLanguage, type HelpResource } from '../help'
 
 /*
  * Der Cache liegt im Speicher jeder Web-Replika; updateTag wirkt nur auf der, die die Änderung speichert.
@@ -23,26 +23,26 @@ export async function getCrisisTerms(): Promise<CrisisTerm[]> {
   try {
     const rows = await db.select({ term: crisisTerms.term, level: crisisTerms.level }).from(crisisTerms).where(eq(crisisTerms.active, true))
     cacheLife('minutes')
-    return rows.length ? rows : DEFAULT_CRISIS_TERMS
+    return rows.length ? rows : ALL_DEFAULT_CRISIS_TERMS
   } catch {
     cacheLife(FALLBACK)
-    return DEFAULT_CRISIS_TERMS
+    return ALL_DEFAULT_CRISIS_TERMS
   }
 }
 
-/** Hilfe-Nummern. Funktioniert auch, wenn die Datenbank ausfällt. */
-export async function getHelpResources(): Promise<HelpResource[]> {
+/** Hilfe-Nummern in einer Sprache. Funktioniert auch, wenn die Datenbank ausfällt. */
+export async function getHelpResources(language: HelpLanguage = 'de'): Promise<HelpResource[]> {
   'use cache'
   cacheTag('help')
   try {
-    const rows = await db.select().from(helpResources).orderBy(asc(helpResources.sort))
+    const rows = await db.select().from(helpResources).where(eq(helpResources.language, language)).orderBy(asc(helpResources.sort))
     cacheLife('minutes')
     return rows.length
       ? rows.map((r) => ({ name: r.name, phone: r.phone, url: r.url, hours: r.hours, audience: r.audience }))
-      : DEFAULT_HELP
+      : defaultHelp(language)
   } catch {
     cacheLife(FALLBACK)
-    return DEFAULT_HELP
+    return defaultHelp(language)
   }
 }
 

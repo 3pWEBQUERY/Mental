@@ -365,12 +365,13 @@ export async function saveHelp(form: FormData) {
       hours: str(80),
       audience: str(120),
       sort: z.coerce.number().int().min(0).max(999),
+      language: z.enum(['de', 'fr']).default('de'),
       remove: z.string().optional(),
     })
     .parse(Object.fromEntries(form))
   if (d.id && d.remove) await db.delete(helpResources).where(eq(helpResources.id, d.id))
   else {
-    const values = { name: d.name, phone: d.phone || null, url: d.url || null, hours: d.hours, audience: d.audience, sort: d.sort }
+    const values = { name: d.name, phone: d.phone || null, url: d.url || null, hours: d.hours, audience: d.audience, sort: d.sort, language: d.language }
     if (d.id) await db.update(helpResources).set(values).where(eq(helpResources.id, d.id))
     else await db.insert(helpResources).values(values)
   }
@@ -381,13 +382,19 @@ export async function saveHelp(form: FormData) {
 export async function saveTerm(form: FormData) {
   const admin = await assertModerator('admin')
   const d = z
-    .object({ term: str(80), level: z.enum(['concern', 'acute']), remove: z.string().optional(), id: z.uuid().optional().or(z.literal('')) })
+    .object({
+      term: str(80),
+      level: z.enum(['concern', 'acute']),
+      language: z.enum(['de', 'fr']).default('de'),
+      remove: z.string().optional(),
+      id: z.uuid().optional().or(z.literal('')),
+    })
     .parse(Object.fromEntries(form))
   if (d.id && d.remove) await db.update(crisisTerms).set({ active: false }).where(eq(crisisTerms.id, d.id))
   else
     await db
       .insert(crisisTerms)
-      .values({ term: d.term.toLowerCase(), level: d.level })
+      .values({ term: d.term.toLowerCase(), level: d.level, language: d.language })
       .onConflictDoUpdate({ target: [crisisTerms.language, crisisTerms.term], set: { level: d.level, active: true } })
   await audit(admin.userId, 'crisis-terms:update', admin.userId, d.term)
   updateTag('crisis-terms')

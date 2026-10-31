@@ -6,7 +6,7 @@ const SESSION_COOKIE = 'lichtung_session'
 const PROTECTED = ['/lichtung', '/ich', '/einstellungen', '/admin']
 const AUTH_ONLY = ['/anmelden', '/registrieren']
 /** Vollständig vorgerenderte Seiten ohne Nutzerinhalte – hier kann es keine Nonce geben. */
-const STATIC_PAGES = ['/', '/hilfe', '/regeln', '/datenschutz', '/impressum', '/offline', '/transparenz']
+const STATIC_PAGES = ['/', '/hilfe', '/regeln', '/datenschutz', '/impressum', '/offline', '/transparenz', '/aide']
 /** Alle Seiten-Routen der App. Was hier nicht drin ist, endet auf der vorgerenderten 404-Seite. */
 const APP_ROUTES = [...STATIC_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen']
 const isAppRoute = (p: string) => APP_ROUTES.some((r) => p === r || (r !== '/' && p.startsWith(`${r}/`)))

@@ -31,6 +31,7 @@ export const fr: Messages = {
   },
   nav: {
     label: 'Navigation principale',
+    skip: 'Aller au contenu',
     feed: 'Lichtung',
     share: 'Partager une pensée',
     breathe: '1 minute pour respirer',
@@ -250,6 +251,8 @@ export const fr: Messages = {
   },
   help: {
     title: 'Aide immédiate',
+    otherLanguage: 'Auf Deutsch',
+    otherLanguageHref: '/hilfe',
     eyebrow: 'Aide immédiate',
     intro: 'Si c’est trop en ce moment, tu n’as pas besoin d’attendre que quelqu’un réponde ici.',
     chat: 'Chat',

@@ -1,0 +1,1 @@
+ALTER TABLE "help_resources" ADD COLUMN "language" text DEFAULT 'de' NOT NULL;

@@ -86,3 +86,27 @@ test('Nachts ohne Bereitschaft sagt «Sofort Hilfe» ehrlich, dass das Team nich
   await expect(page.getByRole('dialog', { name: 'Sofort Hilfe' })).toBeVisible()
   await expect(page.locator('.night-note')).toHaveCount(0)
 })
+
+test('Aide immédiate: französische Hilfeseite ohne Anmeldung, verlinkt mit /hilfe', async ({ page }) => {
+  await page.goto('/hilfe')
+  await page.getByRole('link', { name: 'En français' }).click()
+  await page.waitForURL('**/aide')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Aide')
+  await expect(page.locator('.public[lang="fr-CH"]')).toBeVisible()
+  const aide = page.locator('.public[lang="fr-CH"]')
+  const mainTendue = aide.locator('a[href="tel:143"]', { hasText: 'La Main Tendue' })
+  await expect(mainTendue).toBeVisible()
+  await expect(aide.locator('a[href="tel:147"]')).toBeVisible()
+  await expect(aide.locator('a[href="tel:144"]')).toContainText('Urgences')
+  await expect(aide.locator('main')).not.toContainText('Dargebotene Hand')
+  await page.getByRole('link', { name: 'Auf Deutsch' }).click()
+  await page.waitForURL('**/hilfe')
+  await expect(page.locator('.public:not([lang]) a[href="tel:143"]').first()).toContainText('Die Dargebotene Hand')
+})
+
+test('Krisensprache auf Französisch löst denselben Hinweis aus', async ({ page }) => {
+  await register(page)
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  await page.locator('#composer-text').fill("Je n'en peux plus, j'ai envie de mourir")
+  await expect(page.getByRole('dialog').locator('.care')).toContainText('143')
+})

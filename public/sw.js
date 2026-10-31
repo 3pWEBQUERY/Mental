@@ -1,6 +1,6 @@
 /* Lichtung Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
-const CACHE = 'lichtung-v2'
-const OFFLINE = ['/offline', '/hilfe']
+const CACHE = 'lichtung-v3'
+const OFFLINE = ['/offline', '/hilfe', '/aide']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(OFFLINE)).then(() => self.skipWaiting()))
@@ -23,7 +23,8 @@ self.addEventListener('fetch', (event) => {
     fetch(req).catch(async () => {
       const cache = await caches.open(CACHE)
       const url = new URL(req.url)
-      return (await cache.match(url.pathname === '/hilfe' ? '/hilfe' : '/offline')) || Response.error()
+      const page = url.pathname === '/hilfe' || url.pathname === '/aide' ? url.pathname : '/offline'
+      return (await cache.match(page)) || Response.error()
     }),
   )
 })

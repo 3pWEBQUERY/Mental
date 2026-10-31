@@ -3,8 +3,8 @@
  * Idempotent – kann bei jedem Deployment laufen.
  */
 import { sql } from 'drizzle-orm'
-import { DEFAULT_CRISIS_TERMS } from '../lib/crisis'
-import { DEFAULT_HELP } from '../lib/help'
+import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_FR } from '../lib/crisis'
+import { DEFAULT_HELP, DEFAULT_HELP_FR } from '../lib/help'
 import { db, pool } from './index'
 import { circles, crisisTerms, helpResources, steps } from './schema'
 
@@ -76,19 +76,33 @@ async function main() {
       .onConflictDoNothing({ target: circles.slug })
   }
 
-  const [{ n: helpCount } = { n: 0 }] = (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM help_resources`)).rows
-  if (helpCount === 0) {
+  // Pro Sprache nur anlegen, solange es dort noch nichts gibt – danach pflegt das Admin-Team die Liste.
+  const helpCount = async (language: string) =>
+    (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM help_resources WHERE language = ${language}`)).rows[0]?.n ?? 0
+  if ((await helpCount('de')) === 0) {
     await db.insert(helpResources).values([
       ...DEFAULT_HELP.map((h, i) => ({ ...h, sort: i * 10 })),
       { name: 'Chat der Dargebotenen Hand', phone: null, url: 'https://www.143.ch', hours: 'täglich', audience: 'schreiben statt reden', sort: 40 },
       { name: 'Chat von Pro Juventute', phone: null, url: 'https://www.147.ch', hours: 'rund um die Uhr', audience: 'für Kinder und Jugendliche, auch per SMS', sort: 50 },
     ])
   }
+  if ((await helpCount('fr')) === 0) {
+    await db.insert(helpResources).values(
+      [
+        ...DEFAULT_HELP_FR.map((h, i) => ({ ...h, sort: i * 10 })),
+        { name: 'Chat de La Main Tendue', phone: null, url: 'https://www.143.ch', hours: 'tous les jours', audience: 'écrire plutôt que parler', sort: 40 },
+        { name: 'Chat de Pro Juventute', phone: null, url: 'https://www.147.ch', hours: '24 h sur 24', audience: 'pour les enfants et les jeunes, aussi par SMS', sort: 50 },
+      ].map((h) => ({ ...h, language: 'fr' })),
+    )
+  }
 
   // Neue Standardbegriffe kommen dazu; entfernte bleiben als inaktiv bestehen und werden nicht reaktiviert.
   await db
     .insert(crisisTerms)
-    .values(DEFAULT_CRISIS_TERMS.map((t) => ({ term: t.term, level: t.level, language: 'de' })))
+    .values([
+      ...DEFAULT_CRISIS_TERMS.map((t) => ({ term: t.term, level: t.level, language: 'de' })),
+      ...DEFAULT_CRISIS_TERMS_FR.map((t) => ({ term: t.term, level: t.level, language: 'fr' })),
+    ])
     .onConflictDoNothing()
 
   const [{ n: stepCount } = { n: 0 }] = (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM steps`)).rows

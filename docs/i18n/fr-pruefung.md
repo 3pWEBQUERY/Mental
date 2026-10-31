@@ -149,3 +149,13 @@ Schreibweise der Pfade: `a.b[2]` ist das dritte Element eines Arrays, `a.*` steh
 | Esc-Taste | «Esc» | Auf Schweizer Tastaturen steht «Esc», in Frankreich «Échap». |
 | Typografie | Geschütztes Leerzeichen (U+00A0) vor `: ? ! ;` und innerhalb von « » | In der Schweiz entfällt das Leerzeichen vor `? ! ;` oft, oder es wird ein schmales verwendet. Einheitlich entscheiden. |
 | `admin.stats.minutes` | Dezimalkomma per `.replace('.', ',')` | Kleine Ergänzung gegenüber de.ts (Anzeige «2,3 h»). |
+
+## Zusätzlich zu prüfen (seit der Hilfeseite /aide)
+
+- **Hilfeseite `/aide` und `DEFAULT_HELP_FR` (`lib/help.ts`, Seed):**
+  - Namen der Stellen («La Main Tendue», «Urgences sanitaires»), Zeiten («24 h sur 24», Chat «tous les jours») und Zielgruppen.
+  - Stimmt der Chat von La Main Tendue zeitlich so?
+- **Französische Krisenbegriffe** (`DEFAULT_CRISIS_TERMS_FR`, `lib/crisis.ts`):
+  - Fehlen gängige Wendungen der Romandie, auch Jugendsprache?
+  - Ist eine Wendung zu breit (Fehlalarme), etwa «je n'en peux plus» als «Sorge»?
+  - Verglichen werden ganze Wörter, Akzente spielen keine Rolle.
