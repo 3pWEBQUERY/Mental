@@ -193,14 +193,14 @@ ul, ol { list-style: none; }
 .tab[aria-selected='true'], .tab[aria-current='page'] { background: var(--ink); color: var(--paper); }
 /* Three.js-Tropfen (use-blob: Reiter-Leisten, Auswahlgruppen): Das Canvas zeichnet die Pille, die helle Schrift
    liegt als ausgeschnittene Kopie darüber. Ohne WebGL fehlt .blob-on – dann gilt die CSS-Pille oben. */
-.tabs, .segment, .opt-row, .circles, .moods { position: relative; }
+.tabs, .segment, .opt-row, .circles, .moods, .support { position: relative; }
 .blob-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
 /* Über den Knöpfen (manche haben einen deckenden Hintergrund), unter der hellen Schrift; Klicks gehen durch. */
 .blob-on .blob-canvas { display: block; z-index: 1; }
 .blob-on [data-blob] { position: relative; }
 .blob-on.blob-on [data-blob]:is([aria-current='page'], [aria-current='true'], [aria-checked='true']) { background: transparent; color: var(--ink-2); }
 /* Gleiche Anordnung wie die Auswahl, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path). */
-.blob-ink { position: absolute; inset: 0; display: inherit; flex-direction: inherit; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 2; }
+.blob-ink { position: absolute; inset: 0; display: inherit; flex-direction: inherit; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 2; align-items: inherit; }
 .blob-on .blob-ink .blob-copy, .blob-on .blob-ink .blob-copy * { color: var(--paper); }
 .blob-on .blob-ink .blob-copy { border-color: transparent; background: transparent; }
 /* Farbpunkte der Stimmungen: heller Ring, damit auch der dunkle Punkt im Tropfen sichtbar bleibt. */
@@ -251,6 +251,9 @@ ul, ol { list-style: none; }
 .sup { padding: 8px 13px; border-radius: 999px; background: var(--paper-2); font-size: calc(13px * var(--fz)); transition: background 0.2s, color 0.2s; }
 .sup:hover { background: var(--line); }
 .sup.sent, .sup[aria-pressed='true'] { background: var(--sage); color: var(--on-accent); }
+/* Mit Tropfen (use-drops): Während sich sein Tropfen bewegt, bleibt der Knopf ungefüllt – das Canvas füllt ihn, helle Schrift als Kopie darüber. */
+.support.blob-on .sup[data-busy] { background: var(--paper-2); color: var(--ink); transition: none; }
+.support.blob-on .blob-ink .blob-copy { color: var(--on-accent); }
 .summary { font-size: calc(13px * var(--fz)); color: var(--ink-2); }
 .summary small { display: block; color: var(--ink-3); font-size: calc(12px * var(--fz)); }
 .reply-toggle { margin-left: auto; display: inline-flex; align-items: center; min-height: 32px; font-size: calc(13px * var(--fz)); color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
