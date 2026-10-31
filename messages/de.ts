@@ -56,6 +56,7 @@ export const de = {
     question: 'Wie geht es dir gerade –',
     questionEm: 'ehrlich?',
     moodGroup: 'Stimmung',
+    modes: { label: 'Übung', breath: 'Atmen', ground: '5-4-3-2-1' },
     pick: 'Wähle, was am ehesten passt. Niemand sieht das ausser dir.',
     noteToggle: 'Notiz für mich',
     notePlaceholder: 'Was ist gerade los? Nur für dich.',
@@ -621,6 +622,9 @@ export const de = {
     progress: (i: number, n: number) => `Schritt ${i} von ${n}`,
     done: 'Du bist hier. Das hast du gut gemacht. Wenn es noch zu viel ist, ist «Sofort Hilfe» immer einen Tipp entfernt.',
     close: 'Fertig',
+    back: 'Zurück zum Atmen',
+    doneLead: 'Du bist hier.',
+    doneNote: 'Das hast du gut gemacht. Wenn es noch zu viel ist, ist «Sofort Hilfe» immer einen Tipp entfernt.',
   },
   errors: {
     notFoundLead: 'Diese Seite',

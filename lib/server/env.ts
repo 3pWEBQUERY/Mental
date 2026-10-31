@@ -25,6 +25,10 @@ export const env = {
   get adminWithoutPasskey() {
     return process.env.NODE_ENV !== 'production' && process.env.ADMIN_ALLOW_PASSWORD === '1'
   },
+  /** Max. 40 Benutzernamen-Prüfungen pro IP-Hash in 10 Minuten (für lokale Tests erhöhbar – ein voller E2E-Lauf registriert mehr). */
+  get usernameChecksPer10Min() {
+    return Number(process.env.USERNAME_CHECKS_PER_10_MIN ?? 40)
+  },
   /** Max. 3 neue Konten pro IP-Hash und Tag (für lokale Tests erhöhbar). */
   get registrationsPerIpPerDay() {
     return Number(process.env.REGISTRATIONS_PER_IP_PER_DAY ?? 3)

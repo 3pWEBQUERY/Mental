@@ -12,6 +12,7 @@ import { panic } from '../panic'
 import { Dialog } from '../dialog'
 import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
+import { inlineGrounding } from './grounding'
 import type { OrbApi } from './orb'
 import { attempt } from '@/lib/client/attempt'
 
@@ -29,6 +30,7 @@ function OrbFallback() {
 const Orb = dynamic(() => import('./orb'), { ssr: false, loading: OrbFallback })
 
 type Phase = 'inhale' | 'hold' | 'exhale'
+type Mode = 'breath' | 'ground'
 const CYCLE = BREATH.inhale + BREATH.hold + BREATH.exhale
 const TOTAL = CYCLE * BREATH.cycles
 
@@ -43,6 +45,10 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   const [proHint, setProHint] = useState(false)
   const [letter, setLetter] = useState<{ body: string; createdAt: string } | null>(null)
   const [webgl, setWebgl] = useState(viewer.motion !== 'off')
+  // Zwei Folien im Raum: Atmen (Kugel) und 5-4-3-2-1 (die Kugel wird zur Ziffer).
+  const [mode, setMode] = useState<Mode>('breath')
+  const [gstep, setGstep] = useState(0)
+  const swipe = useRef<{ x: number; y: number; id: number } | null>(null)
   const api = useRef<OrbApi | null>(null)
   const fallbackTimer = useRef<number>(0)
   const started = useRef(0)
@@ -81,6 +87,10 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
 
   function startBreath() {
     if (breathing) return
+    if (mode === 'ground') {
+      setMode('breath')
+      api.current?.ground(null, -1)
+    }
     setBreathing(true)
     setPhase('inhale')
     started.current = performance.now()
@@ -110,14 +120,67 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     else finish(false)
   }
 
+  const g = m.grounding
+  const gdone = gstep >= g.steps.length
+  const gcur = g.steps[gstep]
+
+  function switchMode(next: Mode) {
+    if (next === mode) return
+    if (breathing) stopBreath()
+    setMode(next)
+    if (next === 'ground') {
+      setGstep(0)
+      api.current?.ground(g.steps[0]!.n, 1)
+    } else api.current?.ground(null, -1)
+  }
+
+  function nextStep() {
+    const n = gstep + 1
+    setGstep(n)
+    // Nach der Eins wird die Ziffer wieder zur Kugel – «Du bist hier».
+    api.current?.ground(n < g.steps.length ? g.steps[n]!.n : null, 1)
+  }
+
+  // Aus «Sofort Hilfe» heraus: Auf der Lichtung führt der Raum die Übung selbst.
+  const openGround = useRef(() => {})
+  openGround.current = () => {
+    const still = document.documentElement.dataset.motion || matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' })
+    if (mode === 'ground') {
+      setGstep(0)
+      api.current?.ground(g.steps[0]!.n, 1)
+    } else switchMode('ground')
+  }
+  useEffect(() => {
+    inlineGrounding.current = () => openGround.current()
+    return () => {
+      inlineGrounding.current = null
+    }
+  }, [])
+
   const s = m.stage
   return (
     <section
       className={`stage${breathing ? ' breathing' : ''}`}
       aria-label={s.label}
+      data-mode={mode}
       onClick={(e) => {
         if (breathing && !(e.target as HTMLElement).closest('button, a, textarea')) stopBreath()
       }}
+      // Wischen zwischen den Folien (vor allem auf dem Handy): nach links zu 5-4-3-2-1, nach rechts zum Atmen.
+      onPointerDown={(e) => {
+        if (breathing || (e.target as HTMLElement).closest('button, a, textarea, input')) return
+        swipe.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
+      }}
+      onPointerUp={(e) => {
+        const st = swipe.current
+        swipe.current = null
+        if (!st || st.id !== e.pointerId) return
+        const dx = e.clientX - st.x
+        const dy = e.clientY - st.y
+        if (Math.abs(dx) > 60 && Math.abs(dx) > 1.6 * Math.abs(dy)) switchMode(dx < 0 ? 'ground' : 'breath')
+      }}
+      onPointerCancel={() => (swipe.current = null)}
     >
       {webgl ? (
         <Orb
@@ -129,6 +192,11 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
         />
       ) : (
         <OrbFallback />
+      )}
+      {!webgl && mode === 'ground' && !gdone && (
+        <div className="ground-numeral" aria-hidden="true" key={gstep}>
+          {gcur!.n}
+        </div>
       )}
       <div className="stage-top">
         <Link href="/lichtung" className="brand">
@@ -145,83 +213,134 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
         <span aria-hidden="true">{left === null ? s.breathStart : s.breathMeta(left)}</span>
       </div>
       <div className="checkin">
-        <div className="eyebrow">{greeting}</div>
-        <h2>
-          {s.question} <em>{s.questionEm}</em>
-        </h2>
-        <RadioGroup fluid className="moods" itemClassName="mood" label={s.moodGroup} value={mood} onChange={pick} options={m.moods.labels.map((label, i) => ({ value: i, label }))} />
-        <p className="mood-note" aria-live="polite">
-          {mood === null ? (
-            s.pick
-          ) : (
-            <>
-              {m.moods.notes[mood]}{' '}
-              {mood === MOOD_HEAVY && (
-                <button type="button" className="link" onClick={() => emit('help')}>
-                  {m.moods.needSomeone}
-                </button>
+        <div className="stage-switch-wrap" onPointerEnter={() => api.current?.prepareGround()} onFocus={() => api.current?.prepareGround()}>
+          <RadioGroup
+            fluid
+            className="segment stage-switch"
+            label={s.modes.label}
+            value={mode}
+            onChange={switchMode}
+            options={[
+              { value: 'breath' as Mode, label: s.modes.breath },
+              { value: 'ground' as Mode, label: s.modes.ground },
+            ]}
+          />
+        </div>
+        <div className="stage-slides" data-mode={mode}>
+          <div className="slide slide-breath" inert={mode !== 'breath'} aria-hidden={mode !== 'breath'}>
+            <div className="eyebrow">{greeting}</div>
+            <h2>
+              {s.question} <em>{s.questionEm}</em>
+            </h2>
+            <RadioGroup
+              fluid
+              className="moods"
+              itemClassName="mood"
+              label={s.moodGroup}
+              value={mood}
+              onChange={pick}
+              options={m.moods.labels.map((label, i) => ({ value: i, label }))}
+            />
+            <p className="mood-note" aria-live="polite">
+              {mood === null ? (
+                s.pick
+              ) : (
+                <>
+                  {m.moods.notes[mood]}{' '}
+                  {mood === MOOD_HEAVY && (
+                    <button type="button" className="link" onClick={() => emit('help')}>
+                      {m.moods.needSomeone}
+                    </button>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </p>
-        {proHint && (
-          <div className="care" role="status" style={{ maxWidth: '40ch', marginBottom: 10 }}>
-            <b>{s.proHint.title}</b>
-            <br />
-            {s.proHint.body}
-            <div className="actions">
-              <button type="button" className="btn small" onClick={() => emit('help')}>
-                {s.proHint.help}
+            </p>
+            {proHint && (
+              <div className="care" role="status" style={{ maxWidth: '40ch', marginBottom: 10 }}>
+                <b>{s.proHint.title}</b>
+                <br />
+                {s.proHint.body}
+                <div className="actions">
+                  <button type="button" className="btn small" onClick={() => emit('help')}>
+                    {s.proHint.help}
+                  </button>
+                  <button type="button" className="btn ghost small" onClick={() => setProHint(false)}>
+                    {s.proHint.ok}
+                  </button>
+                </div>
+              </div>
+            )}
+            {mood !== null && (
+              <div className="note-row">
+                {noteOpen ? (
+                  <>
+                    <label className="sr-only" htmlFor="checkin-note">
+                      {s.noteToggle}
+                    </label>
+                    <textarea
+                      id="checkin-note"
+                      value={note}
+                      maxLength={LIMITS.noteMax}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder={s.notePlaceholder}
+                    />
+                    <div className="row">
+                      <span className="count">
+                        {note.length} / {LIMITS.noteMax}
+                      </span>
+                      <button type="button" className="btn small" onClick={saveNote} disabled={!note.trim()}>
+                        {m.common.save}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button type="button" className="linkish" onClick={() => setNoteOpen(true)}>
+                    {s.noteToggle}
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="stage-actions">
+              <button type="button" className="btn" onClick={breathing ? stopBreath : startBreath}>
+                {breathing ? s.stop : s.breathe}
               </button>
-              <button type="button" className="btn ghost small" onClick={() => setProHint(false)}>
-                {s.proHint.ok}
+              <button type="button" className="btn ghost" onClick={() => emit('compose')}>
+                {s.share}
               </button>
             </div>
           </div>
-        )}
-        {mood !== null && (
-          <div className="note-row">
-            {noteOpen ? (
-              <>
-                <label className="sr-only" htmlFor="checkin-note">
-                  {s.noteToggle}
-                </label>
-                <textarea
-                  id="checkin-note"
-                  value={note}
-                  maxLength={LIMITS.noteMax}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={s.notePlaceholder}
-                />
-                <div className="row">
-                  <span className="count">
-                    {note.length} / {LIMITS.noteMax}
-                  </span>
-                  <button type="button" className="btn small" onClick={saveNote} disabled={!note.trim()}>
-                    {m.common.save}
+          <div className="slide slide-ground" inert={mode !== 'ground'} aria-hidden={mode !== 'ground'}>
+            {/* Neu pro Schritt: Der Inhalt gleitet von rechts herein, im Takt der Punkte oben. */}
+            <div className="ground-step" key={gstep}>
+              <div className="eyebrow">{gdone ? g.title : g.progress(gstep + 1, g.steps.length)}</div>
+              <h2 className="ground-text" aria-live="polite">
+                {gdone ? g.doneLead : gcur!.text}
+              </h2>
+              <p className="mood-note">{gdone ? g.doneNote : gcur!.hint}</p>
+            </div>
+            <ol className="grounding-dots" aria-label={g.progress(Math.min(gstep + 1, g.steps.length), g.steps.length)}>
+              {g.steps.map((st, i) => (
+                <li key={st.n} className={i < gstep ? 'on' : i === gstep ? 'on now' : undefined} />
+              ))}
+            </ol>
+            <div className="stage-actions">
+              {gdone ? (
+                <button type="button" className="btn" onClick={() => switchMode('breath')}>
+                  {g.close}
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="btn" onClick={nextStep}>
+                    {g.next}
                   </button>
-                </div>
-              </>
-            ) : (
-              <button type="button" className="linkish" onClick={() => setNoteOpen(true)}>
-                {s.noteToggle}
-              </button>
-            )}
+                  <button type="button" className="btn ghost" onClick={() => switchMode('breath')}>
+                    {g.back}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        )}
-        <div className="stage-actions">
-          <button type="button" className="btn" onClick={breathing ? stopBreath : startBreath}>
-            {breathing ? s.stop : s.breathe}
-          </button>
-          <button type="button" className="btn ghost" onClick={() => emit('compose')}>
-            {s.share}
-          </button>
         </div>
-        {!breathing && (
-          <button type="button" className="linkish grounding-link" onClick={() => emit('grounding')}>
-            {m.grounding.open}
-          </button>
-        )}
       </div>
       <Dialog open={letter !== null} onClose={() => setLetter(null)} title={m.letters.title} className="letter-dialog">
         {letter && (

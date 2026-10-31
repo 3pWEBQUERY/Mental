@@ -36,6 +36,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/api/health`,
     // Nie wiederverwenden: Jeder Lauf legt die Test-Datenbank neu an – ein alter Server hielte gekappte Verbindungen.
     reuseExistingServer: false,
-    env: { HIBP_DISABLED: '1', REGISTRATIONS_PER_IP_PER_DAY: '1000' },
+    env: { HIBP_DISABLED: '1', REGISTRATIONS_PER_IP_PER_DAY: '1000', USERNAME_CHECKS_PER_10_MIN: '1000' },
   },
 })

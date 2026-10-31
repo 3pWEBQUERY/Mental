@@ -9,6 +9,10 @@ export type OrbApi = {
   pulse(): void
   breathe(onTick: (phase: 'inhale' | 'hold' | 'exhale', secondsLeft: number) => void, onEnd: (finished: boolean) => void): void
   stopBreath(): void
+  /** 5-4-3-2-1: Punkte fliessen zur Ziffer `n` (oder mit `null` zurück zur Kugel). `dir` +1 vorwärts, -1 zurück. */
+  ground(n: number | null, dir: 1 | -1): void
+  /** Ziffern schon vermessen (bei Annäherung an den Umschalter), damit die Punkte sofort losfliessen. */
+  prepareGround(): void
 }
 
 export type Motion = 'on' | 'reduced' | 'off'
@@ -86,20 +90,39 @@ float snoise(vec3 v){
 
 const VS = /* glsl */ `${NOISE}
 uniform float uTime, uAmp, uBreath, uPulse, uPR;
+uniform float uMix, uFromS, uToS, uDir;
+uniform mat3 uRot;
 attribute float aRand;
+attribute vec3 aFrom, aTo;
 varying float vA;
 void main(){
   vec3 base = position;
   float n  = snoise(base*1.3 + vec3(0.0, uTime*0.18, uTime*0.12));
   float n2 = snoise(base*3.2 - vec3(uTime*0.10));
   float rip = uPulse * 0.09 * sin(base.y*9.0 - uTime*5.0);
-  vec3 p = base * (1.0 + n*uAmp + n2*uAmp*0.3 + uBreath + rip);
-  p += base * aRand * 0.035;
+  // Kugel: wie bisher verformt, die Drehung kommt als Matrix (die Ziffer bleibt dem Blick zugewandt).
+  vec3 ps = uRot * (base * (1.0 + n*uAmp + n2*uAmp*0.3 + uBreath + rip) + base * aRand * 0.035);
+  // Ziffer: Punkte der Glyphe, mit einem Hauch derselben Bewegung – sie lebt, ohne zu zerfliessen.
+  vec3 sh = vec3(n, n2, n * n2) * 0.016 + vec3(0.0, 0.0, rip * 0.5);
+  vec3 from = mix(aFrom + sh, ps, uFromS);
+  vec3 to = mix(aTo + sh, ps, uToS);
+  // Welle quer über die Form: vorwärts von rechts nach links (wie eine Folie, die nach links weicht).
+  float xn = clamp(to.x / 1.4, -1.0, 1.0) * uDir;
+  float d = 0.55 * (0.5 - 0.5 * xn) + aRand * 0.25;
+  float t = clamp(uMix * 1.8 - d, 0.0, 1.0);
+  float e = t * t * (3.0 - 2.0 * t);
+  float arc = sin(3.14159265 * t);
+  vec3 p = mix(from, to, e);
+  p.x -= uDir * arc * (0.22 + 0.24 * aRand);
+  p.z += arc * (aRand - 0.5) * 0.7;
   vec4 w  = modelMatrix * vec4(p, 1.0);
   vec4 mv = viewMatrix * w;
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = (1.4 + aRand*2.0) * uPR * (5.0 / -mv.z);
-  vA = (0.25 + 0.75*smoothstep(-0.6, 0.8, n)) * (0.35 + 0.65*smoothstep(-1.4, 1.4, w.z));
+  float g = mix(1.0 - uFromS, 1.0 - uToS, e);
+  gl_PointSize = (1.4 + aRand*2.0) * uPR * (5.0 / -mv.z) * mix(1.0, 1.12, g);
+  float aS = (0.25 + 0.75*smoothstep(-0.6, 0.8, n)) * (0.35 + 0.65*smoothstep(-1.4, 1.4, w.z));
+  float aD = 0.5 + 0.45 * aRand;
+  vA = mix(aS, aD, g);
 }`
 
 const FS = /* glsl */ `
@@ -114,6 +137,60 @@ void main(){
 function cssColor(token: string) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
   return v || '#1C1C1A'
+}
+
+/**
+ * Punkte einer Ziffer in der Schrift der Seite (Instrument Serif): Glyphe auf ein verstecktes Canvas,
+ * gefüllte Pixel einsammeln, jeder Partikel bekommt einen davon (mit Versatz innerhalb des Pixels).
+ */
+const glyphs = new Map<string, Float32Array>()
+async function glyphPoints(ch: string, n: number): Promise<Float32Array> {
+  const hit = glyphs.get(ch)
+  if (hit) return hit
+  const family = getComputedStyle(document.querySelector('.checkin h2') ?? document.body).fontFamily || 'Georgia, serif'
+  const S = 420
+  const font = `400 ${Math.round(S * 0.86)}px ${family}`
+  try {
+    await document.fonts.load(font, ch)
+  } catch {}
+  const cv = document.createElement('canvas')
+  cv.width = cv.height = S
+  const ctx = cv.getContext('2d', { willReadFrequently: true })!
+  ctx.font = font
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#000'
+  ctx.fillText(ch, S / 2, S * 0.8)
+  const data = ctx.getImageData(0, 0, S, S).data
+  const px: number[] = []
+  let minX = S,
+    maxX = 0,
+    minY = S,
+    maxY = 0
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++)
+      if (data[(y * S + x) * 4 + 3]! > 150) {
+        px.push(x, y)
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+  const out = new Float32Array(n * 3)
+  const count = px.length / 2
+  if (!count) return out
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  // Etwas grösser als die Kugel (Durchmesser 2): Die Ziffer soll den Raum füllen, nicht darin schweben.
+  const scale = 2.5 / Math.max(1, maxY - minY)
+  for (let i = 0; i < n; i++) {
+    const j = Math.floor(Math.random() * count)
+    out[i * 3] = (px[j * 2]! + Math.random() - cx) * scale
+    out[i * 3 + 1] = -(px[j * 2 + 1]! + Math.random() - cy) * scale
+    out[i * 3 + 2] = (Math.random() - 0.5) * 0.12
+  }
+  glyphs.set(ch, out)
+  return out
 }
 
 /** Leiser Ton beim Phasenwechsel – standardmässig aus. */
@@ -191,6 +268,12 @@ export default function Orb({
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
     geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1))
+    const fromAttr = new THREE.BufferAttribute(new Float32Array(N * 3), 3)
+    const toAttr = new THREE.BufferAttribute(new Float32Array(N * 3), 3)
+    fromAttr.setUsage(THREE.DynamicDrawUsage)
+    toAttr.setUsage(THREE.DynamicDrawUsage)
+    geo.setAttribute('aFrom', fromAttr)
+    geo.setAttribute('aTo', toAttr)
 
     const startMood = initialMood ?? 2
     const startColor = new THREE.Color(cssColor(MOODS[startMood]!.token))
@@ -201,10 +284,18 @@ export default function Orb({
       uPulse: { value: 0 },
       uPR: { value: renderer.getPixelRatio() },
       uColor: { value: startColor.clone() },
+      uMix: { value: 1 },
+      uFromS: { value: 1 },
+      uToS: { value: 1 },
+      uDir: { value: 1 },
+      uRot: { value: new THREE.Matrix3() },
     }
     const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false })
     const group = new THREE.Group()
-    group.add(new THREE.Points(geo, mat))
+    const points = new THREE.Points(geo, mat)
+    // Die Ziffern liegen ausserhalb der Kugel-Bounding-Sphere – nie wegschneiden.
+    points.frustumCulled = false
+    group.add(points)
     scene.add(group)
 
     // Statt Umlaufbahnen: ein paar warme Funken steigen langsam auf und verglimmen –
@@ -229,7 +320,12 @@ export default function Orb({
     scene.add(embers)
     const disposables: { dispose(): void }[] = [geo, mat, emberGeo, emberMat]
 
-    const target = { amp: MOODS[startMood]!.amp, speed: MOODS[startMood]!.speed, color: startColor.clone(), mood: startMood }
+    const target: { amp: number; speed: number; color: THREE.Color; mood: number } = {
+      amp: MOODS[startMood]!.amp,
+      speed: MOODS[startMood]!.speed,
+      color: startColor.clone(),
+      mood: startMood,
+    }
     let time = 0
     let last = performance.now()
     let mx = 0
@@ -248,6 +344,10 @@ export default function Orb({
       end: ((finished: boolean) => void) | null
     } = { on: false, start: 0, phase: '', tick: null, end: null }
     let audio: AudioContext | null = null
+    // 5-4-3-2-1: laufende Verwandlung (uMix 0 → 1) und ein wartendes Ziel, falls schneller geklickt wird.
+    const morph = { from: 0, dur: 1.5, running: false, digit: 0, pending: null as null | { n: number | null; dir: 1 | -1 } }
+    const euler = new THREE.Euler()
+    const m4 = new THREE.Matrix4()
 
     const onMove = (e: PointerEvent) => {
       mx = e.clientX / innerWidth - 0.5
@@ -313,10 +413,26 @@ export default function Orb({
       }
       uniforms.uBreath.value += (b - uniforms.uBreath.value) * 0.12
 
+      if (morph.running) {
+        const t = reduce ? 1 : Math.min(1, (now - morph.from) / 1000 / morph.dur)
+        uniforms.uMix.value = t
+        if (t >= 1) {
+          morph.running = false
+          const next = morph.pending
+          morph.pending = null
+          if (next) startMorph(next.n, next.dir)
+        }
+      }
+      // Wie viel «Ziffer» gerade im Bild ist: Die Neigung zum Zeiger wird dann ruhiger, die Schrift bleibt lesbar.
+      const tm = uniforms.uMix.value
+      morph.digit = (1 - uniforms.uFromS.value) * (1 - tm) + (1 - uniforms.uToS.value) * tm
+
       spin += dt * 0.06 * target.speed * k
       rx += (my * 0.35 - rx) * 0.04
       ry += (mx * 0.5 - ry) * 0.04
-      group.rotation.set(0.25 + rx, spin + ry, 0)
+      uniforms.uRot.value.setFromMatrix4(m4.makeRotationFromEuler(euler.set(0.25, spin, 0)))
+      const calm = 1 - 0.8 * morph.digit
+      group.rotation.set(rx * calm, ry * calm, 0)
       renderer.render(scene, camera)
       raf = requestAnimationFrame(frame)
     }
@@ -343,7 +459,7 @@ export default function Orb({
 
     // Farbschema-Wechsel: Farben neu aus den CSS-Tokens lesen.
     const recolor = () => {
-      target.color.set(cssColor(MOODS[target.mood]!.token))
+      target.color.set(cssColor(uniforms.uToS.value < 0.5 ? '--clay-ink' : MOODS[target.mood]!.token))
       emberColor.set(cssColor('--clay'))
     }
     const mq = matchMedia('(prefers-color-scheme: dark)')
@@ -351,13 +467,51 @@ export default function Orb({
     const mo = new MutationObserver(recolor)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
+    async function startMorph(n: number | null, dir: 1 | -1) {
+      if (morph.running) {
+        morph.pending = { n, dir }
+        return
+      }
+      const pts = n === null ? null : await glyphPoints(String(n), N)
+      if (morph.running) {
+        morph.pending = { n, dir }
+        return
+      }
+      // Was eben noch Ziel war, ist jetzt der Anfang.
+      ;(fromAttr.array as Float32Array).set(toAttr.array as Float32Array)
+      fromAttr.needsUpdate = true
+      uniforms.uFromS.value = uniforms.uToS.value
+      if (pts) {
+        ;(toAttr.array as Float32Array).set(pts)
+        toAttr.needsUpdate = true
+      }
+      uniforms.uToS.value = pts ? 0 : 1
+      uniforms.uDir.value = dir
+      uniforms.uMix.value = 0
+      morph.from = performance.now()
+      morph.running = true
+      // Ziffern in Ton, ruhig; zurück zur Kugel in der Farbe der eigenen Stimmung.
+      if (pts) {
+        target.color.set(cssColor('--clay-ink'))
+        target.amp = 0.06
+      } else {
+        const md = MOODS[target.mood]!
+        target.color.set(cssColor(md.token))
+        target.amp = md.amp
+        uniforms.uPulse.value = reduce ? 0 : 0.6
+      }
+      run()
+    }
+
     onApi({
       setMood(i) {
         const md = MOODS[i]
         if (!md) return
         target.mood = i
-        target.amp = md.amp
         target.speed = md.speed
+        // Während 5-4-3-2-1 bleibt die Ziffer in Ton; die Stimmung gilt wieder, sobald die Kugel zurück ist.
+        if (uniforms.uToS.value < 0.5) return
+        target.amp = md.amp
         target.color.set(cssColor(md.token))
       },
       pulse() {
@@ -377,6 +531,14 @@ export default function Orb({
       },
       stopBreath() {
         stopBreath(false)
+      },
+      ground(n, dir) {
+        void startMorph(n, dir)
+      },
+      prepareGround() {
+        void (async () => {
+          for (const d of ['5', '4', '3', '2', '1']) await glyphPoints(d, N)
+        })()
       },
     })
 

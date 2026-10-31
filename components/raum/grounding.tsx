@@ -5,9 +5,13 @@ import { on, pulse } from '@/lib/client/bus'
 import { m } from '@/messages'
 import { Dialog } from '../dialog'
 
+/** Steht der Raum im Bild (Lichtung), führt er die Übung selbst – als Folie statt Dialog. */
+export const inlineGrounding: { current: (() => void) | null } = { current: null }
+
 /**
  * 5-4-3-2-1: zurück ins Hier und Jetzt über die Sinne – hilft bei Panik, wenn Atmen gerade nicht geht.
- * Bewusst ohne Animation und ohne Zeitdruck: ein Schritt pro Ansicht, weiter erst, wenn man so weit ist.
+ * Bewusst ohne Zeitdruck: ein Schritt pro Ansicht, weiter erst, wenn man so weit ist. Dieser Dialog gilt
+ * dort, wo der Raum nicht im Bild ist; auf der Lichtung läuft die Übung im Raum (stage.tsx).
  */
 export function Grounding() {
   const [open, setOpen] = useState(false)
@@ -15,6 +19,7 @@ export function Grounding() {
   useEffect(
     () =>
       on('grounding', () => {
+        if (inlineGrounding.current) return inlineGrounding.current()
         setStep(0)
         setOpen(true)
       }),
