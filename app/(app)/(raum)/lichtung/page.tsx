@@ -6,6 +6,7 @@ import { Side } from '@/components/app/side'
 import { StepCard } from '@/components/app/step-card'
 import { PromptButton } from '@/components/feed/prompt'
 import { FeedList } from '@/components/feed/feed-list'
+import { FeedTabs } from '@/components/feed/feed-tabs'
 import { db } from '@/db'
 import { circles } from '@/db/schema'
 import { getFeed, type FeedView } from '@/lib/server/posts'
@@ -52,13 +53,7 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
     <>
       <div className="feed-head">
         <h1>{m.feed.title}</h1>
-        <nav className="tabs" aria-label={m.feed.tabsLabel}>
-          {VIEWS.map((t) => (
-            <Link key={t.key} className="tab" href={q(t.key)} aria-current={view === t.key ? 'page' : undefined} scroll={false}>
-              {t.label}
-            </Link>
-          ))}
-        </nav>
+        <FeedTabs label={m.feed.tabsLabel} active={view} items={VIEWS.map((t) => ({ key: t.key, label: t.label, href: q(t.key) }))} />
       </div>
       <p className="manifest">
         {m.feed.manifest}

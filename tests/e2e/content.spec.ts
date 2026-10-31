@@ -319,3 +319,22 @@ test('Tastatur: Menü, Bestätigung und Auswahlgruppen', async ({ page }) => {
   await page.reload()
   await expect(page.locator('article', { hasText: text })).toHaveCount(1)
 })
+
+test('Ansichten-Leiste: Three.js-Tropfen fliesst zum gewählten Reiter, URL und Feed folgen', async ({ page }) => {
+  await register(page)
+  const nav = page.getByRole('navigation', { name: 'Ansicht' })
+  // Mit WebGL übernimmt der Tropfen die Pille; die helle Schrift liegt als ausgeschnittene Kopie darüber.
+  await expect(nav).toHaveClass(/tabs-gl/)
+  const ink = nav.locator('.tabs-ink')
+  const clip = () => ink.evaluate((el) => (el as HTMLElement).style.clipPath)
+  await expect.poll(clip).toMatch(/^inset\(/)
+  const before = await clip()
+
+  await nav.getByRole('link', { name: 'Mut-Momente' }).click()
+  // Sofort aktiv (optimistisch), dann bestätigt der Server die Ansicht.
+  await expect(nav.getByRole('link', { name: 'Mut-Momente' })).toHaveAttribute('aria-current', 'page')
+  await expect(page).toHaveURL(/ansicht=brave/)
+  // Der Tropfen ist angekommen: Die Form liegt jetzt woanders.
+  await expect.poll(clip).not.toBe(before)
+  await expect(nav.getByRole('link', { name: 'Alle' })).not.toHaveAttribute('aria-current', 'page')
+})
