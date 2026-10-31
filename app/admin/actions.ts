@@ -14,14 +14,15 @@ import {
   posts,
   replies,
   reports,
+  roleProposals,
   sessions,
   steps,
   users,
 } from '@/db/schema'
 import { processMedia, rejectMedia } from '@/lib/media'
 import { syncReplyCount } from '@/lib/reply-count'
-import { assertModerator, canModerate, memberFromToken } from '@/lib/server/admin'
-import { notifyModeration } from '@/lib/server/notify'
+import { assertModerator, canModerate, memberFromToken, ROLE_PROPOSAL_DAYS } from '@/lib/server/admin'
+import { notifyAdmins, notifyModeration, notifySystem } from '@/lib/server/notify'
 import { m } from '@/messages'
 import { safeMessage } from '@/lib/log-safe'
 
@@ -197,6 +198,72 @@ export async function restoreAccount(form: FormData) {
   if (!changed) return refresh()
   await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: userId, action, reason: reason || null })
   await notifyModeration(userId, null, action === 'unban' ? m.admin.account.unbanned : m.admin.account.unmuted)
+  refresh()
+}
+
+/* ------------------------------------------------------------- Rollen */
+
+const ROLES = ['member', 'peer_mod', 'mod', 'admin'] as const
+
+/**
+ * Rollenwechsel, Schritt 1: Ein Admin schlägt vor. Wirksam wird er erst, wenn ein zweiter Admin bestätigt
+ * (Vier-Augen-Prinzip) – sonst könnte ein übernommenes Admin-Konto allein neue Admins ernennen.
+ */
+export async function proposeRole(form: FormData) {
+  const parsed = z
+    .object({ token: z.string().max(400), role: z.enum(ROLES), reason: z.string().trim().min(3).max(500) })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const userId = memberFromToken(parsed.data.token)
+  if (!userId) throw new Error('invalid')
+  const admin = await assertModerator('admin')
+  if (userId === admin.userId) throw new Error('forbidden')
+  const [u] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, userId))
+  if (!u || u.role === parsed.data.role) return refresh()
+  // Gesperrte oder gelöschte Konten bekommen keine Rolle.
+  if (parsed.data.role !== 'member' && u.status !== 'active') throw new Error('forbidden')
+  const { role, reason } = parsed.data
+  await db
+    .insert(roleProposals)
+    .values({ userId, role, proposedBy: admin.userId, reason })
+    .onConflictDoUpdate({ target: roleProposals.userId, set: { role, proposedBy: admin.userId, reason, createdAt: new Date() } })
+  await audit(admin.userId, 'role_propose', userId, `${u.role} → ${role}: ${reason}`)
+  await notifyAdmins(m.admin.roles.proposedNotice, admin.userId)
+  refresh()
+}
+
+/** Rollenwechsel, Schritt 2: ein anderer Admin bestätigt – oder jemand (auch die vorschlagende Person) verwirft. */
+export async function decideRole(form: FormData) {
+  const parsed = z
+    .object({ token: z.string().max(400), decision: z.enum(['accept', 'reject']) })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const userId = memberFromToken(parsed.data.token)
+  if (!userId) throw new Error('invalid')
+  const admin = await assertModerator('admin')
+  const { decision } = parsed.data
+  const result = await db.transaction(async (tx) => {
+    const [p] = await tx.select().from(roleProposals).where(eq(roleProposals.userId, userId)).for('update')
+    if (!p) return null
+    await tx.delete(roleProposals).where(eq(roleProposals.userId, userId))
+    const expired = p.createdAt.getTime() < Date.now() - ROLE_PROPOSAL_DAYS * 86_400_000
+    if (decision === 'reject' || expired) return { p, applied: false, from: null }
+    // Wer vorgeschlagen hat, kann nicht selbst bestätigen – auch nicht für sich selbst als Ziel.
+    if (p.proposedBy === admin.userId || userId === admin.userId) throw new Error('forbidden')
+    const [u] = await tx.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, userId)).for('update')
+    if (!u || (p.role !== 'member' && u.status !== 'active')) return { p, applied: false, from: null }
+    await tx.update(users).set({ role: p.role }).where(eq(users.id, userId))
+    // Weniger Rechte: übernommene Fälle freigeben, damit nichts bei jemandem hängen bleibt, der nicht mehr moderiert.
+    if (p.role === 'member') await tx.delete(caseClaims).where(eq(caseClaims.userId, userId))
+    return { p, applied: true, from: u.role }
+  })
+  if (!result) return refresh()
+  const { p, applied, from } = result
+  await audit(admin.userId, applied ? 'role_accept' : 'role_reject', userId, applied ? `${from} → ${p.role}` : p.role)
+  if (applied) {
+    await notifySystem([userId], m.admin.roles.changedNotice(m.admin.account.roles[p.role]))
+    await notifyAdmins(m.admin.roles.appliedNotice(m.admin.account.roles[p.role]), admin.userId)
+  }
   refresh()
 }
 

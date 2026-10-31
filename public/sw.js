@@ -1,5 +1,5 @@
 /* Lichtung Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
-const CACHE = 'lichtung-v1'
+const CACHE = 'lichtung-v2'
 const OFFLINE = ['/offline', '/hilfe']
 
 self.addEventListener('install', (event) => {

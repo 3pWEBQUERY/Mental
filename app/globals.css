@@ -669,3 +669,24 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 :root[data-motion='off'] * { animation: none !important; transition: none !important; }
 /* «Reduziert»: keine Bewegung (Einblenden, Hochrutschen), Farb- und Zustandswechsel bleiben, nur sofort. */
 :root[data-motion='reduced'] * { animation: none !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+
+/* Einführung beim ersten Besuch */
+.onboarding .onboarding-title { font-family: var(--serif); font-weight: 400; font-size: calc(30px * var(--fz)); line-height: 1.12; text-transform: none; letter-spacing: -0.01em; color: var(--ink); animation: ground-in 0.6s cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+
+/* Notfallplan drucken: nur der Plan, schwarz auf weiss, mit den Nummern darunter */
+.plan-print-head, .plan-print-note { display: none; }
+@media print {
+  html.print-plan, html.print-plan body { background: #fff !important; }
+  html.print-plan body * { visibility: hidden; }
+  html.print-plan .plan-print, html.print-plan .plan-print * { visibility: visible; color: #000 !important; }
+  html.print-plan .plan-print { position: absolute; top: 0; left: 0; width: 100%; }
+  html.print-plan .plan-print-head { display: block; font-family: var(--serif); font-size: 30px; margin-bottom: 18px; }
+  html.print-plan .plan-print-note { display: block; margin-top: 24px; padding-top: 12px; border-top: 1px solid #999; }
+  html.print-plan .plan-view li { break-inside: avoid; }
+}
+
+/* Transparenzbericht */
+.transparency-quarter { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); }
+.transparency-quarter h3 { margin-top: 18px; }
+.transparency-quarter .facts { margin: 10px 0 6px; }
+.transparency-quarter .facts > div { min-width: 180px; flex: 1 1 200px; }

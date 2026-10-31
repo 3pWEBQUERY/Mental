@@ -127,6 +127,13 @@
       "when": 1793464632532,
       "tag": "0017_audit_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793465625054,
+      "tag": "0018_listener_and_roles",
+      "breakpoints": true
     }
   ]
 }

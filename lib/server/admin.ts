@@ -35,6 +35,9 @@ export async function requireModerator(level: ModLevel = 'peer'): Promise<Viewer
   return v
 }
 
+/** Rollen-Vorschlag (Vier-Augen-Prinzip) gilt eine Woche – danach muss neu vorgeschlagen werden. */
+export const ROLE_PROPOSAL_DAYS = 7
+
 /** Für Server Actions: wirft statt umzuleiten. */
 export async function assertModerator(level: ModLevel): Promise<Viewer> {
   const v = await getViewer()

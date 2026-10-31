@@ -38,7 +38,7 @@ async function Data() {
       data={{
         displayName: v.displayName,
         defaultVisibility: v.defaultVisibility,
-        settings: { theme: v.settings.theme, fontSize: v.settings.fontSize, motion: v.settings.motion, breathSound: v.settings.breathSound, hidePresence: v.settings.hidePresence, collapseWarnings: v.settings.collapseWarnings, discreet: v.settings.discreet },
+        settings: { theme: v.settings.theme, fontSize: v.settings.fontSize, motion: v.settings.motion, breathSound: v.settings.breathSound, hidePresence: v.settings.hidePresence, collapseWarnings: v.settings.collapseWarnings, discreet: v.settings.discreet, listener: v.settings.listener },
         circles: circleRows.map((c) => ({ slug: c.slug, name: c.name, color: c.color, state: prefs.find((p) => p.circleId === c.id)?.state ?? null })),
         sessions,
         blocked,

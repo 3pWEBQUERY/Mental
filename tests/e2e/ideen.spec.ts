@@ -153,3 +153,62 @@ test('Stimmung per Pfeiltasten: ein Check-in statt vier, Fokus bleibt bei 5-4-3-
   await page.getByRole('button', { name: 'Zurück zum Atmen' }).click()
   await expect(sw.getByRole('radio', { name: 'Atmen' })).toBeFocused()
 })
+
+test('Einführung beim ersten Besuch: drei Karten, erscheint danach nicht wieder', async ({ page }) => {
+  await register(page, 'Testperson', { keepOnboarding: true })
+  const dlg = page.getByRole('dialog', { name: 'Willkommen' })
+  await expect(dlg).toBeVisible()
+  await expect(dlg).toContainText('1 von 3')
+  await expect(dlg.getByRole('button', { name: 'Weiter' })).toBeFocused()
+  await dlg.getByRole('button', { name: 'Weiter' }).click()
+  await expect(dlg).toContainText('Zuhören reicht oft.')
+  await dlg.getByRole('button', { name: 'Weiter' }).click()
+  await expect(dlg).toContainText('143')
+  await expect(dlg.getByRole('button', { name: 'Überspringen' })).toHaveCount(0)
+  const saved = page.waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined)
+  await dlg.getByRole('button', { name: 'Los geht’s' }).click()
+  await expect(dlg).toBeHidden()
+  await saved
+  await page.reload()
+  await page.waitForTimeout(1200)
+  await expect(page.getByRole('dialog', { name: 'Willkommen' })).toBeHidden()
+})
+
+test('Notfallplan: nur den Plan drucken, Offline-Kopie auf /offline, beim Abmelden gelöscht', async ({ page }) => {
+  await register(page)
+  await page.goto('/ich?tab=fuermich')
+  await page.getByLabel(/Woran ich merke/).fill('Ich ziehe mich zurück.')
+  await page.getByLabel(/Wen ich um Hilfe bitten kann/).fill('Mia 079 000 00 00')
+  await page.getByRole('button', { name: 'Speichern' }).click()
+  await expect(page.locator('.plan-print')).toContainText('Mia 079 000 00 00')
+
+  // Drucken markiert die Seite, damit @media print nur den Plan zeigt.
+  await page.evaluate(() => {
+    window.print = () => {
+      ;(window as unknown as { printed: boolean }).printed = document.documentElement.classList.contains('print-plan')
+    }
+  })
+  await page.getByRole('button', { name: 'Drucken' }).click()
+  expect(await page.evaluate(() => (window as unknown as { printed: boolean }).printed)).toBe(true)
+  await page.emulateMedia({ media: 'print' })
+  await page.evaluate(() => document.documentElement.classList.add('print-plan'))
+  await expect(page.locator('.plan-print-note')).toBeVisible()
+  await expect(page.locator('nav.rail')).toBeHidden()
+  await page.evaluate(() => document.documentElement.classList.remove('print-plan'))
+  await page.emulateMedia({ media: 'screen' })
+
+  // Offline-Kopie einschalten → /offline zeigt den Plan (ohne Next.js-JavaScript, per Inline-Skript).
+  await page.getByLabel(/Auch ohne Internet/).check()
+  await expect(page.getByText('auch offline auf diesem Gerät')).toBeVisible()
+  await page.goto('/offline')
+  await expect(page.locator('#offline-plan')).toBeVisible()
+  await expect(page.locator('#offline-plan')).toContainText('Mia 079 000 00 00')
+  await expect(page.locator('#offline-plan')).toContainText('Wen ich um Hilfe bitten kann')
+
+  // Abmelden löscht die Kopie.
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+  await page.goto('/offline')
+  await expect(page.locator('#offline-plan')).toBeHidden()
+})

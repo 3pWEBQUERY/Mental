@@ -1,6 +1,6 @@
 'use server'
 
-import { and, count, desc, eq } from 'drizzle-orm'
+import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import { journalEntries, letters, profiles, safetyPlans, type SafetyPlan } from '@/db/schema'
@@ -25,10 +25,12 @@ export async function setupJournal(input: { salt: string; check: { iv: string; c
   if (!v) return false
   const parsed = z.object({ salt: b64, check: z.object({ iv: b64, ciphertext: b64, salt: b64 }) }).safeParse(input)
   if (!parsed.success || v.settings.journalSalt) return false
+  // jsonb || statt ganzes Objekt: Eine gleichzeitige Änderung der Einstellungen darf Salz und Prüfwert nicht verlieren.
+  // Nur setzen, wenn noch keins da ist (auch bei zwei gleichzeitigen Anfragen).
   await db
     .update(profiles)
-    .set({ settings: { ...v.settings, journalSalt: parsed.data.salt, journalCheck: parsed.data.check } })
-    .where(eq(profiles.userId, v.userId))
+    .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ journalSalt: parsed.data.salt, journalCheck: parsed.data.check })}::jsonb` })
+    .where(and(eq(profiles.userId, v.userId), sql`NOT (${profiles.settings} ? 'journalSalt')`))
   return true
 }
 

@@ -34,6 +34,8 @@ Moderationsrolle vergeben – lokal über die Kommandozeile, auf Railway über d
 npm run admin:grant -- <benutzername> admin
 ```
 
+Danach im Moderationsbereich: Auf der Kontoseite schlägt ein Admin eine neue Rolle vor, ein **zweiter** Admin bestätigt (Vier-Augen-Prinzip, Vorschlag verfällt nach 7 Tagen, alles im Audit-Log). Die Kommandozeile bleibt für den ersten Admin und für Notfälle.
+
 Der Moderationsbereich `/admin` verlangt eine Sitzung, die per Passkey begonnen hat. Lokal hebt `ADMIN_ALLOW_PASSWORD=1` das auf; in Produktion wirkt das nie.
 
 ## Tests
@@ -77,6 +79,14 @@ Notfallplan, Briefe an sich selbst und Check-in-Notizen werden mit AES-256-GCM v
 ### Aufbewahrung (Job `apply-retention`, täglich)
 
 Benachrichtigungen 30 Tage · erledigte Meldungen nach 12 Monaten ohne Notiz und ohne meldende Person · Zeilen gelöschter Gedanken nach 30 Tagen ganz weg · Audit-Log der Moderation 24 Monate (der Datenbank-Trigger erlaubt nur dieses Löschen) · Lösch-Journal 60 Tage · IP-Hashes und Rate-Limits 24 Stunden.
+
+### «Zuhören, wenn es still bleibt» (Job `nudge-listeners`, alle 30 Minuten)
+
+Wer das in den Einstellungen einschaltet, bekommt in der Glocke (nie als Push, nie mit dem Text) einen Hinweis auf einen Gedanken, der seit 6 Stunden ohne Antwort ist. Pro Gedanke höchstens drei Personen und nur einmal, pro Person höchstens ein Hinweis am Tag. Blockierungen in beide Richtungen, ausgeblendete Gedanken und stummgeschaltete Kreise werden beachtet.
+
+### Transparenz
+
+`/transparenz` zeigt öffentlich Zahlen der letzten zwei abgeschlossenen Quartale (Austausch, Meldungen, Massnahmen, Einsprüche, Median bei akuten Krisenhinweisen). Werte von 1 bis 9 erscheinen nur als «weniger als 10». Die Seite ist vorgerendert und wird stündlich neu berechnet.
 
 ### CI
 

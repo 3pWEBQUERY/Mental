@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { caseClaims, posts, replies, reports } from '@/db/schema'
+import { caseClaims, posts, replies, reports, roleProposals } from '@/db/schema'
 import { canModerate, memberToken, requireModerator } from '@/lib/server/admin'
 import { memberRef } from '@/lib/server/crypto'
 import { formatDate, relativeTime } from '@/lib/time'
@@ -70,7 +70,30 @@ export default async function QueuePage() {
         .orderBy(asc(reports.createdAt))
         .limit(50)
     : []
+  // Offene Rollen-Vorschläge – nur für Admins, damit der zweite Blick nicht vergessen geht.
+  const proposals = canModerate(mod, 'admin') ? await db.select().from(roleProposals).orderBy(asc(roleProposals.createdAt)).limit(20) : []
   const now = Date.now()
+
+  const proposalList = proposals.length > 0 && (
+    <section className="stack" style={{ gap: 0, marginBottom: 28 }} aria-labelledby="proposals-title">
+      <h2 id="proposals-title" className="section-title">
+        {m.admin.roles.openTitle}
+      </h2>
+      <ul>
+        {proposals.map((p) => (
+          <li key={p.userId} className="queue-item">
+            <div className="top">
+              <Link className="member-link" href={`/admin/konto/${encodeURIComponent(memberToken(p.userId))}`}>
+                {m.admin.member} {memberRef(p.userId)}
+              </Link>
+              <span>→ {m.admin.account.roles[p.role]}</span>
+              <span>{relativeTime(p.createdAt)}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
 
   const appealList = appeals.length > 0 && (
     <section className="stack" style={{ gap: 0, marginBottom: 28 }} aria-label={m.admin.appeals}>
@@ -108,13 +131,16 @@ export default async function QueuePage() {
     return (
       <>
         {title}
-        {appealList}
+        {proposalList}
+        {proposalList}
+      {appealList}
         <p className="notice">{m.admin.queueEmpty}</p>
       </>
     )
   return (
     <>
       {title}
+      {proposalList}
       {appealList}
       <ul>
         <datalist id="mod-templates">

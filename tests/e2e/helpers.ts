@@ -7,7 +7,7 @@ export function uniqueName(prefix = 'e2e') {
 }
 
 /** Durchläuft die komplette Registrierung und landet in der Lichtung. Gibt Benutzername und Schlüssel zurück. */
-export async function register(page: Page, displayName = 'Testperson') {
+export async function register(page: Page, displayName = 'Testperson', opts: { keepOnboarding?: boolean } = {}) {
   const username = uniqueName()
   await page.goto('/registrieren')
   await page.getByRole('button', { name: 'Weiter' }).click()
@@ -34,7 +34,18 @@ export async function register(page: Page, displayName = 'Testperson') {
   await page.getByLabel('Anzeigename').fill(displayName)
   await page.getByRole('button', { name: 'In die Lichtung' }).click()
   await page.waitForURL('**/lichtung')
+  if (!opts.keepOnboarding) await skipOnboarding(page)
   return { username, words }
+}
+
+/** Die Einführung beim ersten Besuch überspringen – und warten, bis der Server sich das gemerkt hat. */
+export async function skipOnboarding(page: Page) {
+  const dialog = page.getByRole('dialog', { name: 'Willkommen' })
+  await expect(dialog).toBeVisible({ timeout: 10_000 })
+  const saved = page.waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined)
+  await dialog.getByRole('button', { name: 'Überspringen' }).click()
+  await expect(dialog).toBeHidden()
+  await saved
 }
 
 export async function login(page: Page, username: string, password = PASSWORD) {

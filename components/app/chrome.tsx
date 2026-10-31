@@ -22,6 +22,7 @@ import { Rail } from './rail'
 import { ServiceWorkerRegister } from './sw-register'
 import { attempt } from '@/lib/client/attempt'
 import { AppealInline } from './appeal'
+import { Onboarding } from './onboarding'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -102,6 +103,7 @@ export function AppChrome({
 
       <Composer />
       <Grounding />
+      <Onboarding />
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} title={m.help.title}>
         <div className="help">

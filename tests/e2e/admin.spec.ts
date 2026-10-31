@@ -41,7 +41,7 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
 })
 
 /** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
-async function moderator(browser: import('@playwright/test').Browser) {
+async function moderator(browser: import('@playwright/test').Browser, role: 'mod' | 'admin' = 'mod') {
   const ctx = await browser.newContext()
   const page = await ctx.newPage()
   const cdp = await ctx.newCDPSession(page)
@@ -53,7 +53,7 @@ async function moderator(browser: import('@playwright/test').Browser) {
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
   await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
-  execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
+  execSync(`npm run admin:grant -- ${username} ${role}`, { stdio: 'ignore' })
   await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
   await page.waitForURL('**/anmelden')
   await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
@@ -152,4 +152,52 @@ test('Anzeigename: keine Telefonnummer, kein vorgetäuschtes Team', async ({ pag
   await name.fill('Lichtung Team')
   await page.getByRole('button', { name: 'Speichern' }).first().click()
   await expect(page.getByText(/für das Team reserviert/)).toBeVisible()
+})
+
+test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zweiter Admin bestätigt', async ({ browser }) => {
+  test.slow()
+  const first = await moderator(browser, 'admin')
+  const second = await moderator(browser, 'admin')
+  const user = await (await browser.newContext()).newPage()
+  await register(user)
+  const body = `Rollen-Test ${Date.now()}`
+  await share(user, body)
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const { rows } = await pool.query(`SELECT id FROM posts WHERE body = $1`, [body])
+    await pool.query(`INSERT INTO reports (id, target_type, target_id, reason, priority, reporter_id) VALUES (gen_random_uuid(), 'post', $1, 'other', 2, NULL)`, [rows[0].id])
+  } finally {
+    await pool.end()
+  }
+
+  // Erster Admin schlägt «Moderation» vor – die Rolle gilt noch nicht, Bestätigen kann er nicht selbst.
+  await first.goto('/admin')
+  await first.locator('.queue-item', { hasText: body }).getByRole('link', { name: /Mitglied/ }).click()
+  await expect(first.getByRole('heading', { name: 'Rolle ändern' })).toBeVisible()
+  await first.getByLabel('Neue Rolle').selectOption('mod')
+  await first.getByLabel('Begründung (für das Audit-Log)').fill('Hilft seit Wochen verlässlich')
+  await first.getByRole('button', { name: 'Vorschlagen' }).click()
+  await expect(first.getByText(/Vorgeschlagen: Moderation/)).toBeVisible()
+  await expect(first.getByRole('button', { name: 'Bestätigen' })).toHaveCount(0)
+  await expect(first.getByRole('button', { name: 'Zurückziehen' })).toBeVisible()
+  await expect(first.locator('.facts')).toContainText('Mitglied')
+  await expect(first.locator('table')).toContainText('role_propose')
+
+  // Zweiter Admin: Glocke, offene Vorschläge in der Warteschlange, bestätigen.
+  await second.reload()
+  await second.getByRole('button', { name: /Benachrichtigungen/ }).click()
+  await expect(second.getByRole('dialog')).toContainText('Rollenwechsel wurde vorgeschlagen')
+  await second.keyboard.press('Escape')
+  await second.goto('/admin')
+  const open = second.getByRole('region', { name: 'Offene Rollen-Vorschläge' })
+  await expect(open).toContainText('Moderation')
+  await open.getByRole('link', { name: /Mitglied/ }).click()
+  await second.getByRole('button', { name: 'Bestätigen' }).click()
+  await expect(second.locator('.facts')).toContainText('Moderation')
+  await expect(second.locator('table')).toContainText('role_accept')
+  await expect(second.getByRole('button', { name: 'Vorschlagen' })).toBeVisible()
+
+  await user.reload()
+  await user.getByRole('button', { name: /Benachrichtigungen/ }).click()
+  await expect(user.getByRole('dialog')).toContainText('Deine Rolle in Lichtung ist jetzt: Moderation')
 })

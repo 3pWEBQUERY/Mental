@@ -3,8 +3,9 @@ import { pool } from '../../db'
 import { purgeDueAccounts } from '../../worker/jobs/account'
 import { expirePosts } from '../../worker/jobs/posts'
 import { applyRetention } from '../../worker/jobs/retention'
+import { nudgeListeners } from '../../worker/jobs/listeners'
 
-const jobs: Record<string, () => Promise<void>> = { expirePosts, purgeDueAccounts, applyRetention }
+const jobs: Record<string, () => Promise<void>> = { expirePosts, purgeDueAccounts, applyRetention, nudgeListeners }
 const name = process.argv[2]!
 const job = jobs[name]
 if (!job) throw new Error(`unbekannter Job ${name}`)

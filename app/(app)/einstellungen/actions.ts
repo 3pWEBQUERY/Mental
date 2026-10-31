@@ -58,6 +58,7 @@ const settingsSchema = z
     hidePresence: z.boolean(),
     collapseWarnings: z.boolean(),
     discreet: z.boolean(),
+    listener: z.boolean(),
   })
   .partial()
 
@@ -65,7 +66,19 @@ export async function updateSettings(patch: Partial<Settings>): Promise<R> {
   const v = await viewer()
   const parsed = settingsSchema.safeParse(patch)
   if (!parsed.success) return fail(m.common.error)
-  await db.update(profiles).set({ settings: { ...v.settings, ...parsed.data } }).where(eq(profiles.userId, v.userId))
+  // Zusammenführen in der Datenbank (jsonb ||) statt das ganze Objekt vom Anfang der Anfrage zurückzuschreiben –
+  // zwei gleichzeitige Änderungen überschreiben sich sonst gegenseitig (im schlimmsten Fall der Tagebuch-Schlüssel).
+  await db
+    .update(profiles)
+    .set({ settings: sql`${profiles.settings} || ${JSON.stringify(parsed.data)}::jsonb` })
+    .where(eq(profiles.userId, v.userId))
+  return { ok: true }
+}
+
+/** Einführung gesehen (oder übersprungen) – erscheint nicht wieder. */
+export async function finishOnboarding(): Promise<R> {
+  const v = await viewer()
+  await db.update(profiles).set({ settings: sql`${profiles.settings} - 'onboard'` }).where(eq(profiles.userId, v.userId))
   return { ok: true }
 }
 

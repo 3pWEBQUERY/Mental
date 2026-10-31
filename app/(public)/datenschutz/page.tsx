@@ -31,6 +31,14 @@ export default function PrivacyPage() {
             Konto gelöscht.
             {atRestEnabled() && ' Sie liegen – wie deine Check-in-Notizen – verschlüsselt in der Datenbank; der Schlüssel liegt getrennt davon.'}
           </li>
+          <li>
+            Wenn du die Offline-Kopie deines Notfallplans einschaltest, liegt sie zusätzlich im Speicher deines Browsers auf diesem Gerät – bis du dich abmeldest
+            oder Lichtung schnell ausblendest.
+          </li>
+          <li>
+            Wenn du «Zuhören, wenn es still bleibt» einschaltest, merken wir uns, wann wir dich zuletzt auf einen wartenden Gedanken hingewiesen haben (höchstens
+            einmal am Tag). Wer gefragt wurde, sieht niemand sonst.
+          </li>
           <li>Gedanken, die du «loslassen» willst, löschen wir zum gewählten Zeitpunkt endgültig – samt Antworten.</li>
           <li>Sitzungen mit Gerätetyp und Datum, ohne IP-Adresse.</li>
           <li>IP-Adressen nur gesalzen gehasht für den Schutz vor Missbrauch. Nach 24 Stunden werden sie gelöscht.</li>
