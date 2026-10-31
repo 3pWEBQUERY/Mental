@@ -28,6 +28,7 @@ export const de = {
   },
   nav: {
     label: 'Hauptnavigation',
+    side: 'Seitenleiste',
     skip: 'Zum Inhalt',
     feed: 'Lichtung',
     share: 'Gedanken teilen',
@@ -425,6 +426,7 @@ export const de = {
     quietFrom: 'von',
     quietTo: 'bis',
     theme: 'Farbschema',
+    language: 'Sprache',
     themes: { light: 'Hell', dark: 'Dunkel', system: 'System' },
     toggleTheme: 'Hell oder dunkel',
     toDark: 'Dunkles Farbschema',
@@ -549,6 +551,7 @@ export const de = {
     tooMany: 'Von hier wurden heute schon mehrere Konten erstellt. Versuch es morgen wieder.',
   },
   landing: {
+    heroArt: 'Menschen sitzen um ein warmes Feuer; ab und zu wandert ein Funke Zuspruch von einer Person zur nächsten',
     eyebrow: 'Anonym · ruhig · ohne Zahlen',
     title: 'Ein Ort, an dem',
     titleEm: 'niemand bewertet',
@@ -732,6 +735,11 @@ export const de = {
     errorEm: 'schiefgegangen.',
     errorBody: 'Das liegt an uns, nicht an dir. Versuch es gleich noch einmal. Wenn es gerade zu viel ist: Die Nummern unten erreichst du immer.',
     retry: 'Noch einmal versuchen',
+  },
+  push: {
+    reply: 'Jemand hat dir geantwortet',
+    acuteTitle: 'Lichtung · Moderation',
+    acuteBody: 'Ein akuter Hinweis wartet.',
   },
   listener: {
     nudge: 'Ein Gedanke wartet seit einigen Stunden auf eine Antwort. Wenn du gerade Kraft hast: Magst du zuhören?',

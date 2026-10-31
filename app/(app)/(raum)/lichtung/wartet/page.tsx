@@ -6,7 +6,10 @@ import { getFeed } from '@/lib/server/posts'
 import { requireViewer } from '@/lib/server/session'
 import { m } from '@/messages'
 
-export const metadata: Metadata = { title: m.waiting.title }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.waiting.title }
+}
 
 /** «Ein Gedanke wartet»: für Menschen, die Zuspruch schenken möchten – immer genau ein Gedanke. */
 export default function WaitingPage() {

@@ -22,6 +22,11 @@ export default async function CirclesAdmin() {
           </div>
           <textarea className="input" name="description" defaultValue={c?.description} placeholder="Beschreibung" aria-label="Beschreibung" style={{ minHeight: 70 }} required />
           <textarea className="input" name="rules" defaultValue={c?.rules} placeholder="Hausregeln im Kreis" aria-label="Hausregeln" style={{ minHeight: 70 }} required />
+          <div lang="fr" className="stack" style={{ gap: 8 }}>
+            <input className="input" name="nameFr" defaultValue={c?.i18n.fr?.name} placeholder="Nom (français)" aria-label="Name auf Französisch" maxLength={40} />
+            <textarea className="input" name="descriptionFr" defaultValue={c?.i18n.fr?.description} placeholder="Description (français)" aria-label="Beschreibung auf Französisch" style={{ minHeight: 60 }} maxLength={400} />
+            <textarea className="input" name="rulesFr" defaultValue={c?.i18n.fr?.rules} placeholder="Règles du cercle (français)" aria-label="Hausregeln auf Französisch" style={{ minHeight: 60 }} maxLength={400} />
+          </div>
           <div className="row-actions">
             <label className="switch">
               <input type="checkbox" name="isActive" defaultChecked={c?.isActive ?? true} />

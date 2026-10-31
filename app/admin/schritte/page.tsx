@@ -15,6 +15,7 @@ export default async function StepsAdmin() {
         <form key={s?.id ?? 'new'} action={saveStep} className="card inline-form">
           <input type="hidden" name="id" value={s?.id ?? ''} />
           <input className="input" name="text" defaultValue={s?.text} placeholder="Ein konkreter, machbarer Vorschlag" aria-label="Text" required style={{ flex: 3 }} />
+          <input className="input" lang="fr" name="textFr" defaultValue={s?.i18n.fr?.text} placeholder="En français" aria-label="Text auf Französisch" maxLength={200} style={{ flex: 3 }} />
           <select className="input" name="circleId" defaultValue={s?.circleId ?? ''} aria-label="Kreis">
             <option value="">Alle Kreise</option>
             {circleRows.map((c) => (

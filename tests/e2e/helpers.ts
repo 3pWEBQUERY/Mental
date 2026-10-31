@@ -59,9 +59,9 @@ export async function login(page: Page, username: string, password = PASSWORD) {
  * Teilen-Dialog öffnen. Direkt nach einem Seitenwechsel kann der Klick vor der Hydrierung landen und verpufft –
  * dann erneut, bis das Textfeld da ist.
  */
-export async function openComposer(page: Page) {
+export async function openComposer(page: Page, prompt: string | RegExp = 'Was trägst du heute mit dir?') {
   await expect(async () => {
-    await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+    await page.getByRole('button', { name: prompt }).click()
     await expect(page.locator('#composer-text')).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 30_000 })
 }

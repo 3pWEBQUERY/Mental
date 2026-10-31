@@ -1,8 +1,9 @@
 import { inArray, sql } from 'drizzle-orm'
 import { db } from '../../db'
 import { notifications, profiles } from '../../db/schema'
-import { m } from '../../messages'
 import { safeMessage } from '../../lib/log-safe'
+import { localesOf } from '../../lib/recipient-locale'
+import { getMessages } from '../../messages'
 
 /** Gleicher Kanal wie lib/server/notify.ts – weckt offene Glocken über alle Replikas. */
 const NOTIFY_CHANNEL = 'lichtung_notify'
@@ -50,9 +51,10 @@ export async function nudgeListeners() {
         if (!listeners.length) return 0
         const ids = listeners.map((l) => l.user_id)
         await tx.update(profiles).set({ listenerNudgedAt: new Date() }).where(inArray(profiles.userId, ids))
-        await tx
-          .insert(notifications)
-          .values(ids.map((userId) => ({ userId, kind: 'system' as const, postId: post.id, payload: { message: m.listener.nudge } })))
+        const locales = await localesOf(ids)
+        await tx.insert(notifications).values(
+          ids.map((userId) => ({ userId, kind: 'system' as const, postId: post.id, payload: { message: getMessages(locales.get(userId)).listener.nudge } })),
+        )
         // pg_notify in der Transaktion wird erst beim Commit zugestellt – die Glocke sieht dann schon die Zeile.
         for (const id of ids) await tx.execute(sql`SELECT pg_notify(${NOTIFY_CHANNEL}, ${id})`)
         return ids.length

@@ -6,10 +6,31 @@ const SESSION_COOKIE = 'lichtung_session'
 const PROTECTED = ['/lichtung', '/ich', '/einstellungen', '/admin']
 const AUTH_ONLY = ['/anmelden', '/registrieren']
 /** Vollständig vorgerenderte Seiten ohne Nutzerinhalte – hier kann es keine Nonce geben. */
-const STATIC_PAGES = ['/', '/hilfe', '/regeln', '/datenschutz', '/impressum', '/offline', '/transparenz', '/aide']
+const STATIC_PAGES = ['/hilfe', '/datenschutz', '/impressum', '/offline', '/aide']
 /** Alle Seiten-Routen der App. Was hier nicht drin ist, endet auf der vorgerenderten 404-Seite. */
-const APP_ROUTES = [...STATIC_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen']
+const APP_ROUTES = ['/', '/regeln', '/transparenz', ...STATIC_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen', '/sprache']
 const isAppRoute = (p: string) => APP_ROUTES.some((r) => p === r || (r !== '/' && p.startsWith(`${r}/`)))
+/** Gleich wie LOCALE_COOKIE in messages/index.ts – hier ohne Import, damit die Wörterbücher nicht im Proxy landen. */
+const LOCALE_COOKIE = 'lichtung_lang'
+
+/** Erste Wahl aus Accept-Language: Französisch, wenn es vor Deutsch steht, sonst Deutsch. */
+export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' {
+  const langs = (acceptLanguage ?? '')
+    .split(',')
+    .map((part) => {
+      const [tag, ...params] = part.trim().toLowerCase().split(';')
+      const q = Number(params.find((p) => p.trim().startsWith('q='))?.split('=')[1] ?? 1)
+      return { tag: tag ?? '', q: Number.isFinite(q) ? q : 0 }
+    })
+    .filter((l) => l.tag)
+    .sort((a, b) => b.q - a.q)
+  for (const l of langs) {
+    if (l.tag.startsWith('fr')) return 'fr'
+    if (l.tag.startsWith('de')) return 'de'
+  }
+  return 'de'
+}
+
 const PREFS_HASH = `'sha256-${createHash('sha256').update(PREFS_SCRIPT).digest('base64')}'`
 
 /**
@@ -66,9 +87,17 @@ export function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
+  // Erster Besuch ohne gewählte Sprache: aus dem Browser übernehmen – schon für diese Anfrage (Cookie-Header)
+  // und dauerhaft (Antwort-Cookie). Gewechselt wird über /sprache oder die Einstellungen.
+  const detected = isPage && !request.cookies.has(LOCALE_COOKIE) ? pickLocale(request.headers.get('accept-language')) : null
+  if (detected) {
+    const cookie = request.headers.get('cookie')
+    requestHeaders.set('cookie', `${cookie ? `${cookie}; ` : ''}${LOCALE_COOKIE}=${detected}`)
+  }
   requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.set('Content-Security-Policy', csp)
+  if (detected) response.cookies.set(LOCALE_COOKIE, detected, { path: '/', sameSite: 'lax', maxAge: 365 * 24 * 60 * 60, secure: process.env.NODE_ENV === 'production' })
 
   // Gleitende Sitzung: das Cookie lebt 30 Tage ab dem letzten Besuch.
   // Nur bei Seitenaufrufen: Ein Set-Cookie in der Antwort einer Server Action lässt Next.js die ganze Route neu rendern.

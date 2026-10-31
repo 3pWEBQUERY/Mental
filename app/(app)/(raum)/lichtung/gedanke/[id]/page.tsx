@@ -8,7 +8,10 @@ import { requireViewer } from '@/lib/server/session'
 import { m } from '@/messages'
 
 // Neutraler Titel – nie der Inhalt des Gedankens im Browser-Tab oder Verlauf.
-export const metadata: Metadata = { title: m.feed.single }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.feed.single }
+}
 
 export default function PostPage({ params }: { params: Promise<{ id: string }> }) {
   return (

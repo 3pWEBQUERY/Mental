@@ -1,5 +1,6 @@
 'use client'
 
+import { m } from '@/messages'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { glyphPath } from '@/lib/glyph'
@@ -41,7 +42,7 @@ export function HeroArt() {
     <div
       className="landing-art"
       role="img"
-      aria-label="Menschen sitzen um ein warmes Feuer; ab und zu wandert ein Funke Zuspruch von einer Person zur nächsten"
+      aria-label={m.landing.heroArt}
     >
       {webgl ? <Gathering onUnavailable={() => setWebgl(false)} /> : <Still />}
     </div>

@@ -2,7 +2,7 @@ import 'server-only'
 import { cacheLife, cacheTag } from 'next/cache'
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { circles, crisisTerms, helpResources } from '@/db/schema'
+import { circles, crisisTerms, helpResources, type CircleI18n } from '@/db/schema'
 import { ALL_DEFAULT_CRISIS_TERMS, type CrisisTerm } from '../crisis'
 import { defaultHelp, type HelpLanguage, type HelpResource } from '../help'
 
@@ -46,7 +46,8 @@ export async function getHelpResources(language: HelpLanguage = 'de'): Promise<H
   }
 }
 
-export type CircleInfo = { id: string; slug: string; name: string; description: string; rules: string; color: string }
+/** Mit allen Übersetzungen – der Cache ist für alle Sprachen derselbe; übersetzt wird beim Ausliefern (localizeCircle). */
+export type CircleInfo = { id: string; slug: string; name: string; description: string; rules: string; color: string; i18n: CircleI18n }
 
 export async function getCircles(): Promise<CircleInfo[]> {
   'use cache'
@@ -55,7 +56,7 @@ export async function getCircles(): Promise<CircleInfo[]> {
   const rows = await db.select().from(circles).orderBy(asc(circles.sort))
   return rows
     .filter((c) => c.isActive)
-    .map(({ id, slug, name, description, rules, color }) => ({ id, slug, name, description, rules, color }))
+    .map(({ id, slug, name, description, rules, color, i18n }) => ({ id, slug, name, description, rules, color, i18n }))
 }
 
 /**
@@ -70,7 +71,7 @@ export async function getCirclesForStaticPage(): Promise<CircleInfo[]> {
     const rows = await db.select().from(circles).orderBy(asc(circles.sort))
     return rows
       .filter((c) => c.isActive)
-      .map(({ id, slug, name, description, rules, color }) => ({ id, slug, name, description, rules, color }))
+      .map(({ id, slug, name, description, rules, color, i18n }) => ({ id, slug, name, description, rules, color, i18n }))
   } catch {
     return []
   }

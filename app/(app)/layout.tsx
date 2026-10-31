@@ -7,6 +7,8 @@ import { db } from '@/db'
 import { checkins, circlePrefs, circles as circlesTable } from '@/db/schema'
 import { requireViewer } from '@/lib/server/session'
 import { nightStaffed } from '@/lib/moderation-hours'
+import { currentLocale } from '@/messages'
+import { localizeCircle } from '@/lib/localize'
 import { getCircles, getCrisisTerms, getHelpResources } from '@/lib/server/terms'
 import { presenceCounts, unreadState } from './actions'
 
@@ -20,7 +22,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     db.select({ mood: checkins.mood }).from(checkins).where(eq(checkins.userId, v.userId)).orderBy(desc(checkins.createdAt)).limit(1),
     getCircles(),
     getCrisisTerms(),
-    getHelpResources(),
+    getHelpResources(currentLocale()),
     unreadState(),
     presenceCounts(),
     db
@@ -47,7 +49,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     breathSound: s.breathSound ?? false,
     collapseWarnings: s.collapseWarnings ?? true,
     hidePresence: s.hidePresence ?? false,
-    circles,
+    circles: circles.map((c) => localizeCircle(c)),
     following: follows.map((f) => f.slug),
     crisisTerms,
     help,

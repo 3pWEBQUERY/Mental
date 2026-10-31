@@ -71,7 +71,7 @@ export async function finishPasskeyRegistration(response: RegistrationResponseJS
   const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, viewer.userId))
   // Bei der Registrierung (frische Sitzung, normales Konto) keine Meldung – sonst immer.
   const sessionFresh = c.ok && c.fresh
-  if (!sessionFresh || u?.role !== 'member') await notifySystem([viewer.userId], m.security.passkeyAdded)
-  if (u && u.role !== 'member') await notifyAdmins(m.security.staffPasskeyAdded(memberRef(viewer.userId), u.role), viewer.userId)
+  if (!sessionFresh || u?.role !== 'member') await notifySystem([viewer.userId], (t) => t.security.passkeyAdded)
+  if (u && u.role !== 'member') await notifyAdmins((t) => t.security.staffPasskeyAdded(memberRef(viewer.userId), u.role), viewer.userId)
   return true
 }

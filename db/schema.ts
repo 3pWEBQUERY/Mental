@@ -120,6 +120,8 @@ export type Settings = {
   journalSalt?: string
   journalCheck?: { iv: string; ciphertext: string; salt: string }
   proHelpHintAt?: string
+  /** Sprache der App für dieses Konto – gilt auf jedem Gerät nach der Anmeldung (Cookie lichtung_lang). */
+  locale?: 'de' | 'fr'
   /** Neues Konto: kurze Einführung beim ersten Besuch (wird danach entfernt). */
   onboard?: boolean
   /** «Zuhören, wenn es still bleibt»: Hinweis auf Gedanken, die lange ohne Antwort sind. */
@@ -141,6 +143,9 @@ export const profiles = pgTable('profiles', {
 
 /* --------------------------------------------------------------- Kreise */
 
+export type CircleI18n = { fr?: { name?: string; description?: string; rules?: string } }
+export type StepI18n = { fr?: { text?: string } }
+
 export const circles = pgTable('circles', {
   id: id(),
   slug: text('slug').notNull().unique(),
@@ -150,6 +155,8 @@ export const circles = pgTable('circles', {
   color: text('color').notNull(),
   sort: integer('sort').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  /** Übersetzungen (z. B. fr) – fehlt ein Feld, gilt das deutsche. */
+  i18n: jsonb('i18n').$type<CircleI18n>().notNull().default({}),
 })
 
 export const circlePrefs = pgTable(
@@ -350,6 +357,8 @@ export const steps = pgTable('steps', {
   circleId: uuid('circle_id').references(() => circles.id, { onDelete: 'set null' }),
   isActive: boolean('is_active').notNull().default(true),
   sort: integer('sort').notNull().default(0),
+  /** Übersetzungen (z. B. fr) – fehlt sie, gilt der deutsche Text. */
+  i18n: jsonb('i18n').$type<StepI18n>().notNull().default({}),
 })
 
 export const stepLog = pgTable(

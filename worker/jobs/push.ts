@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm'
 import webpush from 'web-push'
+import { localesOf } from '../../lib/recipient-locale'
+import { getMessages } from '../../messages'
 import { db } from '../../db'
 import { pushSubscriptions } from '../../db/schema'
 import { isPushEndpoint } from '../../lib/push-endpoint'
@@ -26,9 +28,11 @@ export async function sendPush({ userId, postId, alert }: { userId: string; post
   if (!configure()) return
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId))
   const hour = zurichHour()
+  // Neutral und in der Sprache der empfangenden Person.
+  const t = getMessages((await localesOf([userId])).get(userId))
   const payload = alert
-    ? JSON.stringify({ title: 'Lichtung · Moderation', body: 'Ein akuter Hinweis wartet.', url: '/admin', tag: 'lichtung-acute' })
-    : JSON.stringify({ title: 'Lichtung', body: 'Jemand hat dir geantwortet', url: `/lichtung/gedanke/${postId}` })
+    ? JSON.stringify({ title: t.push.acuteTitle, body: t.push.acuteBody, url: '/admin', tag: 'lichtung-acute' })
+    : JSON.stringify({ title: 'Lichtung', body: t.push.reply, url: `/lichtung/gedanke/${postId}` })
   for (const s of subs) {
     // Ältere Abos von vor der Prüfung: nur an echte Push-Dienste senden, alles andere entfernen.
     if (!isPushEndpoint(s.endpoint)) {

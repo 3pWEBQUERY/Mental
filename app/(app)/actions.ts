@@ -1,5 +1,6 @@
 'use server'
 
+import { localStepText } from '@/lib/localize'
 import { and, count, desc, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -555,7 +556,7 @@ async function pickStep(userId: string): Promise<StepView> {
     .from(circlePrefs)
     .where(and(eq(circlePrefs.userId, userId), eq(circlePrefs.state, 'mute')))
   const list = await db
-    .select({ id: steps.id, text: steps.text, circleId: steps.circleId })
+    .select({ id: steps.id, text: steps.text, i18n: steps.i18n, circleId: steps.circleId })
     .from(steps)
     .where(and(eq(steps.isActive, true), or(isNull(steps.circleId), notInArray(steps.circleId, muted))))
     .orderBy(steps.sort)
@@ -571,12 +572,12 @@ async function pickStep(userId: string): Promise<StepView> {
   const doneToday = todays.find((l) => l.action === 'done')
   if (doneToday) {
     const s = list.find((x) => x.id === doneToday.stepId)
-    if (s) return { id: s.id, text: s.text, done: true }
+    if (s) return { id: s.id, text: localStepText(s.text, s.i18n), done: true }
   }
   const skips = todays.filter((l) => l.action === 'skip').length
   const dayNo = Math.floor(Date.parse(`${today}T00:00:00Z`) / DAY)
   const s = list[(dayNo + skips) % list.length]!
-  return { id: s.id, text: s.text, done: false }
+  return { id: s.id, text: localStepText(s.text, s.i18n), done: false }
 }
 
 export async function stepAction(stepId: string, action: 'done' | 'skip'): Promise<StepView> {

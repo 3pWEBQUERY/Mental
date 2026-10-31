@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { localizeCircle } from '@/lib/localize'
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
 import { Suspense } from 'react'
@@ -15,14 +16,17 @@ import { requireViewer } from '@/lib/server/session'
 import { m } from '@/messages'
 import { currentStep, presenceCounts, touchCircle } from '../../actions'
 
-export const metadata: Metadata = { title: m.feed.title }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.feed.title }
+}
 
 type Search = Promise<{ ansicht?: string; kreis?: string }>
 
 /** ?kreis=meine – Filter auf alle Kreise, denen die Person folgt. */
 const MINE = 'meine'
 
-const VIEWS: { key: FeedView; label: string }[] = [
+const views = (): { key: FeedView; label: string }[] => [
   { key: 'all', label: m.feed.tabs.all },
   { key: 'unheard', label: m.feed.tabs.unheard },
   { key: 'brave', label: m.feed.tabs.brave },
@@ -64,7 +68,7 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
     <>
       <div className="feed-head">
         <h1>{m.feed.title}</h1>
-        <TabBar label={m.feed.tabsLabel} active={view} items={VIEWS.map((t) => ({ key: t.key, label: t.label, href: q(t.key) }))} />
+        <TabBar label={m.feed.tabsLabel} active={view} items={views().map((t) => ({ key: t.key, label: t.label, href: q(t.key) }))} />
       </div>
       <p className="manifest">
         {m.feed.manifest}
@@ -85,7 +89,8 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams
   const view: FeedView = sp.ansicht === 'unheard' || sp.ansicht === 'brave' ? sp.ansicht : 'all'
   const mine = sp.kreis === MINE
-  const [circle] = sp.kreis && !mine ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
+  const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
+  const circle = raw ? localizeCircle(raw) : undefined
   if (circle) await touchCircle(circle.slug)
   const [page, step] = await Promise.all([getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }), currentStep()])
   const params = new URLSearchParams()

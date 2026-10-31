@@ -4,7 +4,10 @@ import { RegisterFlow } from '@/components/auth/register-flow'
 import { PublicShell } from '@/components/ui'
 import { m } from '@/messages'
 
-export const metadata: Metadata = { title: m.auth.register }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.auth.register }
+}
 
 export default function Page() {
   return (

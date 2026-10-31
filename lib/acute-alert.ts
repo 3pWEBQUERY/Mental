@@ -1,7 +1,8 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { notifications, users } from '../db/schema'
-import { m } from '../messages'
+import { getMessages } from '../messages'
+import { localesOf } from './recipient-locale'
 import { enqueue, QUEUES } from './jobs'
 import { moderationAway, nightStaffed } from './moderation-hours'
 
@@ -20,8 +21,10 @@ export async function alertAcute() {
     .from(users)
     .where(and(inArray(users.role, ['mod', 'admin']), eq(users.status, 'active')))
   if (!staff.length) return
-  const message = m.admin.acuteAlert
-  await db.insert(notifications).values(staff.map((s) => ({ userId: s.id, kind: 'system' as const, postId: null, payload: { message } })))
+  const locales = await localesOf(staff.map((s) => s.id))
+  await db
+    .insert(notifications)
+    .values(staff.map((s) => ({ userId: s.id, kind: 'system' as const, postId: null, payload: { message: getMessages(locales.get(s.id)).admin.acuteAlert } })))
   const push = !moderationAway(nightStaffed())
   for (const s of staff) {
     await db.execute(sql`SELECT pg_notify(${NOTIFY_CHANNEL}, ${s.id})`)

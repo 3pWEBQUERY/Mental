@@ -31,6 +31,7 @@ export const fr: Messages = {
   },
   nav: {
     label: 'Navigation principale',
+    side: 'Barre latérale',
     skip: 'Aller au contenu',
     feed: 'Lichtung',
     share: 'Partager une pensée',
@@ -428,6 +429,7 @@ export const fr: Messages = {
     quietFrom: 'de',
     quietTo: 'à',
     theme: 'Thème',
+    language: 'Langue',
     themes: { light: 'Clair', dark: 'Sombre', system: 'Système' },
     toggleTheme: 'Clair ou sombre',
     toDark: 'Thème sombre',
@@ -552,6 +554,7 @@ export const fr: Messages = {
     tooMany: 'Plusieurs comptes ont déjà été créés depuis ici aujourd’hui. Réessaie demain.',
   },
   landing: {
+    heroArt: 'Des personnes sont assises autour d’un feu chaleureux ; de temps en temps, une étincelle de soutien passe de l’une à l’autre',
     eyebrow: 'Anonyme · calme · sans chiffres',
     title: 'Un lieu où',
     titleEm: 'personne ne juge',
@@ -735,6 +738,11 @@ export const fr: Messages = {
     errorEm: 's’est mal passé.',
     errorBody: 'C’est de notre faute, pas de la tienne. Réessaie dans un instant. Si c’est trop en ce moment : tu peux toujours joindre les numéros ci-dessous.',
     retry: 'Réessayer',
+  },
+  push: {
+    reply: 'Quelqu’un t’a répondu',
+    acuteTitle: 'Lichtung · Modération',
+    acuteBody: 'Un signalement urgent attend.',
   },
   listener: {
     nudge: 'Une pensée attend une réponse depuis quelques heures. Si tu as de la force en ce moment : aimerais-tu écouter ?',

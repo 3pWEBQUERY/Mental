@@ -4,7 +4,10 @@ import { RecoverForm } from '@/components/auth/recover-form'
 import { PublicShell } from '@/components/ui'
 import { m } from '@/messages'
 
-export const metadata: Metadata = { title: m.auth.recoverTitle }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.auth.recoverTitle }
+}
 
 export default function Page() {
   return (

@@ -27,6 +27,7 @@ const postColumns = {
   moderationNote: posts.moderationNote,
   circleSlug: circles.slug,
   circleName: circles.name,
+  circleI18n: circles.i18n,
   circleColor: circles.color,
 }
 

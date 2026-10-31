@@ -1,4 +1,4 @@
-import { m } from '@/messages'
+import { localeTag, m } from '@/messages'
 
 const MIN = 60_000
 const HOUR = 60 * MIN
@@ -35,5 +35,5 @@ export function zurichHour(d: Date = new Date()): number {
 }
 
 export function formatDate(d: Date | string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' }) {
-  return new Intl.DateTimeFormat('de-CH', { timeZone: TZ, ...opts }).format(typeof d === 'string' ? new Date(d) : d)
+  return new Intl.DateTimeFormat(localeTag(), { timeZone: TZ, ...opts }).format(typeof d === 'string' ? new Date(d) : d)
 }
