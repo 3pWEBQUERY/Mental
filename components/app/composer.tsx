@@ -259,6 +259,7 @@ export function Composer() {
             <div>
               <h3>{c.circle}</h3>
               <RadioGroup
+                fluid
                 className="opt-row"
                 itemClassName="opt"
                 label={c.circle}

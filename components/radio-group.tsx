@@ -25,7 +25,7 @@ export function RadioGroup<T extends string | number>({
   /** Gewählte Option als fliessender Three.js-Tropfen (wie die Reiter-Leisten). */
   fluid?: boolean
 }) {
-  const { host: ref, on, layers } = useBlob<HTMLDivElement>(value === null ? null : String(value), fluid)
+  const { host: ref, on, layers } = useBlob<HTMLDivElement>(value === null ? null : String(value), { enabled: fluid })
   const current = options.findIndex((o) => o.value === value)
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -41,8 +41,11 @@ export function RadioGroup<T extends string | number>({
   return (
     <div ref={ref} className={`${className ?? ''}${on ? ' blob-on' : ''}`} role="radiogroup" aria-label={label} onKeyDown={onKey}>
       {layers(
-        options.map((o) => ({ key: String(o.value), label: o.label })),
-        itemClassName,
+        options.map((o) => (
+          <span key={String(o.value)} className={`${itemClassName ?? ''} blob-copy`}>
+            {o.label}
+          </span>
+        )),
       )}
       {options.map((o, i) => (
         <button

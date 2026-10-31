@@ -365,3 +365,23 @@ test('Einstellungen: Auswahlgruppen mit Tropfen, Auswahl wirkt sofort', async ({
   await page.keyboard.press('ArrowRight')
   await expect(theme.getByRole('radio', { name: 'System' })).toHaveAttribute('aria-checked', 'true')
 })
+
+test('Kreis-Auswahl: Tropfen in der Seitenleiste und beim Teilen', async ({ page }) => {
+  await register(page)
+  await page.goto('/lichtung')
+  const list = page.locator('aside.side ul.circles')
+  await expect(list).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await list.getByRole('link', { name: /Angst/ }).click()
+  await expect(list.getByRole('link', { name: /Angst/ })).toHaveAttribute('aria-current', 'true')
+  await expect(page).toHaveURL(/kreis=angst/)
+  // Nochmals tippen hebt den Filter auf – der Tropfen verschwindet.
+  await list.getByRole('link', { name: /Angst/ }).click()
+  await expect(page).not.toHaveURL(/kreis=/)
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  const circle = page.getByRole('radiogroup', { name: 'In welchem Kreis?' })
+  await expect(circle).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await circle.getByRole('radio', { name: 'Trauer' }).click()
+  await expect(circle.getByRole('radio', { name: 'Trauer' })).toHaveAttribute('aria-checked', 'true')
+})

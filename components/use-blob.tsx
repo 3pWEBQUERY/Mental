@@ -12,9 +12,11 @@ function reducedMotion() {
  * der Tropfen fliesst zu dem mit `active`. Ohne WebGL oder bei reduzierter Bewegung bleibt `on` false
  * und die CSS-Pille übernimmt.
  *
- * Rückgabe: `host` an den Container, `on` als Klasse (`blob-on`), `layers(labels)` als erste Kinder.
+ * Rückgabe: `host` an den Container, `on` als Klasse (`blob-on`), `layers(copy)` als erste Kinder – `copy` ist
+ * die Beschriftung noch einmal in derselben Anordnung (Elemente mit Klasse `blob-copy`), sie wird hell
+ * genau dort sichtbar, wo der Tropfen liegt.
  */
-export function useBlob<T extends HTMLElement>(active: string | null, enabled = true) {
+export function useBlob<T extends HTMLElement>(active: string | null, { enabled = true, radius }: { enabled?: boolean; radius?: number } = {}) {
   const host = useRef<T>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const ink = useRef<HTMLDivElement>(null)
@@ -40,7 +42,7 @@ export function useBlob<T extends HTMLElement>(active: string | null, enabled = 
       el.style.clipPath = 'inset(50%)'
       return
     }
-    const r = (box.bottom - box.top) / 2
+    const r = Math.min(radius ?? Infinity, (box.bottom - box.top) / 2, (box.right - box.left) / 2)
     el.style.clipPath = `inset(${box.top}px ${el.clientWidth - box.right}px ${el.clientHeight - box.bottom}px ${box.left}px round ${r}px)`
   }
   useLayoutEffect(clipInk, [on])
@@ -52,15 +54,21 @@ export function useBlob<T extends HTMLElement>(active: string | null, enabled = 
     let mo: MutationObserver | null = null
     import('./tab-blob').then(({ createTabBlob }) => {
       if (!alive || !canvas.current || !host.current) return
-      const b = createTabBlob(canvas.current, (box) => {
-        lastBox.current = box
-        clipInk()
-      })
+      const b = createTabBlob(
+        canvas.current,
+        (box) => {
+          lastBox.current = box
+          clipInk()
+        },
+        radius,
+      )
       if (!b) return
       blob.current = b
       let first = true
       const fit = () => {
         if (!host.current) return
+        // Versteckt (geschlossener Dialog, display: none): nichts zu messen – beim Sichtbarwerden ohne Anlauf setzen.
+        if (!host.current.clientWidth) return
         b.resize(host.current.clientWidth, host.current.clientHeight)
         const box = boxOf(activeRef.current)
         // Nur beim Aufbau springen. Später (Scrollbalken, Schriftgrösse, Zeilenumbruch) nur neu zielen –
@@ -88,23 +96,19 @@ export function useBlob<T extends HTMLElement>(active: string | null, enabled = 
 
   useLayoutEffect(() => {
     activeRef.current = active
-    const box = boxOf(active)
+    const box = host.current?.clientWidth ? boxOf(active) : null
     // «Bewegung reduzieren» lässt sich mitten in der Sitzung einschalten (Einstellungen) – dann springen.
     if (box) blob.current?.moveTo(box, reducedMotion())
     else blob.current?.hide()
   }, [active])
 
-  function layers(labels: { key: string; label: ReactNode }[], itemClassName?: string) {
+  function layers(copy: ReactNode) {
     return (
       <>
         {enabled && <canvas ref={canvas} className="blob-canvas" aria-hidden="true" />}
         {on && (
           <div ref={ink} className="blob-ink" aria-hidden="true">
-            {labels.map((l) => (
-              <span key={l.key} className={itemClassName}>
-                {l.label}
-              </span>
-            ))}
+            {copy}
           </div>
         )}
       </>
