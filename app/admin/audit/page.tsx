@@ -1,7 +1,8 @@
 import { desc } from 'drizzle-orm'
 import { db } from '@/db'
 import { moderationActions } from '@/db/schema'
-import { requireModerator } from '@/lib/server/admin'
+import Link from 'next/link'
+import { memberToken, requireModerator } from '@/lib/server/admin'
 import { memberRef } from '@/lib/server/crypto'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
@@ -30,7 +31,12 @@ export default async function AuditPage() {
               <td>{r.moderatorId ? memberRef(r.moderatorId) : 'System'}</td>
               <td>{r.action}</td>
               <td>
-                {r.targetType} {r.targetType === 'user' ? memberRef(r.targetId) : r.targetId.slice(0, 8)}
+                {r.targetType}{' '}
+                {r.targetType === 'user' ? (
+                  <Link href={`/admin/konto/${encodeURIComponent(memberToken(r.targetId))}`}>{memberRef(r.targetId)}</Link>
+                ) : (
+                  r.targetId.slice(0, 8)
+                )}
               </td>
               <td>{r.reason ?? '—'}</td>
             </tr>

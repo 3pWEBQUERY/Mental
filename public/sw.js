@@ -38,7 +38,10 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      tag: 'lichtung-reply',
+      // Eigener Tag für Krisen-Hinweise an die Moderation: ersetzt keine Antwort-Meldung und bleibt stehen.
+      tag: data.tag || 'lichtung-reply',
+      requireInteraction: data.tag === 'lichtung-acute',
+      renotify: data.tag === 'lichtung-acute',
       data: { url: data.url },
     }),
   )

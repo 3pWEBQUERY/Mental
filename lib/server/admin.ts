@@ -1,5 +1,6 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
+import { seal, unseal } from './crypto'
 import { env } from './env'
 import { getViewer, type Viewer } from './session'
 
@@ -39,4 +40,15 @@ export async function assertModerator(level: ModLevel): Promise<Viewer> {
   const v = await getViewer()
   if (!v || !canModerate(v, level) || !hasStrongAuth(v)) throw new Error('forbidden')
   return v
+}
+
+/**
+ * Link auf die Kontoseite in der Moderation: versiegelt statt Klar-ID, damit niemand Konto-IDs in URLs sieht
+ * oder errät. Gilt eine Woche (Lesezeichen in der Warteschlange veralten nicht sofort).
+ */
+export function memberToken(userId: string) {
+  return seal(userId, 7 * 24 * 60 * 60_000, 'member-page')
+}
+export function memberFromToken(token: string) {
+  return unseal<string>(token, 'member-page')
 }

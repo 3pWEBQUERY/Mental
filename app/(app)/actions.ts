@@ -25,6 +25,7 @@ import {
   users,
 } from '@/db/schema'
 import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
+import { alertAcute } from '@/lib/acute-alert'
 import { hardDeletePost } from '@/lib/post-delete'
 import { syncReplyCount } from '@/lib/reply-count'
 import { detectCrisis } from '@/lib/crisis'
@@ -152,6 +153,7 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
 
   if (level === 'acute') {
     await db.insert(reports).values({ targetType: 'post', targetId: postId, reason: 'auto_acute', priority: 0 })
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
   }
   if (d.mediaId) {
     const attached = await db
@@ -199,7 +201,10 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
       ...(level === 'acute' ? { status: 'pending' as const } : {}),
     })
     .where(eq(posts.id, d.id))
-  if (level === 'acute') await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
+  if (level === 'acute') {
+    await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
+  }
   await enqueue(QUEUES.moderate, { targetType: 'post', targetId: d.id }).catch((e) => console.error('[moderate] enqueue', e))
   return { ok: true, post: (await getPostById(v.userId, d.id))! }
 }
@@ -284,7 +289,10 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
     .values({ postId, userId: v.userId, body: text.data, authorHandle: handle, glyphSeed: seed, isAuthor, status, crisisLevel: level })
     .returning()
   if (status === 'visible' && !isAuthor) await syncReplyCount(postId)
-  if (level === 'acute') await db.insert(reports).values({ targetType: 'reply', targetId: r!.id, reason: 'auto_acute', priority: 0 })
+  if (level === 'acute') {
+    await db.insert(reports).values({ targetType: 'reply', targetId: r!.id, reason: 'auto_acute', priority: 0 })
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
+  }
   await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', e))
   if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
@@ -610,6 +618,7 @@ export type ClientNotification = {
   count: number
   excerpt: string | null
   message: string | null
+  appealable: boolean
   read: boolean
   createdAt: string
 }
@@ -640,6 +649,7 @@ export async function listNotifications(): Promise<ClientNotification[]> {
     count: r.payload.count ?? 1,
     excerpt: r.payload.excerpt ?? null,
     message: r.payload.message ?? null,
+    appealable: Boolean(r.payload.appealable),
     read: Boolean(r.readAt),
     createdAt: r.createdAt.toISOString(),
   }))
@@ -677,4 +687,26 @@ export async function touchCircle(slug: string) {
   if (!v) return
   const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, slug))
   if (c) await touchPresence(v.userId, c.id)
+}
+
+/* ------------------------------------------------------------ Einspruch */
+
+/**
+ * Einspruch gegen eine Moderationsmassnahme. Landet als Eintrag in der Warteschlange (Ziel: das eigene Konto),
+ * die Moderation sieht den Text und die Kontohistorie. Höchstens ein offener Einspruch, drei pro Tag.
+ */
+export async function appeal(text: string): Promise<Ok<object> | Fail> {
+  const v = await getViewer()
+  if (!v) return fail(m.common.sessionEnded)
+  const body = z.string().trim().min(10).max(1000).safeParse(text)
+  if (!body.success) return fail(m.appeal.tooShort)
+  if (!(await hit(`appeal:${v.userId}`, 3, 24 * 60 * 60_000)).ok) return fail(m.common.rateLimited)
+  const [open] = await db
+    .select({ id: reports.id })
+    .from(reports)
+    .where(and(eq(reports.targetType, 'user'), eq(reports.targetId, v.userId), eq(reports.status, 'open')))
+    .limit(1)
+  if (open) return fail(m.appeal.alreadyOpen)
+  await db.insert(reports).values({ reporterId: v.userId, targetType: 'user', targetId: v.userId, reason: 'other', note: body.data, priority: 2 })
+  return { ok: true }
 }

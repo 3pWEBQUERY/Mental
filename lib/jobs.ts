@@ -22,7 +22,8 @@ export const QUEUES = {
 export type JobData = {
   'process-image': { mediaId: string }
   'moderate-content': { targetType: 'post' | 'reply'; targetId: string }
-  'send-push': { userId: string; postId: string }
+  /** postId: neue Antwort · alert: akuter Krisen-Treffer an die Moderation (auch in den Ruhezeiten). */
+  'send-push': { userId: string; postId?: string; alert?: boolean }
   'export-account': { exportId: string }
   'purge-account': { userId: string }
 }

@@ -21,6 +21,7 @@ import { Composer } from './composer'
 import { Rail } from './rail'
 import { ServiceWorkerRegister } from './sw-register'
 import { attempt } from '@/lib/client/attempt'
+import { AppealInline } from './appeal'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -172,7 +173,10 @@ export function AppChrome({
                           : m.notifications.moderation}
                   </div>
                   {(n.kind === 'moderation' || n.kind === 'system') && n.message ? (
-                    <p>{n.message}</p>
+                    <>
+                      <p>{n.message}</p>
+                      {n.appealable && <AppealInline />}
+                    </>
                   ) : n.postDeleted ? (
                     <p>{m.feed.deletedPost}</p>
                   ) : (

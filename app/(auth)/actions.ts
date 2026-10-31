@@ -16,6 +16,7 @@ import { createSession, destroySession, endOtherSessions, getViewer } from '@/li
 import { verifyPow } from '@/lib/server/altcha'
 import { env } from '@/lib/server/env'
 import { notifyAdmins, notifySystem } from '@/lib/server/notify'
+import { displayNameProblem } from '@/lib/display-name'
 import { isValidUsername, looksLikeRealName, normalizeUsername } from '@/lib/username'
 import { m } from '@/messages'
 
@@ -112,6 +113,8 @@ export async function setInitialDisplayName(name: string): Promise<Result> {
   if (!viewer) return fail(m.common.sessionEnded)
   const displayName = name.trim().replace(/\s+/g, ' ').slice(0, LIMITS.displayNameMax)
   if (displayName.length < 2) return fail(m.common.error, 'displayName')
+  const problem = displayNameProblem(displayName)
+  if (problem) return fail(problem === 'personal' ? m.settings.displayNamePersonal : m.settings.displayNameOfficial, 'displayName')
   await db.update(profiles).set({ displayName }).where(eq(profiles.userId, viewer.userId))
   return { ok: true }
 }

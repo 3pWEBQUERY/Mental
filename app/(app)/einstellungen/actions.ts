@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { blocks, exports, passkeys, postHides, profiles, pushSubscriptions, sessions, users, type Settings } from '@/db/schema'
 import { LIMITS } from '@/lib/constants'
+import { displayNameProblem } from '@/lib/display-name'
 import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
 import { enqueue, QUEUES } from '@/lib/jobs'
 import { hmac } from '@/lib/server/crypto'
@@ -38,6 +39,8 @@ export async function updateIdentity(input: { displayName: string; defaultVisibi
     .object({ displayName: z.string().trim().min(2).max(LIMITS.displayNameMax), defaultVisibility: z.enum(['anonymous', 'pseudonym']) })
     .safeParse(input)
   if (!parsed.success) return fail(m.common.error)
+  const problem = displayNameProblem(parsed.data.displayName)
+  if (problem) return fail(problem === 'personal' ? m.settings.displayNamePersonal : m.settings.displayNameOfficial)
   await db
     .update(profiles)
     .set({ displayName: parsed.data.displayName.replace(/\s+/g, ' '), defaultVisibility: parsed.data.defaultVisibility })

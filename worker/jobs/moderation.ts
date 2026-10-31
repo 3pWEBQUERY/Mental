@@ -4,6 +4,7 @@ import { crisisTerms, posts, replies, reports } from '../../db/schema'
 import { DEFAULT_CRISIS_TERMS, maxLevel } from '../../lib/crisis'
 import { classify } from '../../lib/moderation'
 import { syncReplyCount } from '../../lib/reply-count'
+import { alertAcute } from '../../lib/acute-alert'
 
 async function terms() {
   const rows = await db.select({ term: crisisTerms.term, level: crisisTerms.level }).from(crisisTerms).where(eq(crisisTerms.active, true))
@@ -47,6 +48,7 @@ export async function moderateContent({ targetType, targetId }: { targetType: 'p
   }
   if (level === 'acute' && !(await openReportExists(targetType, targetId, 'auto_acute'))) {
     await db.insert(reports).values({ targetType, targetId, reason: 'auto_acute', priority: 0 })
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
   }
   if (result.flags.length && !(await openReportExists(targetType, targetId, 'auto_flag'))) {
     await db.insert(reports).values({ targetType, targetId, reason: 'auto_flag', note: result.flags.join(', '), priority: 3 })
