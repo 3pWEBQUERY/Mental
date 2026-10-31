@@ -526,7 +526,7 @@ async function shouldShowProHint(v: Viewer) {
   if (!needed.every((d) => days.has(d))) return false
   await db
     .update(profiles)
-    .set({ settings: { ...v.settings, proHelpHintAt: new Date().toISOString() } })
+    .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ proHelpHintAt: new Date().toISOString() })}::jsonb` })
     .where(eq(profiles.userId, v.userId))
   return true
 }

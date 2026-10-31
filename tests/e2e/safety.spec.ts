@@ -61,3 +61,11 @@ test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
   await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
   await expect(page.locator('#composer-text')).toHaveValue('')
 })
+
+test('Transparenz: öffentliche Zahlen pro Quartal, ohne Anmeldung', async ({ page }) => {
+  await page.goto('/transparenz')
+  await expect(page.getByRole('heading', { name: 'Transparenz', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Quartal \d{4}/ }).first()).toBeVisible()
+  await expect(page.getByText('Geteilte Gedanken').first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Transparenz' })).toBeVisible()
+})

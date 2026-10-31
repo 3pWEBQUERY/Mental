@@ -152,6 +152,10 @@ ul, ol { list-style: none; }
 .stage { position: sticky; top: 0; height: 100vh; height: 100dvh; border-right: 1px solid var(--line); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 32px; }
 .orb { position: absolute; left: 0; right: 0; top: 0; height: 64%; }
 .orb canvas { display: block; }
+/* Die Leinwand folgt dem Container – nie umgekehrt. Mit fester Pixelbreite (renderer.setSize) hielte sie das
+   Raster sonst auf einer einmal zu breiten Spalte fest (Mobil: horizontales Scrollen, Navigation verdeckt). */
+.orb canvas { width: 100% !important; height: 100% !important; }
+.app > * { min-width: 0; }
 .orb-fallback { position: absolute; left: 50%; top: 44%; width: 240px; height: 240px; margin: -120px 0 0 -120px; }
 .orb-fallback circle { stroke: var(--ink); }
 .stage > *:not(.orb) { position: relative; z-index: 1; }
@@ -669,3 +673,24 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 :root[data-motion='off'] * { animation: none !important; transition: none !important; }
 /* «Reduziert»: keine Bewegung (Einblenden, Hochrutschen), Farb- und Zustandswechsel bleiben, nur sofort. */
 :root[data-motion='reduced'] * { animation: none !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+
+/* Einführung beim ersten Besuch */
+.onboarding .onboarding-title { font-family: var(--serif); font-weight: 400; font-size: calc(30px * var(--fz)); line-height: 1.12; text-transform: none; letter-spacing: -0.01em; color: var(--ink); animation: ground-in 0.6s cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+
+/* Notfallplan drucken: nur der Plan, schwarz auf weiss, mit den Nummern darunter */
+.plan-print-head, .plan-print-note { display: none; }
+@media print {
+  html.print-plan, html.print-plan body { background: #fff !important; }
+  html.print-plan body * { visibility: hidden; }
+  html.print-plan .plan-print, html.print-plan .plan-print * { visibility: visible; color: #000 !important; }
+  html.print-plan .plan-print { position: absolute; top: 0; left: 0; width: 100%; }
+  html.print-plan .plan-print-head { display: block; font-family: var(--serif); font-size: 30px; margin-bottom: 18px; }
+  html.print-plan .plan-print-note { display: block; margin-top: 24px; padding-top: 12px; border-top: 1px solid #999; }
+  html.print-plan .plan-view li { break-inside: avoid; }
+}
+
+/* Transparenzbericht */
+.transparency-quarter { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); }
+.transparency-quarter h3 { margin-top: 18px; }
+.transparency-quarter .facts { margin: 10px 0 6px; }
+.transparency-quarter .facts > div { min-width: 180px; flex: 1 1 200px; }

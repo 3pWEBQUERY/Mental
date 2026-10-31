@@ -13,6 +13,7 @@ import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media
 import { moderateContent } from './jobs/moderation'
 import { expirePosts } from './jobs/posts'
 import { applyRetention } from './jobs/retention'
+import { nudgeListeners } from './jobs/listeners'
 import { sendPush } from './jobs/push'
 import { safeMessage } from '../lib/log-safe'
 
@@ -73,6 +74,7 @@ async function main() {
     [QUEUES.purgeDeleted, '17 4 * * *', purgeDueAccounts],
     [QUEUES.purgeInactive, '29 4 * * 0', purgeInactiveAccounts],
     [QUEUES.retention, '53 4 * * *', applyRetention],
+    [QUEUES.nudgeListeners, '*/30 * * * *', nudgeListeners],
   ]
   for (const [name, schedule, fn] of cron) {
     await boss.schedule(name, schedule, null, { tz: TZ })

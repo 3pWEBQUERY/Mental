@@ -1,9 +1,11 @@
 import { execSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share } from './helpers'
+import { closeExtraContexts, register, share } from './helpers'
 
 /** Worker-Jobs gegen die echte E2E-Datenbank: Loslassen, Kontolöschung, Aufbewahrung. */
+test.afterEach(closeExtraContexts)
+
 const run = (job: string) => execSync(`npx tsx tests/e2e/run-job.ts ${job}`, { stdio: 'pipe', env: process.env })
 
 test('Worker: losgelassene Gedanken, fällige Kontolöschung und Aufbewahrungsfristen', async ({ page }) => {
@@ -50,6 +52,56 @@ test('Worker: losgelassene Gedanken, fällige Kontolöschung und Aufbewahrungsfr
     expect(await q(`SELECT 1 FROM posts WHERE user_id = $1`, [userId])).toHaveLength(0)
     expect(await q(`SELECT 1 FROM reports WHERE target_id = $1 AND status = 'open'`, [postId])).toHaveLength(0)
     expect(await q(`SELECT 1 FROM reserved_usernames WHERE username = $1`, [username])).toHaveLength(1)
+  } finally {
+    await pool.end()
+  }
+})
+
+test('Zuhören, wenn es still bleibt: unbeantworteter Gedanke geht an Zuhörende – einmal, ohne die Autorin', async ({ browser, page }) => {
+  // Zuhörende Person schaltet es ein.
+  await register(page, 'Zuhörerin')
+  await page.goto('/einstellungen')
+  const saved = page.waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined)
+  await page.locator('label.switch', { hasText: 'Zuhören, wenn es still bleibt' }).click()
+  await saved
+  await expect(page.getByLabel(/Zuhören, wenn es still bleibt/)).toBeChecked()
+
+  const author = await (await browser.newContext()).newPage()
+  const { username } = await register(author, 'Autorin')
+  const body = `Niemand hat geantwortet ${Date.now()}`
+  await share(author, body)
+  await expect(author.locator('article', { hasText: body })).toBeVisible()
+
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const q = async <T>(sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows as T[]
+    // Andere wartende Gedanken aus früheren Tests nicht mitzählen: nur dieser ist «alt genug».
+    await q(`UPDATE posts SET nudged_at = now() WHERE nudged_at IS NULL AND body <> $1`, [body])
+    await q(`UPDATE posts SET created_at = now() - interval '7 hours' WHERE body = $1`, [body])
+    // Die Autorin hätte es auch eingeschaltet – sie darf trotzdem nicht auf den eigenen Gedanken hingewiesen werden.
+    await q(`UPDATE profiles SET settings = settings || '{"listener": true}' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [username])
+    run('nudgeListeners')
+    const [post] = await q<{ nudged: boolean }>(`SELECT nudged_at IS NOT NULL AS nudged FROM posts WHERE body = $1`, [body])
+    expect(post!.nudged).toBe(true)
+
+    await page.goto('/lichtung')
+    await page.getByRole('button', { name: /Benachrichtigungen/ }).click()
+    const bell = page.getByRole('dialog', { name: 'Benachrichtigungen' })
+    await expect(bell).toContainText('Ein Gedanke wartet seit einigen Stunden')
+    // Kein Ausschnitt des Gedankens in der Glocke – nur der Link.
+    await expect(bell).not.toContainText(body)
+    await bell.getByRole('link', { name: 'Ansehen' }).first().click()
+    await page.waitForURL('**/lichtung/gedanke/**')
+    await expect(page.getByText(body).first()).toBeVisible()
+
+    await author.goto('/lichtung')
+    await author.getByRole('button', { name: /Benachrichtigungen/ }).click()
+    await expect(author.getByRole('dialog', { name: 'Benachrichtigungen' })).not.toContainText('Ein Gedanke wartet seit einigen Stunden')
+
+    // Zweiter Lauf: nichts doppelt.
+    run('nudgeListeners')
+    const n = await q<{ n: number }>(`SELECT count(*)::int AS n FROM notifications WHERE payload->>'message' LIKE 'Ein Gedanke wartet%' AND post_id = (SELECT id FROM posts WHERE body = $1)`, [body])
+    expect(n[0]!.n).toBe(1)
   } finally {
     await pool.end()
   }

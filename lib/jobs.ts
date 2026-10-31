@@ -19,6 +19,7 @@ export const QUEUES = {
   purgeDeleted: 'purge-deleted-accounts',
   purgeInactive: 'purge-inactive-accounts',
   retention: 'apply-retention',
+  nudgeListeners: 'nudge-listeners',
 } as const
 
 export type JobData = {

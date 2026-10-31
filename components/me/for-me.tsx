@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { deleteLetter, saveSafetyPlan, writeLetter, type LetterView } from '@/app/(app)/(raum)/ich/actions'
 import type { SafetyPlan } from '@/db/schema'
 import { attempt } from '@/lib/client/attempt'
 import { toast } from '@/lib/client/bus'
+import { PLAN_KEY } from '@/lib/client/private-storage'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { askConfirm } from '../confirm'
 
-export const PLAN_FIELDS = ['signs', 'self', 'distract', 'people', 'pros', 'safe'] as const
+import { PLAN_FIELDS } from './plan-fields'
+
+export { PLAN_FIELDS }
 const EMPTY: SafetyPlan = { signs: '', self: '', distract: '', people: '', pros: '', safe: '' }
 
 /** Der Plan zum Lesen – im Hilfe-Dialog und unter «Ich». Leere Felder fallen weg. */
@@ -27,12 +30,50 @@ export function SafetyPlanView({ plan }: { plan: SafetyPlan }) {
   )
 }
 
+/** Offline-Kopie lesen/schreiben – localStorage kann fehlen (privates Fenster) oder voll sein. */
+function storeOffline(plan: SafetyPlan | null) {
+  try {
+    if (plan) localStorage.setItem(PLAN_KEY, JSON.stringify({ plan, at: new Date().toISOString() }))
+    else localStorage.removeItem(PLAN_KEY)
+    return true
+  } catch {
+    return false
+  }
+}
+function hasOffline() {
+  try {
+    return localStorage.getItem(PLAN_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
+/** Nur den Plan drucken: alles andere blendet @media print über die Klasse am <html> aus. */
+function printPlan() {
+  const root = document.documentElement
+  root.classList.add('print-plan')
+  const done = () => {
+    root.classList.remove('print-plan')
+    window.removeEventListener('afterprint', done)
+  }
+  window.addEventListener('afterprint', done)
+  window.print()
+}
+
 export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
   const [plan, setPlan] = useState<SafetyPlan>(initial ?? EMPTY)
   const [editing, setEditing] = useState(!initial)
+  const [offline, setOffline] = useState(false)
   const [pending, start] = useTransition()
   const p = m.plan
   const filled = PLAN_FIELDS.some((k) => plan[k].trim())
+
+  // Eine vorhandene Offline-Kopie mit dem Stand vom Server auffrischen (auf einem anderen Gerät geändert?).
+  useEffect(() => {
+    if (!hasOffline()) return
+    setOffline(true)
+    if (initial) storeOffline(initial)
+  }, [initial])
 
   return (
     <section aria-labelledby="plan-title" className="for-me-block">
@@ -41,9 +82,16 @@ export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
           {p.title}
         </h2>
         {!editing && (
-          <button type="button" className="btn ghost small" onClick={() => setEditing(true)}>
-            {p.edit}
-          </button>
+          <div className="row-actions">
+            {filled && (
+              <button type="button" className="btn ghost small" onClick={printPlan}>
+                {p.print}
+              </button>
+            )}
+            <button type="button" className="btn ghost small" onClick={() => setEditing(true)}>
+              {p.edit}
+            </button>
+          </div>
         )}
       </div>
       <p className="fine" style={{ margin: '6px 0 16px', maxWidth: '60ch' }}>
@@ -57,6 +105,7 @@ export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
             e.preventDefault()
             start(async () => {
               if (!(await attempt(() => saveSafetyPlan(plan)))) return
+              if (offline) storeOffline(plan)
               toast(p.saved)
               setEditing(false)
             })
@@ -80,8 +129,32 @@ export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
           </div>
         </form>
       ) : filled ? (
-        <SafetyPlanView plan={plan} />
+        <div className="plan-print">
+          <p className="plan-print-head">{p.title}</p>
+          <SafetyPlanView plan={plan} />
+          <p className="fine plan-print-note">{p.printNote}</p>
+        </div>
       ) : null}
+      {!editing && filled && (
+        <label className="check" style={{ marginTop: 18 }}>
+          <input
+            type="checkbox"
+            checked={offline}
+            onChange={(e) => {
+              const on = e.target.checked
+              if (!storeOffline(on ? plan : null)) return toast(m.common.error)
+              setOffline(on)
+              toast(on ? p.offlineOn : p.offlineOff)
+            }}
+          />
+          <span>
+            {p.offline}
+            <small className="fine" style={{ display: 'block' }}>
+              {p.offlineHint}
+            </small>
+          </span>
+        </label>
+      )}
     </section>
   )
 }

@@ -120,6 +120,10 @@ export type Settings = {
   journalSalt?: string
   journalCheck?: { iv: string; ciphertext: string; salt: string }
   proHelpHintAt?: string
+  /** Neues Konto: kurze Einführung beim ersten Besuch (wird danach entfernt). */
+  onboard?: boolean
+  /** «Zuhören, wenn es still bleibt»: Hinweis auf Gedanken, die lange ohne Antwort sind. */
+  listener?: boolean
 }
 
 /** Öffentliche Seite eines Kontos – der Anzeigename ist nicht unique. */
@@ -131,6 +135,8 @@ export const profiles = pgTable('profiles', {
   defaultVisibility: visibilityEnum('default_visibility').notNull().default('anonymous'),
   glyphSeed: integer('glyph_seed').notNull(),
   settings: jsonb('settings').$type<Settings>().notNull().default({}),
+  /** Letzter Hinweis «Ein Gedanke wartet» an diese zuhörende Person – höchstens einer pro Tag. */
+  listenerNudgedAt: ts('listener_nudged_at'),
 })
 
 /* --------------------------------------------------------------- Kreise */
@@ -192,6 +198,8 @@ export const posts = pgTable(
     deletedAt: ts('deleted_at'),
     /** «Gedanke loslassen»: wird zu diesem Zeitpunkt automatisch endgültig gelöscht. */
     expiresAt: ts('expires_at'),
+    /** Zuhörende wurden auf diesen unbeantworteten Gedanken hingewiesen (höchstens einmal). */
+    nudgedAt: ts('nudged_at'),
   },
   (t) => [
     index('posts_expires_idx').on(t.expiresAt).where(sql`expires_at IS NOT NULL AND deleted_at IS NULL`),
@@ -490,6 +498,22 @@ export const caseClaims = pgTable(
   },
   (t) => [primaryKey({ columns: [t.targetType, t.targetId] })],
 )
+
+/**
+ * Rollenwechsel nach dem Vier-Augen-Prinzip: Ein Admin schlägt vor, ein zweiter bestätigt. Pro Konto ein offener
+ * Vorschlag; nach 7 Tagen verfällt er. Bestätigt oder abgelehnt wird er gelöscht – die Spur steht im Audit-Log.
+ */
+export const roleProposals = pgTable('role_proposals', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  role: roleEnum('role').notNull(),
+  proposedBy: uuid('proposed_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  reason: text('reason'),
+  createdAt: createdAt(),
+})
 
 export const helpResources = pgTable('help_resources', {
   id: id(),

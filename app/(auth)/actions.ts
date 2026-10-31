@@ -98,7 +98,7 @@ export async function register(input: z.input<typeof registerSchema>): Promise<R
         .insert(users)
         .values({ username, passwordHash, recoveryHash, ageConfirmedAt: now, rulesAcceptedAt: now })
         .returning({ id: users.id })
-      await tx.insert(profiles).values({ userId: u!.id, displayName: 'Jemand', glyphSeed: randomSeed() })
+      await tx.insert(profiles).values({ userId: u!.id, displayName: 'Jemand', glyphSeed: randomSeed(), settings: { onboard: true } })
       return u!.id
     })
   } catch {

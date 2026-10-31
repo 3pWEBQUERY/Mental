@@ -19,6 +19,9 @@ export type ClientViewer = {
   theme: 'system' | 'light' | 'dark'
   fontSize: 'normal' | 'large' | 'xlarge'
   discreet: boolean
+  /** Neues Konto: Einführung zeigen. */
+  onboard: boolean
+  listener: boolean
   breathSound: boolean
   collapseWarnings: boolean
   hidePresence: boolean

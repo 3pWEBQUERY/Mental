@@ -1,11 +1,11 @@
 import { and, count, desc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '@/db'
-import { moderationActions, posts, replies, users } from '@/db/schema'
-import { canModerate, memberFromToken, memberToken, requireModerator } from '@/lib/server/admin'
+import { moderationActions, posts, replies, roleProposals, users } from '@/db/schema'
+import { canModerate, memberFromToken, memberToken, requireModerator, ROLE_PROPOSAL_DAYS } from '@/lib/server/admin'
 import { memberRef } from '@/lib/server/crypto'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
-import { restoreAccount } from '../../actions'
+import { decideRole, proposeRole, restoreAccount } from '../../actions'
 
 /**
  * Kontoseite in der Moderation: Status, Rolle, bisherige Massnahmen (am Konto und an seinen Inhalten) und das
@@ -23,7 +23,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
     .where(eq(users.id, userId))
   if (!u) return <p className="notice">{t.expired}</p>
   const ref = memberRef(userId)
-  const [[{ p } = { p: 0 }], [{ r } = { r: 0 }], history] = await Promise.all([
+  const [[{ p } = { p: 0 }], [{ r } = { r: 0 }], history, [proposal]] = await Promise.all([
     db
       .select({ p: count() })
       .from(posts)
@@ -50,6 +50,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
       )
       .orderBy(desc(moderationActions.createdAt))
       .limit(100),
+    db.select().from(roleProposals).where(eq(roleProposals.userId, userId)),
   ])
   const isAdmin = canModerate(mod, 'admin')
   const tok = memberToken(userId)
@@ -101,6 +102,59 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
             </button>
           )}
         </form>
+      )}
+
+      {isAdmin && (
+        <section aria-labelledby="role-title" className="stack" style={{ gap: 10 }}>
+          <h2 id="role-title" className="section-title">
+            {m.admin.roles.title}
+          </h2>
+          {proposal ? (
+            <div className="card stack" style={{ gap: 8 }}>
+              <p>
+                {m.admin.roles.pending(
+                  t.roles[proposal.role],
+                  memberRef(proposal.proposedBy),
+                  formatDate(proposal.createdAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                )}
+              </p>
+              {proposal.reason && (
+                <p className="fine">
+                  {m.admin.roles.pendingReason}: {proposal.reason}
+                </p>
+              )}
+              {proposal.createdAt.getTime() < Date.now() - ROLE_PROPOSAL_DAYS * 86_400_000 && <p className="fine">{m.admin.roles.expiredHint}</p>}
+              {proposal.proposedBy === mod.userId && <p className="fine">{m.admin.roles.ownProposal}</p>}
+              <form action={decideRole} className="inline-form">
+                <input type="hidden" name="token" value={tok} />
+                {proposal.proposedBy !== mod.userId && userId !== mod.userId && (
+                  <button className="btn small" name="decision" value="accept">
+                    {m.admin.roles.accept}
+                  </button>
+                )}
+                <button className="btn ghost small" name="decision" value="reject">
+                  {proposal.proposedBy === mod.userId ? m.admin.roles.withdraw : m.admin.roles.reject}
+                </button>
+              </form>
+            </div>
+          ) : userId !== mod.userId ? (
+            <form action={proposeRole} className="inline-form">
+              <p className="fine" style={{ flexBasis: '100%', maxWidth: 640 }}>
+                {m.admin.roles.intro}
+              </p>
+              <input type="hidden" name="token" value={tok} />
+              <select className="input" name="role" defaultValue={u.role} aria-label={m.admin.roles.newRole} style={{ width: 'auto' }}>
+                {(['member', 'peer_mod', 'mod', 'admin'] as const).map((role) => (
+                  <option key={role} value={role}>
+                    {t.roles[role]}
+                  </option>
+                ))}
+              </select>
+              <input className="input" name="reason" required minLength={3} maxLength={500} placeholder={m.admin.roles.reason} aria-label={m.admin.roles.reason} />
+              <button className="btn small">{m.admin.roles.propose}</button>
+            </form>
+          ) : null}
+        </section>
       )}
 
       <h2 className="section-title">{t.history}</h2>

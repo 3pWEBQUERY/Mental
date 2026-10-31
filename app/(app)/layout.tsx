@@ -40,6 +40,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     theme: s.theme ?? 'light',
     fontSize: s.fontSize ?? 'normal',
     discreet: s.discreet ?? false,
+    onboard: s.onboard ?? false,
+    listener: s.listener ?? false,
     breathSound: s.breathSound ?? false,
     collapseWarnings: s.collapseWarnings ?? true,
     hidePresence: s.hidePresence ?? false,
