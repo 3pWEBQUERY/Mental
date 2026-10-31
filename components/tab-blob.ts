@@ -16,6 +16,7 @@ uniform vec2 uRes;
 uniform vec4 uBox; // links, oben, rechts, unten – in Gerätepixeln
 uniform vec3 uColor;
 uniform float uDpr;
+uniform float uRadius; // < 0: Pille (halbe Höhe)
 varying vec2 vUv;
 float sdRoundBox(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + r;
@@ -25,7 +26,8 @@ void main() {
   vec2 px = vec2(vUv.x, 1.0 - vUv.y) * uRes;
   vec2 c = vec2(uBox.x + uBox.z, uBox.y + uBox.w) * 0.5;
   vec2 h = max(vec2(uBox.z - uBox.x, uBox.w - uBox.y) * 0.5, vec2(0.5));
-  float d = sdRoundBox(px - c, h, min(h.x, h.y));
+  float r = uRadius < 0.0 ? min(h.x, h.y) : min(uRadius * uDpr, min(h.x, h.y));
+  float d = sdRoundBox(px - c, h, r);
   float a = 1.0 - smoothstep(-0.75 * uDpr, 0.75 * uDpr, d);
   if (a <= 0.0) discard;
   gl_FragColor = vec4(uColor, a);
@@ -39,8 +41,11 @@ function cssColor(token: string, fallback: string) {
   return new THREE.Color(v || fallback)
 }
 
-/** `onFrame` bekommt die gezeichnete Form (CSS-Pixel) – damit die Schrift darüber hell wird, genau wo der Tropfen ist. */
-export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | null) => void) {
+/**
+ * `onFrame` bekommt die gezeichnete Form (CSS-Pixel) – damit die Schrift darüber hell wird, genau wo der Tropfen ist.
+ * `radius` in CSS-Pixeln für eckigere Auswahlen (Kreisliste); ohne Angabe eine Pille.
+ */
+export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | null) => void, radius = -1) {
   let renderer: THREE.WebGLRenderer
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power', premultipliedAlpha: false })
@@ -59,6 +64,7 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
     uBox: { value: new THREE.Vector4(0, 0, 0, 0) },
     uColor: { value: cssColor('--ink', '#1c1c1a') },
     uDpr: { value: dpr },
+    uRadius: { value: radius },
   }
   const scene = new THREE.Scene()
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
@@ -75,7 +81,7 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
   let raf = 0
   let last = 0
   // Vordere Kante straff, hintere weich: daraus entsteht das Fliessen.
-  let stiff = { l: 300, r: 300 }
+  let stiff = { l: 300, r: 300, t: 260, b: 260 }
   // Kein Reiter aktiv (z. B. eine Unterseite im Admin): nichts zeichnen, beim nächsten Ziel ohne Anlauf erscheinen.
   let hidden = true
 
@@ -85,14 +91,15 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
       onFrame?.(null)
       return
     }
-    // Je mehr der Tropfen gedehnt ist, desto flacher wird er – wie Flüssigkeit.
-    const width = s.r.x - s.l.x
-    const rest = Math.max(1, s.r.to - s.l.to)
-    const stretch = Math.min(1, Math.max(0, width / rest - 1))
+    // Je mehr der Tropfen gedehnt ist, desto schmaler wird er quer dazu – wie Flüssigkeit.
+    const stretchX = Math.min(1, Math.max(0, (s.r.x - s.l.x) / Math.max(1, s.r.to - s.l.to) - 1))
+    const stretchY = Math.min(1, Math.max(0, (s.b.x - s.t.x) / Math.max(1, s.b.to - s.t.to) - 1))
+    const cx = (s.l.x + s.r.x) / 2
     const cy = (s.t.x + s.b.x) / 2
-    const half = ((s.b.x - s.t.x) / 2) * (1 - 0.22 * stretch)
-    // Das Nachschwingen bleibt innerhalb der Leiste.
-    const box = { left: Math.max(1, s.l.x), top: cy - half, right: Math.min(size.w - 1, s.r.x), bottom: cy + half }
+    const halfW = ((s.r.x - s.l.x) / 2) * (1 - 0.12 * stretchY)
+    const halfH = ((s.b.x - s.t.x) / 2) * (1 - 0.22 * stretchX)
+    // Das Nachschwingen bleibt innerhalb der Fläche.
+    const box = { left: Math.max(1, cx - halfW), top: Math.max(0, cy - halfH), right: Math.min(size.w - 1, cx + halfW), bottom: Math.min(size.h, cy + halfH) }
     uniforms.uBox.value.set(box.left * dpr, box.top * dpr, box.right * dpr, box.bottom * dpr)
     renderer.render(scene, camera)
     onFrame?.(box)
@@ -102,7 +109,7 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
     let moving = false
     for (const k of ['l', 'r', 't', 'b'] as const) {
       const sp = s[k]
-      const kx = k === 'l' || k === 'r' ? stiff[k] : 260
+      const kx = stiff[k]
       const damping = 2 * Math.sqrt(kx) * 0.72
       sp.v += (kx * (sp.to - sp.x) - damping * sp.v) * dt
       sp.x += sp.v * dt
@@ -148,8 +155,15 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
     moveTo(box: Box, instant = false) {
       if (hidden) instant = true
       hidden = false
-      const right = box.left > s.l.to
-      stiff = right ? { l: 140, r: 420 } : { l: 420, r: 140 }
+      // Vordere Kante straff, hintere weich – waagrecht wie senkrecht (Kreisliste, umbrechende Leisten).
+      const dx = box.left - s.l.to
+      const dy = box.top - s.t.to
+      stiff = {
+        l: dx > 0 ? 140 : dx < 0 ? 420 : 300,
+        r: dx > 0 ? 420 : dx < 0 ? 140 : 300,
+        t: dy > 0 ? 160 : dy < 0 ? 420 : 260,
+        b: dy > 0 ? 420 : dy < 0 ? 160 : 260,
+      }
       s.l.to = box.left
       s.r.to = box.right
       s.t.to = box.top

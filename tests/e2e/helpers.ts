@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 
 export const PASSWORD = 'ein ruhiger langer satz 2026'
 
@@ -54,4 +54,12 @@ export async function share(page: Page, text: string, opts: { anonymous?: boolea
     await expect(toggle).toBeChecked({ checked: opts.anonymous })
   }
   await page.getByRole('button', { name: 'Teilen', exact: true }).click()
+}
+
+/**
+ * Selbst geöffnete Kontexte (zweites Konto) schliessen. Playwright tut das erst am Ende des Workers –
+ * bis dahin rechnen ihre Seiten (Raum-Kugel, WebGL in Software) weiter, und spätere Tests werden zäh.
+ */
+export async function closeExtraContexts({ browser, context }: { browser: Browser; context: BrowserContext }) {
+  await Promise.all(browser.contexts().filter((c) => c !== context).map((c) => c.close()))
 }

@@ -25,8 +25,11 @@ test('Dreimal Esc blendet Lichtung aus und beendet die Sitzung', async ({ page }
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
   await page.waitForURL(/meteoschweiz/)
-  await page.goto('/ich')
-  await expect(page).toHaveURL(/\/anmelden$/)
+  // Die Abmeldung geht per Beacon raus und kann unter Last einen Moment nach dem Seitenwechsel ankommen.
+  await expect(async () => {
+    await page.goto('/ich')
+    await expect(page).toHaveURL(/\/anmelden$/, { timeout: 1_000 })
+  }).toPass({ timeout: 15_000 })
 })
 
 test('Konto löschen – ein Login innerhalb von 7 Tagen bricht die Löschung ab', async ({ page }) => {

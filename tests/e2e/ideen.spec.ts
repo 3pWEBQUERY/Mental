@@ -1,7 +1,9 @@
 import { execSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share } from './helpers'
+import { register, share, closeExtraContexts } from './helpers'
+
+test.afterEach(closeExtraContexts)
 
 async function sql(q: string, params: unknown[] = []) {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })

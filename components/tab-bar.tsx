@@ -32,7 +32,13 @@ export function TabBar({
 
   return (
     <nav ref={host} className={`tabs${on ? ' blob-on' : ''}`} aria-label={label} style={style}>
-      {layers(items, 'tab')}
+      {layers(
+        items.map((t) => (
+          <span key={t.key} className="tab blob-copy">
+            {t.label}
+          </span>
+        )),
+      )}
       {items.map((t) => (
         <Link
           key={t.key}

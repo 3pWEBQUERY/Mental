@@ -12,9 +12,11 @@ function reducedMotion() {
  * der Tropfen fliesst zu dem mit `active`. Ohne WebGL oder bei reduzierter Bewegung bleibt `on` false
  * und die CSS-Pille übernimmt.
  *
- * Rückgabe: `host` an den Container, `on` als Klasse (`blob-on`), `layers(labels)` als erste Kinder.
+ * Rückgabe: `host` an den Container, `on` als Klasse (`blob-on`), `layers(copy)` als erste Kinder – `copy` ist
+ * die Beschriftung noch einmal in derselben Anordnung (Elemente mit Klasse `blob-copy`), sie wird hell
+ * genau dort sichtbar, wo der Tropfen liegt.
  */
-export function useBlob<T extends HTMLElement>(active: string | null, enabled = true) {
+export function useBlob<T extends HTMLElement>(active: string | null, { enabled = true, radius }: { enabled?: boolean; radius?: number } = {}) {
   const host = useRef<T>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const ink = useRef<HTMLDivElement>(null)
@@ -27,7 +29,12 @@ export function useBlob<T extends HTMLElement>(active: string | null, enabled = 
     if (key === null) return null
     const el = host.current?.querySelector<HTMLElement>(`[data-blob="${CSS.escape(key)}"]`)
     if (!el) return null
-    return { left: el.offsetLeft, top: el.offsetTop, right: el.offsetLeft + el.offsetWidth, bottom: el.offsetTop + el.offsetHeight }
+    return {
+      left: el.offsetLeft,
+      top: el.offsetTop,
+      right: el.offsetLeft + el.offsetWidth,
+      bottom: el.offsetTop + el.offsetHeight,
+    }
   }
 
   // Helle Kopie der Beschriftung, ausgeschnitten auf die Form des Tropfens: Die Schrift kippt
@@ -40,45 +47,80 @@ export function useBlob<T extends HTMLElement>(active: string | null, enabled = 
       el.style.clipPath = 'inset(50%)'
       return
     }
-    const r = (box.bottom - box.top) / 2
+    const r = Math.min(radius ?? Infinity, (box.bottom - box.top) / 2, (box.right - box.left) / 2)
     el.style.clipPath = `inset(${box.top}px ${el.clientWidth - box.right}px ${el.clientHeight - box.bottom}px ${box.left}px round ${r}px)`
   }
-  useLayoutEffect(clipInk, [on])
+  useLayoutEffect(() => {
+    clipInk()
+    // Canvas wird gerade sichtbar: einmal frisch zeichnen, bevor die CSS-Pille verschwindet.
+    if (on) blob.current?.recolor()
+  }, [on])
 
   useEffect(() => {
-    if (!enabled || reducedMotion()) return
+    const el = host.current
+    if (!enabled || !el || reducedMotion()) return
     let alive = true
+    let started = false
     let ro: ResizeObserver | null = null
     let mo: MutationObserver | null = null
-    import('./tab-blob').then(({ createTabBlob }) => {
-      if (!alive || !canvas.current || !host.current) return
-      const b = createTabBlob(canvas.current, (box) => {
-        lastBox.current = box
-        clipInk()
+    // Erst bei Annäherung (Maus, Fokus, Finger) aufbauen: Bis dahin sieht die CSS-Pille genau gleich aus, und
+    // die Seite hält keine WebGL-Kontexte für Auswahlen, die niemand anfasst (Handys, geschlossene Dialoge).
+    const start = () => {
+      if (started) return
+      started = true
+      el.removeEventListener('pointerenter', start)
+      el.removeEventListener('pointerdown', start)
+      el.removeEventListener('focusin', start)
+      void init()
+    }
+    el.addEventListener('pointerenter', start)
+    el.addEventListener('pointerdown', start)
+    el.addEventListener('focusin', start)
+
+    const init = () =>
+      import('./tab-blob').then(({ createTabBlob }) => {
+        if (!alive || !canvas.current || !host.current) return
+        const b = createTabBlob(
+          canvas.current,
+          (box) => {
+            lastBox.current = box
+            clipInk()
+          },
+          radius,
+        )
+        if (!b) return
+        blob.current = b
+        let first = true
+        const fit = () => {
+          if (!host.current) return
+          // Versteckt (geschlossener Dialog, display: none): nichts zu messen – beim Sichtbarwerden ohne Anlauf setzen.
+          if (!host.current.clientWidth) return
+          b.resize(host.current.clientWidth, host.current.clientHeight)
+          const box = boxOf(activeRef.current)
+          // Nur beim Aufbau springen. Später (Scrollbalken, Schriftgrösse, Zeilenumbruch) nur neu zielen –
+          // sonst würde eine Grössenänderung mitten im Wechsel die Bewegung abschneiden.
+          if (box) b.moveTo(box, first)
+          else b.hide()
+          first = false
+        }
+        fit()
+        ro = new ResizeObserver(fit)
+        ro.observe(host.current)
+        // Hell/Dunkel: Tintenfarbe neu lesen.
+        mo = new MutationObserver(() => b.recolor())
+        mo.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-theme'],
+        })
+        setOn(true)
       })
-      if (!b) return
-      blob.current = b
-      let first = true
-      const fit = () => {
-        if (!host.current) return
-        b.resize(host.current.clientWidth, host.current.clientHeight)
-        const box = boxOf(activeRef.current)
-        // Nur beim Aufbau springen. Später (Scrollbalken, Schriftgrösse, Zeilenumbruch) nur neu zielen –
-        // sonst würde eine Grössenänderung mitten im Wechsel die Bewegung abschneiden.
-        if (box) b.moveTo(box, first)
-        else b.hide()
-        first = false
-      }
-      fit()
-      ro = new ResizeObserver(fit)
-      ro.observe(host.current)
-      // Hell/Dunkel: Tintenfarbe neu lesen.
-      mo = new MutationObserver(() => b.recolor())
-      mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-      setOn(true)
-    })
+    // Schon unter dem Zeiger (z. B. nach einem Klick, der die Seite neu aufbaut).
+    if (el.matches(':hover')) start()
     return () => {
       alive = false
+      el.removeEventListener('pointerenter', start)
+      el.removeEventListener('pointerdown', start)
+      el.removeEventListener('focusin', start)
       ro?.disconnect()
       mo?.disconnect()
       blob.current?.dispose()
@@ -88,23 +130,19 @@ export function useBlob<T extends HTMLElement>(active: string | null, enabled = 
 
   useLayoutEffect(() => {
     activeRef.current = active
-    const box = boxOf(active)
+    const box = host.current?.clientWidth ? boxOf(active) : null
     // «Bewegung reduzieren» lässt sich mitten in der Sitzung einschalten (Einstellungen) – dann springen.
     if (box) blob.current?.moveTo(box, reducedMotion())
     else blob.current?.hide()
   }, [active])
 
-  function layers(labels: { key: string; label: ReactNode }[], itemClassName?: string) {
+  function layers(copy: ReactNode) {
     return (
       <>
         {enabled && <canvas ref={canvas} className="blob-canvas" aria-hidden="true" />}
         {on && (
           <div ref={ink} className="blob-ink" aria-hidden="true">
-            {labels.map((l) => (
-              <span key={l.key} className={itemClassName}>
-                {l.label}
-              </span>
-            ))}
+            {copy}
           </div>
         )}
       </>

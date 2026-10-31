@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { login, PASSWORD, register } from './helpers'
+import { login, PASSWORD, register, closeExtraContexts } from './helpers'
+
+test.afterEach(closeExtraContexts)
 
 test('Registrierung ohne E-Mail, Abmelden, Anmelden', async ({ page }) => {
   const { username } = await register(page, 'Mira')

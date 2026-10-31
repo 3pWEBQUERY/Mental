@@ -193,14 +193,19 @@ ul, ol { list-style: none; }
 .tab[aria-selected='true'], .tab[aria-current='page'] { background: var(--ink); color: var(--paper); }
 /* Three.js-Tropfen (use-blob: Reiter-Leisten, Auswahlgruppen): Das Canvas zeichnet die Pille, die helle Schrift
    liegt als ausgeschnittene Kopie darüber. Ohne WebGL fehlt .blob-on – dann gilt die CSS-Pille oben. */
-.tabs, .segment { position: relative; }
+.tabs, .segment, .opt-row, .circles { position: relative; }
 .blob-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
 .blob-on .blob-canvas { display: block; }
-.blob-on > :is(a, button) { position: relative; }
-.blob-on.blob-on > :is([aria-current='page'], [aria-checked='true']) { background: transparent; color: var(--ink-2); }
-/* Gleiche Anordnung wie die Leiste, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path). */
-.blob-ink { position: absolute; inset: 0; display: flex; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 1; }
-.blob-ink > span { color: var(--paper); }
+.blob-on [data-blob] { position: relative; }
+.blob-on.blob-on [data-blob]:is([aria-current='page'], [aria-current='true'], [aria-checked='true']) { background: transparent; color: var(--ink-2); border-color: transparent; }
+/* Gleiche Anordnung wie die Auswahl, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path). */
+.blob-ink { position: absolute; inset: 0; display: inherit; flex-direction: inherit; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 1; }
+.blob-on .blob-ink .blob-copy, .blob-on .blob-ink .blob-copy * { color: var(--paper); }
+.blob-on .blob-ink .blob-copy { border-color: transparent; }
+/* Kreisliste: Zähler der gewählten Zeile bleibt lesbar, bis der Tropfen ankommt. */
+.blob-on .circle[aria-current='true'] small { color: var(--ink-3); }
+/* «Meine Kreise»-Ring folgt im Tropfen der hellen Schrift. */
+.blob-on .blob-ink .circle.mine .dot { border-color: var(--paper) !important; }
 .prompt { --inset: 5px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: var(--r); padding: var(--inset) var(--inset) var(--inset) 22px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--card); margin-bottom: 12px; transition: border-color 0.2s; }
 .prompt:hover { border-color: var(--ink); }
 .prompt span { font-family: var(--serif); font-size: calc(25px * var(--fz)); line-height: 1.15; }
@@ -439,9 +444,8 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .kv:first-child { border-top: 0; }
 .kv small { color: var(--ink-3); display: block; font-size: calc(12px * var(--fz)); }
 .segment { display: inline-flex; width: fit-content; gap: 2px; background: var(--paper-2); padding: 4px; border-radius: 999px; flex-wrap: wrap; }
-.segment button, .segment .blob-ink > span { padding: 7px 14px; border-radius: 999px; font-size: calc(13px * var(--fz)); color: var(--ink-2); }
+.segment button, .segment .blob-copy { padding: 7px 14px; border-radius: 999px; font-size: calc(13px * var(--fz)); color: var(--ink-2); }
 .segment button[aria-checked='true'] { background: var(--ink); color: var(--paper); }
-.segment .blob-ink > span { color: var(--paper); }
 
 /* Auth & öffentliche Seiten */
 .public { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }

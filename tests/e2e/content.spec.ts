@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share } from './helpers'
+import { register, share, closeExtraContexts } from './helpers'
+
+test.afterEach(closeExtraContexts)
 
 test('Teilen, Zuspruch, Antworten, Benachrichtigung, «Das hat mir gutgetan»', async ({ browser }) => {
   const a = await (await browser.newContext()).newPage()
@@ -327,6 +329,8 @@ test('Ansichten-Leiste: Three.js-Tropfen fliesst zum gewählten Reiter, URL und 
   await register(page)
   const nav = page.getByRole('navigation', { name: 'Ansicht' })
   // Mit WebGL übernimmt der Tropfen die Pille; die helle Schrift liegt als ausgeschnittene Kopie darüber.
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await nav.hover()
   await expect(nav).toHaveClass(/blob-on/, { timeout: 20_000 })
   const ink = nav.locator('.blob-ink')
   const clip = () => ink.evaluate((el) => (el as HTMLElement).style.clipPath)
@@ -346,6 +350,8 @@ test('«Ich»-Reiter: derselbe Tropfen, Inhalt folgt', async ({ page }) => {
   await register(page)
   await page.goto('/ich')
   const nav = page.getByRole('navigation', { name: 'Ich', exact: true })
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await nav.hover()
   await expect(nav).toHaveClass(/blob-on/, { timeout: 20_000 })
   await nav.getByRole('link', { name: 'Merkliste', exact: true }).click()
   await expect(nav.getByRole('link', { name: 'Merkliste', exact: true })).toHaveAttribute('aria-current', 'page')
@@ -357,6 +363,8 @@ test('Einstellungen: Auswahlgruppen mit Tropfen, Auswahl wirkt sofort', async ({
   await register(page)
   await page.goto('/einstellungen')
   const theme = page.getByRole('radiogroup', { name: 'Farbschema' })
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await theme.hover()
   await expect(theme).toHaveClass(/blob-on/, { timeout: 20_000 })
   await theme.getByRole('radio', { name: 'Dunkel' }).click()
   await expect(theme.getByRole('radio', { name: 'Dunkel' })).toHaveAttribute('aria-checked', 'true')
@@ -364,4 +372,28 @@ test('Einstellungen: Auswahlgruppen mit Tropfen, Auswahl wirkt sofort', async ({
   // Tastatur bleibt wie bei nativen Radios: Pfeil wählt die nächste Option.
   await page.keyboard.press('ArrowRight')
   await expect(theme.getByRole('radio', { name: 'System' })).toHaveAttribute('aria-checked', 'true')
+})
+
+test('Kreis-Auswahl: Tropfen in der Seitenleiste und beim Teilen', async ({ page }) => {
+  await register(page)
+  await page.goto('/lichtung')
+  const list = page.locator('aside.side ul.circles')
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await list.hover()
+  await expect(list).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await list.getByRole('link', { name: /Angst/ }).click()
+  await expect(list.getByRole('link', { name: /Angst/ })).toHaveAttribute('aria-current', 'true')
+  await expect(page).toHaveURL(/kreis=angst/)
+  // Nochmals tippen hebt den Filter auf – der Tropfen verschwindet.
+  await list.getByRole('link', { name: /Angst/ }).click()
+  await expect(page).not.toHaveURL(/kreis=/)
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  const circle = page.getByRole('radiogroup', { name: 'In welchem Kreis?' })
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await circle.hover()
+  await expect(circle).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await circle.getByRole('radio', { name: 'Trauer' }).click()
+  await expect(circle.getByRole('radio', { name: 'Trauer' })).toHaveAttribute('aria-checked', 'true')
 })
