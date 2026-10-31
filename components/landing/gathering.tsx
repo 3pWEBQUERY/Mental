@@ -58,7 +58,7 @@ function css(token: string, fallback: string) {
 type Spark = { mesh: THREE.Mesh; line: THREE.Line; from: number; to: number; t: number }
 
 /**
- * «Beieinander»: Menschen sitzen um ein warmes Feuer in der Lichtung. Glut steigt auf, und ab und zu
+ * «Beieinander»: Menschen sitzen um ein warmes Feuer. Glut steigt auf, und ab und zu
  * wandert ein Funke Zuspruch – an einem feinen Faden – von einer Person zur nächsten. Flache Farben aus den Design-Tokens,
  * pausiert ausserhalb des Viewports, steht still bei reduzierter Bewegung.
  */

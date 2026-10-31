@@ -192,7 +192,7 @@ export function AppChrome({
                 {n.postId && (
                   <Link
                     className="btn ghost small"
-                    href={`/lichtung/gedanke/${n.postId}`}
+                    href={`/start/gedanke/${n.postId}`}
                     onClick={() => setNotifOpen(false)}
                   >
                     {m.notifications.open}
@@ -210,7 +210,7 @@ export function AppChrome({
   )
 }
 
-/** /lichtung?atmen=1 startet die Atemübung, ?teilen=1 öffnet den Composer (z. B. aus der PWA). */
+/** /start?atmen=1 startet die Atemübung, ?teilen=1 öffnet den Composer (z. B. aus der PWA). */
 function ComposeOnQuery({ router }: { router: ReturnType<typeof useRouter> }) {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)

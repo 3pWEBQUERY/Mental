@@ -40,6 +40,31 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
   await expect(page.getByText(/nur an, wenn du mit einem Passkey angemeldet bist/)).toBeVisible()
 })
 
+test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nicht aus', async ({ page, context }) => {
+  const cdp = await context.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
+  })
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
+  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
+  // Der vorhandene Passkey gehört zu einer anderen (alten) Domain – hier funktioniert er nicht mehr.
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    await pool.query(`UPDATE passkeys SET rp_id = 'alte-adresse.up.railway.app' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [username])
+  } finally {
+    await pool.end()
+  }
+  // Wie nach einem echten Wechsel: Für die neue Domain hat das Gerät noch keinen Passkey.
+  await cdp.send('WebAuthn.clearCredentials', { authenticatorId })
+  await page.reload()
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
+  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+})
+
 /** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
 async function moderator(browser: import('@playwright/test').Browser, role: 'mod' | 'admin' = 'mod') {
   const ctx = await browser.newContext()
@@ -57,7 +82,7 @@ async function moderator(browser: import('@playwright/test').Browser, role: 'mod
   await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
   await page.waitForURL('**/anmelden')
   await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
-  await page.waitForURL('**/lichtung')
+  await page.waitForURL('**/start')
   return page
 }
 
@@ -149,7 +174,7 @@ test('Anzeigename: keine Telefonnummer, kein vorgetäuschtes Team', async ({ pag
   await name.fill('Mira 079 123 45 67')
   await page.getByRole('button', { name: 'Speichern' }).first().click()
   await expect(page.getByText(/keine Telefonnummer, E-Mail/)).toBeVisible()
-  await name.fill('Lichtung Team')
+  await name.fill('Jiaia Team')
   await page.getByRole('button', { name: 'Speichern' }).first().click()
   await expect(page.getByText(/für das Team reserviert/)).toBeVisible()
 })
@@ -199,5 +224,5 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
 
   await user.reload()
   await user.getByRole('button', { name: /Benachrichtigungen/ }).click()
-  await expect(user.getByRole('dialog')).toContainText('Deine Rolle in Lichtung ist jetzt: Moderation')
+  await expect(user.getByRole('dialog')).toContainText('Deine Rolle in Jiaia ist jetzt: Moderation')
 })

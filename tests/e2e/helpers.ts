@@ -6,7 +6,7 @@ export function uniqueName(prefix = 'e2e') {
   return `${prefix}.${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 }
 
-/** Durchläuft die komplette Registrierung und landet in der Lichtung. Gibt Benutzername und Schlüssel zurück. */
+/** Durchläuft die komplette Registrierung und landet auf /start. Gibt Benutzername und Schlüssel zurück. */
 export async function register(page: Page, displayName = 'Testperson', opts: { keepOnboarding?: boolean } = {}) {
   const username = uniqueName()
   await page.goto('/registrieren')
@@ -32,8 +32,8 @@ export async function register(page: Page, displayName = 'Testperson', opts: { k
   await expect(page.getByRole('heading', { name: /Passkey|heissen/ })).toBeVisible({ timeout: 20_000 })
   if (await page.getByRole('button', { name: 'Später' }).isVisible()) await page.getByRole('button', { name: 'Später' }).click()
   await page.getByLabel('Anzeigename').fill(displayName)
-  await page.getByRole('button', { name: 'In die Lichtung' }).click()
-  await page.waitForURL('**/lichtung')
+  await page.getByRole('button', { name: 'Zu Jiaia' }).click()
+  await page.waitForURL('**/start')
   if (!opts.keepOnboarding) await skipOnboarding(page)
   return { username, words }
 }

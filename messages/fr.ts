@@ -6,7 +6,7 @@ import type { Messages } from './de'
  * Avant la mise en ligne : relecture des textes sensibles, voir docs/i18n/fr-pruefung.md.
  */
 export const fr: Messages = {
-  brand: 'Lichtung',
+  brand: 'Jiaia',
   meta: {
     description: 'Un lieu calme et anonyme pour partager tes pensées et recevoir du soutien. Pas de likes, pas de followers, pas de classement.',
   },
@@ -27,13 +27,13 @@ export const fr: Messages = {
     muted: 'Tu es en sourdine pour le moment et tu peux seulement lire.',
     anonymous: 'Anonyme',
     you: 'Toi',
-    fine: 'Lichtung ne remplace pas une thérapie. Les publications sont modérées avec bienveillance.',
+    fine: 'Jiaia ne remplace pas une thérapie. Les publications sont modérées avec bienveillance.',
   },
   nav: {
     label: 'Navigation principale',
     side: 'Barre latérale',
     skip: 'Aller au contenu',
-    feed: 'Lichtung',
+    feed: 'Jiaia',
     share: 'Partager une pensée',
     breathe: '1 minute pour respirer',
     circles: 'Cercles',
@@ -241,14 +241,14 @@ export const fr: Messages = {
     titleLead: 'Tu n’es pas',
     titleEm: 'seul·e.',
     body: 'S’il te plaît, parle maintenant avec quelqu’un. Les numéros sont gratuits et anonymes.',
-    note: 'Lichtung ne connaît pas ton identité et ne peut envoyer personne vers toi. C’est pourquoi le contact direct est si important.',
+    note: 'Jiaia ne connaît pas ton identité et ne peut envoyer personne vers toi. C’est pourquoi le contact direct est si important.',
     stay: 'Je reste encore dans l’app',
     pending: 'Ta pensée est enregistrée et visible seulement pour toi, jusqu’à ce qu’une personne de l’équipe l’ait regardée.',
   },
   night: {
     acute:
-      'Personne de l’équipe Lichtung n’est en ligne en ce moment (de 22 h à 7 h). Ta pensée attend jusqu’au matin. Si c’est trop maintenant : le 143 est là 24 h sur 24, en cas de danger le 144.',
-    help: 'La nuit (de 22 h à 7 h), l’équipe Lichtung n’est pas en ligne. Ces numéros sont quand même là pour toi, maintenant :',
+      'Personne de l’équipe Jiaia n’est en ligne en ce moment (de 22 h à 7 h). Ta pensée attend jusqu’au matin. Si c’est trop maintenant : le 143 est là 24 h sur 24, en cas de danger le 144.',
+    help: 'La nuit (de 22 h à 7 h), l’équipe Jiaia n’est pas en ligne. Ces numéros sont quand même là pour toi, maintenant :',
   },
   help: {
     title: 'Aide immédiate',
@@ -261,9 +261,9 @@ export const fr: Messages = {
     pageTitleLead: 'Aide',
     pageTitleEm: 'immédiate.',
     pageIntro:
-      'Cette page fonctionne toujours – même sans compte et même si quelque chose ne marche pas chez Lichtung. Toutes les offres sont gratuites.',
+      'Cette page fonctionne toujours – même sans compte et même si quelque chose ne marche pas chez Jiaia. Toutes les offres sont gratuites.',
     honest:
-      'Pour être honnête : Lichtung ne connaît aucune identité et ne peut localiser personne. Il est techniquement impossible d’envoyer une alerte aux autorités. Si tu es en danger, appelle directement le 144.',
+      'Pour être honnête : Jiaia ne connaît aucune identité et ne peut localiser personne. Il est techniquement impossible d’envoyer une alerte aux autorités. Si tu es en danger, appelle directement le 144.',
     phone: {
       title: 'Ce que je peux dire au téléphone',
       lead: 'Tu n’as rien à préparer. Une phrase suffit pour commencer :',
@@ -350,7 +350,7 @@ export const fr: Messages = {
   journal: {
     title: 'Journal',
     intro:
-      'Tes entrées sont chiffrées dans ce navigateur avant d’être enregistrées. Personne – pas même l’équipe Lichtung – ne peut les lire.',
+      'Tes entrées sont chiffrées dans ce navigateur avant d’être enregistrées. Personne – pas même l’équipe Jiaia – ne peut les lire.',
     setupTitle: 'Choisis un PIN pour ton journal',
     setupHint: 'Au moins 6 caractères. Si tu oublies le PIN, le journal ne sera plus lisible. Aucune récupération n’est possible.',
     pin: 'PIN du journal',
@@ -384,7 +384,7 @@ export const fr: Messages = {
     },
     displayName: 'Nom affiché',
     displayNamePersonal: 'Pas de numéro de téléphone, d’e-mail, de @profil, d’adresse ou de lien dans le nom affiché, s’il te plaît – il est visible par tout le monde.',
-    displayNameOfficial: 'Les noms comme « Modération », « Admin » ou « Équipe Lichtung » sont réservés à l’équipe.',
+    displayNameOfficial: 'Les noms comme « Modération », « Admin » ou « Équipe Jiaia » sont réservés à l’équipe.',
     displayNameHint: 'C’est ton nom quand tu n’écris pas de façon totalement anonyme. Il n’est pas unique et ne mène à aucun profil.',
     defaultVisibility: 'Par défaut pour les nouvelles pensées',
     visibility: { anonymous: 'Totalement anonyme', pseudonym: 'Avec nom affiché' },
@@ -418,12 +418,12 @@ export const fr: Messages = {
     motionOptions: { on: 'Activée', reduced: 'Réduite', off: 'Désactivée' },
     breathSound: 'Son doux pendant la respiration',
     push: 'Notifications push pour les nouvelles réponses',
-    pushHint: 'Le texte reste toujours neutre : « Lichtung : quelqu’un t’a répondu ». Jamais le contenu.',
+    pushHint: 'Le texte reste toujours neutre : « Jiaia : quelqu’un t’a répondu ». Jamais le contenu.',
     listener: 'Écouter quand personne ne répond',
-    listenerHint: 'Si une pensée reste 6 heures sans réponse, Lichtung peut te prévenir – au maximum une fois par jour, seulement dans la cloche. Personne ne sait à qui la demande a été faite.',
+    listenerHint: 'Si une pensée reste 6 heures sans réponse, Jiaia peut te prévenir – au maximum une fois par jour, seulement dans la cloche. Personne ne sait à qui la demande a été faite.',
     pushOn: 'Le push est actif sur cet appareil.',
     pushOff: 'Le push est désactivé.',
-    pushUnsupported: 'Ce navigateur ne prend pas en charge les notifications push. Sur iPhone, ça marche si Lichtung est ajoutée à l’écran d’accueil.',
+    pushUnsupported: 'Ce navigateur ne prend pas en charge les notifications push. Sur iPhone, ça marche si Jiaia est ajouté à l’écran d’accueil.',
     pushDenied: 'Le push est bloqué dans le navigateur.',
     quiet: 'Heures de calme',
     quietFrom: 'de',
@@ -457,7 +457,7 @@ export const fr: Messages = {
     deleteButton: 'Supprimer le compte',
     logout: 'Se déconnecter',
     panic: 'Masquer vite',
-    panicHint: 'Trois fois Esc ou ce bouton : Lichtung disparaît immédiatement et ta session dans cet onglet se termine.',
+    panicHint: 'Trois fois Esc ou ce bouton : Jiaia disparaît immédiatement et ta session dans cet onglet se termine.',
   },
   auth: {
     login: 'Se connecter',
@@ -497,7 +497,7 @@ export const fr: Messages = {
       },
       {
         title: 'Pas une thérapie.',
-        body: 'Lichtung ne remplace pas un suivi professionnel. Si c’est trop en ce moment, tu trouves les numéros d’aide sur chaque page, sous « Aide immédiate ».',
+        body: 'Jiaia ne remplace pas un suivi professionnel. Si c’est trop en ce moment, tu trouves les numéros d’aide sur chaque page, sous « Aide immédiate ».',
       },
       {
         title: 'Trois règles de vie.',
@@ -548,7 +548,7 @@ export const fr: Messages = {
     displayIntro:
       'Quand tu n’écris pas de façon totalement anonyme, les autres voient ce nom et une forme qui t’appartient. Il ne mène à aucun profil et peut être changé à tout moment.',
     displayPlaceholder: 'p. ex. Mira',
-    finish: 'Entrer dans Lichtung',
+    finish: 'Entrer dans Jiaia',
     botCheck: 'Petite vérification que tu n’es pas un robot …',
     botFailed: 'La vérification n’a pas fonctionné. Recharge la page, s’il te plaît.',
     tooMany: 'Plusieurs comptes ont déjà été créés depuis ici aujourd’hui. Réessaie demain.',
@@ -580,7 +580,7 @@ export const fr: Messages = {
   transparency: {
     title: 'Transparence',
     intro:
-      'Ce qui se passe sur Lichtung et ce que fait la modération – en chiffres, par trimestre clôturé. Jamais de contenus, jamais de comptes. Les chiffres inférieurs à 10 sont seulement indiqués comme « moins de 10 », pour que personne ne soit reconnaissable.',
+      'Ce qui se passe sur Jiaia et ce que fait la modération – en chiffres, par trimestre clôturé. Jamais de contenus, jamais de comptes. Les chiffres inférieurs à 10 sont seulement indiqués comme « moins de 10 », pour que personne ne soit reconnaissable.',
     unavailable: 'Les chiffres ne sont pas disponibles pour le moment. Réessaie plus tard.',
     below: (k: number) => `moins de ${k}`,
     tooFew: 'trop peu pour en tirer une conclusion',
@@ -612,14 +612,14 @@ export const fr: Messages = {
   },
   rules: {
     title: 'Règles de vie',
-    intro: 'Lichtung fonctionne parce que tout le monde prend soin des autres. Ces règles s’appliquent dans tous les cercles.',
+    intro: 'Jiaia fonctionne parce que tout le monde prend soin des autres. Ces règles s’appliquent dans tous les cercles.',
     items: [
       ['Faire preuve de bienveillance.', 'Ici, des personnes écrivent dans des moments difficiles. Réponds comme tu aimerais qu’on te réponde.'],
       ['Ne pas imposer de conseils.', 'La personne qui choisit « Écoute » ou « Juste vider mon sac » veut être entendue – pas qu’on lui apporte des solutions.'],
       ['Pas de données personnelles.', 'Ni les tiennes, ni celles des autres : pas de noms, de numéros, d’adresses, de pseudos de réseaux sociaux.'],
       ['Pas de comparaison, pas de dévalorisation.', '« D’autres vont plus mal » ou « Ne fais pas tant d’histoires » n’ont pas leur place ici.'],
       ['Pas d’instructions pour se faire du mal.', 'Ces contenus sont supprimés immédiatement. Si tu t’inquiètes pour quelqu’un : signale avec « Je m’inquiète pour cette personne ».'],
-      ['Pas de publicité, pas de diagnostics.', 'Lichtung n’est ni un marché ni un cabinet médical.'],
+      ['Pas de publicité, pas de diagnostics.', 'Jiaia n’est ni un marché ni un cabinet médical.'],
     ],
     moderation:
       'Chaque pensée et chaque réponse est vérifiée automatiquement après publication. Une équipe de modération examine les signalements. Elle ne voit que le contenu, jamais ton identifiant.',
@@ -634,9 +634,9 @@ export const fr: Messages = {
     saved: 'Enregistré. Tu le retrouves aussi sous « Aide immédiate ».',
     open: 'Mon plan de crise',
     print: 'Imprimer',
-    printNote: 'Mon plan de crise – de Lichtung. 24 h sur 24 : 143 La Main Tendue · 147 Pro Juventute · 144 Urgences.',
+    printNote: 'Mon plan de crise – de Jiaia. 24 h sur 24 : 143 La Main Tendue · 147 Pro Juventute · 144 Urgences.',
     offline: 'Afficher aussi sans internet sur cet appareil',
-    offlineHint: 'Une copie reste dans le navigateur de cet appareil jusqu’à ce que tu te déconnectes ou que tu masques Lichtung rapidement. Seulement sur un appareil que personne d’autre n’utilise.',
+    offlineHint: 'Une copie reste dans le navigateur de cet appareil jusqu’à ce que tu te déconnectes ou que tu masques Jiaia rapidement. Seulement sur un appareil que personne d’autre n’utilise.',
     offlineOn: 'Le plan est maintenant disponible hors ligne sur cet appareil.',
     offlineOff: 'La copie hors ligne a été supprimée de cet appareil.',
     fields: {
@@ -650,7 +650,7 @@ export const fr: Messages = {
   },
   letters: {
     title: 'Lettre à mon moi futur',
-    intro: 'Un jour où ça va bien, écris-toi quelques lignes. La prochaine fois que tu choisiras « Lourd », Lichtung te les montrera.',
+    intro: 'Un jour où ça va bien, écris-toi quelques lignes. La prochaine fois que tu choisiras « Lourd », Jiaia te les montrera.',
     placeholder: 'Cher moi, aujourd’hui j’allais bien parce que …',
     write: 'Déposer la lettre',
     saved: 'Déposée. Elle attend un jour où tu en auras besoin.',
@@ -706,7 +706,7 @@ export const fr: Messages = {
       },
       {
         title: 'L’aide est toujours à portée de main.',
-        body: '« Aide immédiate » te montre des numéros disponibles 24 h sur 24 (143, 147, 144). Trois fois Esc masque Lichtung immédiatement. Et Lichtung ne remplace pas une thérapie – c’est un lieu pour souffler.',
+        body: '« Aide immédiate » te montre des numéros disponibles 24 h sur 24 (143, 147, 144). Trois fois Esc masque Jiaia immédiatement. Et Jiaia ne remplace pas une thérapie – c’est un lieu pour souffler.',
       },
     ],
   },
@@ -733,7 +733,7 @@ export const fr: Messages = {
     notFoundLead: 'Cette page',
     notFoundEm: 'n’existe pas.',
     notFoundBody: 'La pensée a peut-être été supprimée, ou le lien est incomplet.',
-    back: 'Retour à Lichtung',
+    back: 'Retour à Jiaia',
     errorLead: 'Quelque chose',
     errorEm: 's’est mal passé.',
     errorBody: 'C’est de notre faute, pas de la tienne. Réessaie dans un instant. Si c’est trop en ce moment : tu peux toujours joindre les numéros ci-dessous.',
@@ -741,7 +741,7 @@ export const fr: Messages = {
   },
   push: {
     reply: 'Quelqu’un t’a répondu',
-    acuteTitle: 'Lichtung · Modération',
+    acuteTitle: 'Jiaia · Modération',
     acuteBody: 'Un signalement urgent attend.',
   },
   listener: {
@@ -750,7 +750,7 @@ export const fr: Messages = {
   offline: {
     titleLead: 'Actuellement',
     titleEm: 'hors ligne.',
-    body: 'Lichtung a besoin d’une connexion. Tu peux quand même joindre les numéros d’aide à tout moment.',
+    body: 'Jiaia a besoin d’une connexion. Tu peux quand même joindre les numéros d’aide à tout moment.',
     plan: 'Ton plan de crise',
   },
   panic: {
@@ -858,7 +858,7 @@ export const fr: Messages = {
       openTitle: 'Propositions de rôle en attente',
       proposedNotice: 'Un changement de rôle a été proposé et attend ta confirmation (Modération → File d’attente).',
       appliedNotice: (role: string) => `Un changement de rôle est confirmé et s’applique maintenant : ${role}.`,
-      changedNotice: (role: string) => `Ton rôle sur Lichtung est maintenant : ${role}. Pour toute question, contacte l’équipe.`,
+      changedNotice: (role: string) => `Ton rôle sur Jiaia est maintenant : ${role}. Pour toute question, contacte l’équipe.`,
     },
     overdue: 'en retard',
     images: {

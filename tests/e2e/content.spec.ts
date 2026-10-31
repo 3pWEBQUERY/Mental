@@ -16,7 +16,7 @@ test('Teilen, Zuspruch, Antworten, Benachrichtigung, «Das hat mir gutgetan»', 
   await expect(mine.locator('.who')).toHaveText('Anonym (du)')
   await expect(mine).toContainText('Noch kein Zuspruch')
 
-  await b.goto('/lichtung?ansicht=unheard')
+  await b.goto('/start?ansicht=unheard')
   const card = b.locator('article', { hasText: text })
   await expect(card).toContainText('Noch ohne Antwort')
   // Keine öffentlichen Zahlen: Zuspruch ist ohne Zähler.
@@ -57,7 +57,7 @@ test('Krisensprache: Hinweis beim Tippen, Vollbild nach dem Teilen, nur für die
   await a.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
   await expect(a.locator('article', { hasText: text })).toContainText('Nur für dich sichtbar')
 
-  await b.goto('/lichtung')
+  await b.goto('/start')
   await expect(b.locator('article', { hasText: text })).toHaveCount(0)
 })
 
@@ -68,7 +68,7 @@ test('Krisensprache in einer Antwort: Vollbild-Hinweis, Antwort wartet auf Prüf
   await register(b)
   const text = `Ein Gedanke für eine Antwort ${Date.now()}`
   await share(a, text)
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const card = b.locator('article', { hasText: text })
   await card.locator('.reply-toggle').click()
   await card.getByLabel('Antwort schreiben').fill('Mir geht es auch so, ich will nicht mehr leben')
@@ -90,7 +90,7 @@ test('Eigene Antwort löschen und Antwortende blockieren', async ({ browser }) =
   await register(b, 'Lio')
   const text = `Ein Gedanke für Antworten ${Date.now()}`
   await share(a, text)
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const card = b.locator('article', { hasText: text })
   await card.locator('.reply-toggle').click()
   await card.getByLabel('Antwort schreiben').fill('Meine Nummer ist hier zu viel')
@@ -132,7 +132,7 @@ test('Melden mit «Ich mache mir Sorgen» zeigt, wie man selbst reagieren kann',
   await register(b)
   const text = `Ich weiss gerade nicht weiter ${Date.now()}`
   await share(a, text)
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const card = b.locator('article', { hasText: text })
   await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
   await b.getByRole('menuitem', { name: 'Melden' }).click()
@@ -155,7 +155,7 @@ test('Blockieren unter Namen trifft das Konto – anonyme Gedanken bleiben unver
   await share(a, named, { anonymous: false })
   await share(a, anon, { anonymous: true })
 
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const card = b.locator('article', { hasText: named })
   await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
   await b.getByRole('menuitem', { name: 'Blockieren' }).click()
@@ -181,7 +181,7 @@ test('Anonymen Gedanken ausblenden trifft nur diesen Gedanken', async ({ browser
   await share(a, named, { anonymous: false })
   await share(a, anon, { anonymous: true })
 
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const card = b.locator('article', { hasText: anon })
   await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
   await b.getByRole('menuitem', { name: 'Ausblenden' }).click()
@@ -196,7 +196,7 @@ test('Anonymen Gedanken ausblenden trifft nur diesen Gedanken', async ({ browser
   await b.getByRole('button', { name: 'Wieder zeigen' }).click()
   // Erst weiter, wenn die Aktion durch ist – sonst bricht die Navigation sie ab.
   await expect(b.getByText('Ein ausgeblendeter anonymer Gedanke')).toHaveCount(0)
-  await b.goto('/lichtung')
+  await b.goto('/start')
   await expect(b.locator('article', { hasText: anon })).toHaveCount(1)
 })
 
@@ -208,7 +208,7 @@ test('Löschen ist sofort und endgültig – auch in Benachrichtigungen', async 
   const text = `Wird gleich gelöscht ${Date.now()}`
   await share(a, text)
   // Eine Antwort erzeugt eine Benachrichtigung mit Auszug für die Verfasserin.
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const other = b.locator('article', { hasText: text })
   await other.locator('.reply-toggle').click()
   await other.getByRole('button', { name: 'Du bist damit nicht allein.' }).click()
@@ -267,7 +267,7 @@ test('«Meine Kreise»: gefolgte Kreise als Filter', async ({ page }) => {
   await row.getByRole('radio', { name: 'Folgen' }).click()
   await expect(row.getByRole('radio', { name: 'Folgen' })).toHaveAttribute('aria-checked', 'true')
   await page.waitForLoadState('networkidle')
-  await page.goto('/lichtung')
+  await page.goto('/start')
   const inAngst = `Angst-Gedanke ${t}`
   const elsewhere = `Trauer-Gedanke ${t}`
   for (const [text, circle] of [[inAngst, 'Angst'], [elsewhere, 'Trauer']] as const) {
@@ -376,7 +376,7 @@ test('Einstellungen: Auswahlgruppen mit Tropfen, Auswahl wirkt sofort', async ({
 
 test('Kreis-Auswahl: Tropfen in der Seitenleiste und beim Teilen', async ({ page }) => {
   await register(page)
-  await page.goto('/lichtung')
+  await page.goto('/start')
   const list = page.locator('aside.side ul.circles')
   // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
   await list.hover()
@@ -400,7 +400,7 @@ test('Kreis-Auswahl: Tropfen in der Seitenleiste und beim Teilen', async ({ page
 
 test('Stimmungs-Auswahl: Tropfen im Raum und beim Teilen', async ({ page }) => {
   await register(page)
-  await page.goto('/lichtung')
+  await page.goto('/start')
   const mood = page.getByRole('radiogroup', { name: 'Stimmung' })
   // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
   await mood.hover()
@@ -425,7 +425,7 @@ test('Zuspruch-Knöpfe: Tropfen füllt und leert, Zustand flackert nicht', async
   await register(b)
   const text = `Tropfen-Gedanke ${Date.now()}`
   await share(a, text)
-  await b.goto('/lichtung')
+  await b.goto('/start')
   const row = b.locator('article', { hasText: text }).locator('.support')
   const hear = row.getByRole('button', { name: 'Ich höre dich' })
   // Jeden Wechsel von aria-pressed mitschreiben: pro Klick genau einer (früher sprang er kurz zurück).
@@ -463,7 +463,7 @@ test('Melden: «Sorge» und frische Konten blenden nichts aus, drei ältere Kont
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const status = async (body: string) => (await pool.query(`SELECT status FROM posts WHERE body = $1`, [body])).rows[0]?.status
   async function report(page: Page, text: string, reason: string) {
-    await page.goto('/lichtung')
+    await page.goto('/start')
     const card = page.locator('article', { hasText: text })
     await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
     await page.getByRole('menuitem', { name: 'Melden' }).click()

@@ -118,7 +118,7 @@ Schreibweise der Pfade: `a.b[2]` ist das dritte Element eines Arrays, `a.*` steh
 - `meta.description`, `landing.principles[0]`, `landing.principles[1]`
 - `landing.privacy`, `landing.imprint`
 
-**Ausserhalb von fr.ts:** `lib/display-name.ts` erkennt reservierte Namen («Moderation», «Lichtung-Team» …) wohl nur auf Deutsch. `settings.displayNameOfficial` nennt jetzt aber «Modération» und «Équipe Lichtung». Diese Namen müssen dort ebenfalls gesperrt werden.
+**Ausserhalb von fr.ts:** `lib/display-name.ts` erkennt reservierte Namen («Moderation», «Jiaia-Team» …) wohl nur auf Deutsch. `settings.displayNameOfficial` nennt jetzt aber «Modération» und «Équipe Lichtung». Diese Namen müssen dort ebenfalls gesperrt werden.
 
 ---
 

@@ -2,10 +2,10 @@ import { detectPii } from './pii'
 
 /**
  * Anzeigenamen erscheinen neben Gedanken und Antworten. Sie dürfen niemanden erkennbar machen (Telefon, E-Mail,
- * @Profil, Adresse, Link) und keine Autorität vortäuschen («Moderation», «Lichtung-Team» …) – in einem
+ * @Profil, Adresse, Link) und keine Autorität vortäuschen («Moderation», «Jiaia-Team» …) – in einem
  * pseudonymen Raum wäre beides ein naheliegender Missbrauch.
  */
-const OFFICIAL = /\b(lichtung|moderat\w*|admin\w*|team|support|offiziell\w*|official|staff|mod)\b/i
+const OFFICIAL = /\b(jiaia|lichtung|moderat\w*|admin\w*|team|support|offiziell\w*|official|staff|mod)\b/i
 
 export type DisplayNameProblem = 'personal' | 'official'
 

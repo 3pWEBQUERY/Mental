@@ -1,8 +1,10 @@
-# Lichtung
+# Jiaia
+
+> **Name:** Die App hiess bis Oktober 2026 «Lichtung». Sichtbar heisst sie überall **Jiaia** (Wortmarke «JIAIA» per CSS), der Feed liegt unter `/start` (`/lichtung/*` leitet dauerhaft um). Interne Bezeichner behalten bewusst den alten Namen – Cookies (`lichtung_session`, `lichtung_lang`), lokaler Speicher (`lichtung-prefs`, Entwurf, Offline-Plan), Benachrichtigungs-Kanal, Datenbank-Zugang und vor allem die Tagebuch-Verschlüsselung (`lichtung-journal-v1`): Eine Umbenennung würde alle abmelden, Einstellungen löschen und bestehende Tagebücher unlesbar machen.
 
 Ein ruhiger, anonymer Ort, an dem Menschen Gedanken teilen und Zuspruch bekommen. Aufgebaut wie ein Feed, aber ohne Likes, ohne Follower, ohne Profilbilder und ohne Rangliste. Wer in einer Krise ist, findet in Sekunden echte Hilfe (143 · 147 · 144).
 
-Umsetzung der PRD «Lichtung – Product Requirements Document» im Design des Entwurfs `lichtung.html`: Instrument Serif + Geist, flache Farben, keine Schatten, keine Verläufe. Bewegung kommt nur aus dem Three.js-Raum.
+Umsetzung der PRD (damals noch «Lichtung») im Design des Entwurfs `lichtung.html`: Instrument Serif + Geist, flache Farben, keine Schatten, keine Verläufe. Bewegung kommt nur aus dem Three.js-Raum.
 
 ## Stack
 
@@ -23,7 +25,7 @@ cp .env.example .env            # DATABASE_URL, SESSION_SECRET, APP_URL setzen
 npm install
 npm run db:migrate              # bzw. npx drizzle-kit migrate
 npm run db:seed                 # Kreise, Hilfe-Nummern, Krisen-Wortliste, kleine Schritte
-npm run db:demo                 # optional: Beispielinhalte (Login demo.mira / lichtung-demo-2026)
+npm run db:demo                 # optional: Beispielinhalte (Login demo.mira / jiaia-demo-2026)
 npm run dev                     # Web auf :3000
 npm run worker                  # zweites Terminal: Hintergrundjobs
 ```
@@ -51,7 +53,7 @@ E2E deckt Registrierung, Login, Wiederherstellung, Teilen, Zuspruch, Antworten, 
 
 ## Deployment auf Railway
 
-Projekt «Lichtung», alles in **EU West (Amsterdam)**. Config-as-Code (`railway.json`) liest Railway für neue Services nicht mehr; die Einstellungen liegen direkt an den Services:
+Projekt «Lichtung» (Railway-Projektname, unverändert), alles in **EU West (Amsterdam)**. Config-as-Code (`railway.json`) liest Railway für neue Services nicht mehr; die Einstellungen liegen direkt an den Services:
 
 | Service | Einstellungen |
 | --- | --- |
@@ -100,7 +102,7 @@ Ohne Nachtbereitschaft ist das Team von 22 bis 7 Uhr (Schweizer Zeit) nicht erre
 
 - `app/(public)` – Landing, Hilfe (`ensureStatic = 'navigation'`, funktioniert ohne DB), Regeln, Datenschutz
 - `app/(auth)` – Anmelden, Registrieren (7 Schritte), Wiederherstellen
-- `app/(app)` – Lichtung (Feed), Ich, Einstellungen; Server Actions für alle Schreibvorgänge
+- `app/(app)` – Start (Feed, `/start`), Ich, Einstellungen; Server Actions für alle Schreibvorgänge
 - `app/admin` – Warteschlange, Kreise, Hilfe-Nummern, Krisen-Wortliste, kleine Schritte, Audit-Log
 - `app/api` – Upload-URL, Medien (302 auf signierte URL), SSE für die Glocke, Export, Healthcheck
 - `components/raum` – Three.js-Kugel, per `next/dynamic` ohne SSR geladen

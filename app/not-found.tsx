@@ -19,7 +19,7 @@ export default function NotFound() {
           {e.notFoundBody}
         </p>
         <p style={{ marginTop: 22 }}>
-          <Link className="btn" href="/lichtung">
+          <Link className="btn" href="/start">
             {e.back}
           </Link>
         </p>

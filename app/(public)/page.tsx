@@ -7,7 +7,7 @@ import { m } from '@/messages'
 // Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
 export const instant = false
 
-/** Landing-Page in der gewählten Sprache (pro Anfrage). Eingeloggte leitet der Proxy direkt in die Lichtung. */
+/** Landing-Page in der gewählten Sprache (pro Anfrage). Eingeloggte leitet der Proxy direkt auf /start. */
 export default async function Landing() {
   await connection()
   const l = m.landing

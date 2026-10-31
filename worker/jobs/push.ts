@@ -15,7 +15,7 @@ function configure() {
   const pub = process.env.VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
   if (!pub || !priv) return false
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? 'mailto:team@lichtung.invalid', pub, priv)
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? 'mailto:team@jiaia.invalid', pub, priv)
   configured = true
   return true
 }
@@ -32,7 +32,7 @@ export async function sendPush({ userId, postId, alert }: { userId: string; post
   const t = getMessages((await localesOf([userId])).get(userId))
   const payload = alert
     ? JSON.stringify({ title: t.push.acuteTitle, body: t.push.acuteBody, url: '/admin', tag: 'lichtung-acute' })
-    : JSON.stringify({ title: 'Lichtung', body: t.push.reply, url: `/lichtung/gedanke/${postId}` })
+    : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
   for (const s of subs) {
     // Ältere Abos von vor der Prüfung: nur an echte Push-Dienste senden, alles andere entfernen.
     if (!isPushEndpoint(s.endpoint)) {

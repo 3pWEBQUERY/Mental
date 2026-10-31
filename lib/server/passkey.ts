@@ -38,10 +38,10 @@ async function takeChallenge() {
 export async function registrationOptions(userId: string) {
   const existing = await db.select({ id: passkeys.credentialId, transports: passkeys.transports }).from(passkeys).where(eq(passkeys.userId, userId))
   const options = await generateRegistrationOptions({
-    rpName: 'Lichtung',
+    rpName: 'Jiaia',
     rpID: env.rpId,
-    userName: 'Lichtung',
-    userDisplayName: 'Lichtung',
+    userName: 'Jiaia',
+    userDisplayName: 'Jiaia',
     userID: new TextEncoder().encode(userId),
     attestationType: 'none',
     excludeCredentials: existing.map((c) => ({ id: c.id, transports: (c.transports ?? undefined) as never })),
@@ -71,6 +71,7 @@ export async function verifyRegistration(userId: string, response: RegistrationR
     deviceType: info.credentialDeviceType,
     backedUp: info.credentialBackedUp,
     transports: info.credential.transports ?? null,
+    rpId: env.rpId,
   })
   return true
 }
@@ -103,7 +104,7 @@ export async function verifyAuthentication(response: AuthenticationResponseJSON)
   if (!result.verified) return null
   await db
     .update(passkeys)
-    .set({ counter: result.authenticationInfo.newCounter, lastUsedAt: new Date() })
+    .set({ counter: result.authenticationInfo.newCounter, lastUsedAt: new Date(), rpId: env.rpId })
     .where(eq(passkeys.id, pk.id))
   return pk.userId
 }

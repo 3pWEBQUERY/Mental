@@ -130,7 +130,7 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       massnahmen: actionsAgainst,
       bilder: allMedia,
     }
-    const files: Zippable = { 'lichtung.json': strToU8(JSON.stringify(data, null, 2)) }
+    const files: Zippable = { 'jiaia.json': strToU8(JSON.stringify(data, null, 2)) }
     for (const m of media) {
       try {
         files[`bilder/${m.id}.webp`] = await getObjectBytes(m.key)

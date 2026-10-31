@@ -3,7 +3,7 @@
 > Aus dem Code abgeleitet (Stand dieses Commits). **Kein Rechtsrat.** Vor dem Launch von einer Fachperson für
 > Datenschutz prüfen und ergänzen lassen. Offene Punkte stehen am Ende.
 
-**Verantwortlich:** Alexander Sulschani, Schaffhauserstrasse 6, 8180 Bülach · kontakt@lichtung.ch
+**Verantwortlich:** Alexander Sulschani, Schaffhauserstrasse 6, 8180 Bülach · kontakt@jiaia.app
 
 **Zweck des Angebots:** anonymer Peer-Support (Gedanken teilen, Zuspruch, Antworten), Selbsthilfe-Werkzeuge
 (Atmen, 5-4-3-2-1, Check-in, Tagebuch, Notfallplan, Briefe), Moderation und Krisenhinweise.

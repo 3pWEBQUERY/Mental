@@ -1,6 +1,6 @@
 /**
  * Beispielinhalte für lokale Entwicklung und Vorschau-Umgebungen – nie in Produktion ausführen.
- * Legt sechs Demo-Konten an (Passwort: «lichtung-demo-2026») und die Gedanken aus dem Entwurf.
+ * Legt sechs Demo-Konten an (Passwort: «jiaia-demo-2026») und die Gedanken aus dem Entwurf.
  */
 import { randomInt } from 'node:crypto'
 import { eq } from 'drizzle-orm'
@@ -29,7 +29,7 @@ const POSTS: { by: Name; anon?: boolean; circle: string; need: 'listen' | 'coura
 ]
 
 async function main() {
-  const pw = await hash('lichtung-demo-2026', { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1 })
+  const pw = await hash('jiaia-demo-2026', { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1 })
   const ids = {} as Record<Name, string>
   const seeds = {} as Record<Name, number>
   for (const name of NAMES) {
@@ -78,7 +78,7 @@ async function main() {
       })
     }
   }
-  console.log('Demo-Daten angelegt. Login z. B. «demo.mira» / «lichtung-demo-2026».')
+  console.log('Demo-Daten angelegt. Login z. B. «demo.mira» / «jiaia-demo-2026».')
 }
 
 main()

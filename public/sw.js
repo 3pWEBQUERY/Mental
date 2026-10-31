@@ -1,5 +1,5 @@
-/* Lichtung Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
-const CACHE = 'lichtung-v3'
+/* Jiaia Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
+const CACHE = 'jiaia-v4'
 const OFFLINE = ['/offline', '/hilfe', '/aide']
 
 self.addEventListener('install', (event) => {
@@ -30,7 +30,7 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Lichtung', body: 'Jemand hat dir geantwortet', url: '/lichtung' }
+  let data = { title: 'Jiaia', body: 'Jemand hat dir geantwortet', url: '/start' }
   try {
     data = { ...data, ...event.data.json() }
   } catch {}
@@ -50,7 +50,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/lichtung'
+  const url = (event.notification.data && event.notification.data.url) || '/start'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) {

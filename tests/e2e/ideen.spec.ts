@@ -24,7 +24,7 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   await expect(page.getByText('Ich ziehe mich zurück und schlafe kaum.')).toBeVisible()
 
   // Hilfe-Dialog: Telefon-Sätze aufklappen, Notfallplan mit einem Tipp
-  await page.goto('/lichtung')
+  await page.goto('/start')
   await page.locator('nav.rail').getByRole('button', { name: 'Sofort Hilfe' }).click()
   const help = page.getByRole('dialog', { name: 'Sofort Hilfe' })
   await help.getByText('Was ich am Telefon sagen kann').click()
@@ -65,7 +65,7 @@ test('Brief an mein späteres Ich erscheint nach «Schwer»', async ({ page }) =
   await page.locator('#letter-text').fill('Liebes Ich, heute war der See ruhig und du auch.')
   await page.getByRole('button', { name: 'Brief ablegen' }).click()
   await expect(page.locator('.letters')).toContainText('wartet')
-  await page.goto('/lichtung')
+  await page.goto('/start')
   await page.getByRole('radio', { name: 'Schwer' }).click()
   const dlg = page.getByRole('dialog', { name: 'Brief an mein späteres Ich' })
   await expect(dlg.getByText('heute war der See ruhig')).toBeVisible()
@@ -86,7 +86,7 @@ test('Ratschlag-Hinweis auf «Zuhören» und «Ein Gedanke wartet»', async ({ b
   await sql(`UPDATE posts SET closed = true WHERE reply_count = 0`)
   await share(a, text) // Standard-Bedürfnis: Zuhören
 
-  await b.goto('/lichtung/wartet')
+  await b.goto('/start/wartet')
   await expect(b.getByRole('heading', { name: 'Ein Gedanke wartet' })).toBeVisible()
   await expect(b.locator('.waiting-one article')).toHaveCount(1)
   const card = b.locator('.waiting-one article', { hasText: text })
@@ -124,7 +124,7 @@ test('Gedanke loslassen und Diskret-Modus', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-veiled', '1')
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(page.locator('html')).not.toHaveAttribute('data-veiled', '1')
-  await page.goto('/lichtung')
+  await page.goto('/start')
   await expect(page).toHaveTitle('Notizen')
 })
 

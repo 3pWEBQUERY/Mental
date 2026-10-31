@@ -17,12 +17,12 @@ export function SinglePost({ post: initial }: { post: PublicPost | null }) {
       {/* Seitentitel für Screenreader und die Überschriften-Navigation. */}
       <h1 className="sr-only">{m.feed.single}</h1>
       <p style={{ marginBottom: 12 }}>
-        <Link className="linkish" href="/lichtung">
+        <Link className="linkish" href="/start">
           ← {m.feed.title}
         </Link>
       </p>
       {post ? (
-        <PostCard post={post} onChange={setPost} onRemove={() => router.replace('/lichtung')} onReport={setReport} defaultOpen />
+        <PostCard post={post} onChange={setPost} onRemove={() => router.replace('/start')} onReport={setReport} defaultOpen />
       ) : (
         <div className="empty">
           <b>{m.feed.deletedPost}</b>

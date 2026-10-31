@@ -15,7 +15,7 @@ export function panic() {
   forgetPrivate()
   document.title = 'MeteoSchweiz'
   document.body.style.visibility = 'hidden'
-  // replace(): Die Lichtung verschwindet aus dem Zurück-Verlauf dieses Tabs.
+  // replace(): Jiaia verschwindet aus dem Zurück-Verlauf dieses Tabs.
   window.location.replace(m.panic.target)
 }
 

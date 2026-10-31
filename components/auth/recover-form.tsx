@@ -38,7 +38,7 @@ export function RecoverForm() {
           <button type="button" className="btn ghost" onClick={() => navigator.clipboard?.writeText(words.join(' '))}>
             {m.register.keyCopy}
           </button>
-          <Link className="btn" href="/lichtung">
+          <Link className="btn" href="/start">
             {m.register.finish}
           </Link>
         </div>
