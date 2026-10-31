@@ -222,7 +222,9 @@ export function PostCard({
         setReply(text)
         return toast(res.error)
       }
-      onChange({ ...post, replies: [...post.replies, res.reply], replyCount: post.replyCount + (post.isMine ? 0 : 1) })
+      // Innerhalb der Transition: Sonst endet die optimistische Antwort nicht im selben Moment, in dem die echte
+      // ankommt – für einen Augenblick stünde sie doppelt da.
+      startTransition(() => onChange({ ...post, replies: [...post.replies, res.reply], replyCount: post.replyCount + (post.isMine ? 0 : 1) }))
       pulse()
       // Krisensprache in der eigenen Antwort: derselbe Vollbild-Hinweis wie nach einem Gedanken.
       if (res.acute) setAcute(true)
