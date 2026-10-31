@@ -62,10 +62,13 @@
     --step-muted: #5f5c55;
     --step-line: #55534d;
     --backdrop: rgba(0, 0, 0, 0.6);
-    --mood-0: #8fa3ba;
-    --mood-1: #9aa3ab;
-    --mood-3: #8fa77f;
-    --mood-4: #e07556;
+    /* Stimmungen bei Nacht: fünf klar getrennte Töne in gleicher Helligkeit (OKLCH L≈0.72–0.83, C≈0.05–0.125) –
+       Dämmerblau, Flieder, Sand, Salbei, Aprikose. «Okay» ist warmer Sand statt Schriftweiss. */
+    --mood-0: #7da8d9;
+    --mood-1: #ae9fcb;
+    --mood-2: #dac4a3;
+    --mood-3: #92c799;
+    --mood-4: #ed8f6a;
     color-scheme: dark;
   }
 }
@@ -87,10 +90,13 @@
   --step-muted: #5f5c55;
   --step-line: #55534d;
   --backdrop: rgba(0, 0, 0, 0.6);
-  --mood-0: #8fa3ba;
-  --mood-1: #9aa3ab;
-  --mood-3: #8fa77f;
-  --mood-4: #e07556;
+  /* Stimmungen bei Nacht: fünf klar getrennte Töne in gleicher Helligkeit (OKLCH L≈0.72–0.83, C≈0.05–0.125) –
+     Dämmerblau, Flieder, Sand, Salbei, Aprikose. «Okay» ist warmer Sand statt Schriftweiss. */
+  --mood-0: #7da8d9;
+  --mood-1: #ae9fcb;
+  --mood-2: #dac4a3;
+  --mood-3: #92c799;
+  --mood-4: #ed8f6a;
   color-scheme: dark;
 }
 :root[data-font='large'] { --fs: 17px; --fz: 1.1333; }
