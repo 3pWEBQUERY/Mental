@@ -69,3 +69,20 @@ test('Transparenz: öffentliche Zahlen pro Quartal, ohne Anmeldung', async ({ pa
   await expect(page.getByText('Geteilte Gedanken').first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Transparenz' })).toBeVisible()
 })
+
+test('Nachts ohne Bereitschaft sagt «Sofort Hilfe» ehrlich, dass das Team nicht online ist', async ({ page }) => {
+  await register(page)
+  // 23:30 Schweizer Zeit (MEZ = UTC+1)
+  await page.clock.setFixedTime(new Date('2026-12-01T22:30:00Z'))
+  await page.reload()
+  await page.locator('nav.rail').getByRole('button', { name: 'Sofort Hilfe' }).click()
+  const help = page.getByRole('dialog', { name: 'Sofort Hilfe' })
+  await expect(help.locator('.night-note')).toContainText('nicht online')
+  await page.keyboard.press('Escape')
+  // Tagsüber kein Hinweis.
+  await page.clock.setFixedTime(new Date('2026-12-01T10:00:00Z'))
+  await page.reload()
+  await page.locator('nav.rail').getByRole('button', { name: 'Sofort Hilfe' }).click()
+  await expect(page.getByRole('dialog', { name: 'Sofort Hilfe' })).toBeVisible()
+  await expect(page.locator('.night-note')).toHaveCount(0)
+})

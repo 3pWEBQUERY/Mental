@@ -1,6 +1,7 @@
 /**
- * Bestehende Klartext-Werte nachträglich verschlüsseln (einmalig nach dem Setzen von DATA_ENCRYPTION_KEY,
- * beliebig oft wiederholbar – schon verschlüsselte Werte bleiben unverändert).
+ * Bestehende Klartext-Werte nachträglich verschlüsseln (nach dem Setzen von DATA_ENCRYPTION_KEY,
+ * beliebig oft wiederholbar – schon verschlüsselte Werte bleiben unverändert). Läuft im Pre-Deploy des
+ * web-Service mit; ohne Schlüssel tut es nichts.
  *   DATA_ENCRYPTION_KEY=… npm run data:encrypt
  */
 import { and, eq, isNotNull, not, sql } from 'drizzle-orm'
@@ -9,7 +10,7 @@ import { checkins, letters, safetyPlans } from '../db/schema'
 import { atRestEnabled, sealJson, sealText } from '../lib/at-rest'
 
 async function main() {
-  if (!atRestEnabled()) throw new Error('DATA_ENCRYPTION_KEY fehlt')
+  if (!atRestEnabled()) return console.log('[encrypt] kein DATA_ENCRYPTION_KEY – nichts zu tun')
   let n = 0
   for (const c of await db
     .select({ id: checkins.id, userId: checkins.userId, note: checkins.note })

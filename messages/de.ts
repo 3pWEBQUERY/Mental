@@ -240,6 +240,11 @@ export const de = {
     stay: 'Ich bleibe noch in der App',
     pending: 'Dein Gedanke ist gespeichert und nur für dich sichtbar, bis jemand aus dem Team ihn angesehen hat.',
   },
+  night: {
+    acute:
+      'Gerade ist niemand aus dem Lichtung-Team online (22 bis 7 Uhr). Dein Gedanke wartet bis zum Morgen. Wenn es jetzt zu viel ist: 143 ist rund um die Uhr da, bei Gefahr 144.',
+    help: 'Nachts (22 bis 7 Uhr) ist das Lichtung-Team nicht online. Diese Nummern sind trotzdem jetzt für dich da:',
+  },
   help: {
     title: 'Sofort Hilfe',
     eyebrow: 'Sofort Hilfe',
@@ -861,4 +866,15 @@ export const de = {
   },
 } as const
 
-export type Messages = typeof de
+/** Gleiche Struktur, beliebiger Text – damit andere Sprachen (fr.ts) dieselbe Form erfüllen können. */
+type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : T extends (...args: infer A) => infer R
+        ? (...args: A) => Widen<R>
+        : { readonly [K in keyof T]: Widen<T[K]> }
+
+export type Messages = Widen<typeof de>
