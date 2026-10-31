@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import { db } from '@/db'
 import { profiles, sessions, users, type Settings } from '@/db/schema'
+import { apiContext, bearerToken } from './api-context'
 import { sha256, token } from './crypto'
 import { env } from './env'
 import { isLocale, LOCALE_COOKIE } from '@/messages'
@@ -33,6 +34,8 @@ export type Viewer = {
 /** Nur Gerätetyp und Browser – keine IP, kein genauer User-Agent. */
 export function deviceLabel(ua: string | null): string {
   const s = ua ?? ''
+  // Die iOS-App meldet sich als «Lichtung-iOS/<Version> (iPhone|iPad)».
+  if (/Lichtung-iOS\//.test(s)) return `${/iPad/.test(s) ? 'iPad' : 'iPhone'} · App`
   const device = /iPhone/.test(s)
     ? 'iPhone'
     : /iPad/.test(s)
@@ -69,6 +72,12 @@ export async function createSession(userId: string, authMethod: AuthMethod) {
     expiresAt: new Date(Date.now() + TTL_MS),
   })
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId))
+  // App: Das Token geht in der Antwort zurück (und liegt dort im Schlüsselbund), es gibt kein Cookie.
+  const api = apiContext.get()
+  if (api) {
+    api.token = raw
+    return
+  }
   ;(await cookies()).set(SESSION_COOKIE, raw, {
     httpOnly: true,
     secure: env.isProd,
@@ -103,7 +112,7 @@ async function syncLocale(userId: string) {
 export const getViewer = cache(async (): Promise<Viewer | null> => {
   // Alles mit Sitzung gehört zum Request – auch die Zeitvergleiche danach.
   await connection()
-  const raw = (await cookies()).get(SESSION_COOKIE)?.value
+  const raw = await sessionToken()
   if (!raw) return null
   const rows = await db
     .select({
@@ -156,6 +165,16 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   }
 })
 
+/**
+ * Bearer-Token (Apps) oder Cookie (Browser). Innerhalb von /api/v1 zählt nur das Bearer-Token – dort
+ * würde ein Cookie sonst Anfragen fremder Webseiten mit der Sitzung der angemeldeten Person ausstatten.
+ */
+async function sessionToken(): Promise<string | null> {
+  const bearer = bearerToken(await headers())
+  if (bearer || apiContext.get()) return bearer
+  return (await cookies()).get(SESSION_COOKIE)?.value ?? null
+}
+
 export async function requireViewer(): Promise<Viewer> {
   const v = await getViewer()
   if (v) return v
@@ -165,10 +184,9 @@ export async function requireViewer(): Promise<Viewer> {
 }
 
 export async function destroySession() {
-  const jar = await cookies()
-  const raw = jar.get(SESSION_COOKIE)?.value
+  const raw = await sessionToken()
   if (raw) await db.delete(sessions).where(eq(sessions.tokenHash, sha256(raw)))
-  jar.delete(SESSION_COOKIE)
+  if (!apiContext.get()) (await cookies()).delete(SESSION_COOKIE)
 }
 
 export async function endOtherSessions(userId: string, keepSessionId?: string) {
