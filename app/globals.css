@@ -152,6 +152,10 @@ ul, ol { list-style: none; }
 .stage { position: sticky; top: 0; height: 100vh; height: 100dvh; border-right: 1px solid var(--line); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 32px; }
 .orb { position: absolute; left: 0; right: 0; top: 0; height: 64%; }
 .orb canvas { display: block; }
+/* Die Leinwand folgt dem Container – nie umgekehrt. Mit fester Pixelbreite (renderer.setSize) hielte sie das
+   Raster sonst auf einer einmal zu breiten Spalte fest (Mobil: horizontales Scrollen, Navigation verdeckt). */
+.orb canvas { width: 100% !important; height: 100% !important; }
+.app > * { min-width: 0; }
 .orb-fallback { position: absolute; left: 50%; top: 44%; width: 240px; height: 240px; margin: -120px 0 0 -120px; }
 .orb-fallback circle { stroke: var(--ink); }
 .stage > *:not(.orb) { position: relative; z-index: 1; }

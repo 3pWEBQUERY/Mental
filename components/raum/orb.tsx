@@ -397,7 +397,7 @@ export default function Orb({
       const w = host!.clientWidth
       const h = host!.clientHeight
       if (!w || !h) return
-      renderer.setSize(w, h)
+      renderer.setSize(w, h, false)
       camera.aspect = w / h
       camera.position.z = Math.max(6.4, 2.3 / (Math.tan(THREE.MathUtils.degToRad(17.5)) * camera.aspect))
       camera.updateProjectionMatrix()

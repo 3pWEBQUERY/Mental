@@ -62,8 +62,9 @@ test('Zuhören, wenn es still bleibt: unbeantworteter Gedanke geht an Zuhörende
   await register(page, 'Zuhörerin')
   await page.goto('/einstellungen')
   const saved = page.waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined)
-  await page.getByLabel(/Zuhören, wenn es still bleibt/).check()
+  await page.locator('label.switch', { hasText: 'Zuhören, wenn es still bleibt' }).click()
   await saved
+  await expect(page.getByLabel(/Zuhören, wenn es still bleibt/)).toBeChecked()
 
   const author = await (await browser.newContext()).newPage()
   const { username } = await register(author, 'Autorin')
@@ -90,7 +91,8 @@ test('Zuhören, wenn es still bleibt: unbeantworteter Gedanke geht an Zuhörende
     // Kein Ausschnitt des Gedankens in der Glocke – nur der Link.
     await expect(bell).not.toContainText(body)
     await bell.getByRole('link', { name: 'Ansehen' }).first().click()
-    await expect(page.getByText(body)).toBeVisible()
+    await page.waitForURL('**/lichtung/gedanke/**')
+    await expect(page.getByText(body).first()).toBeVisible()
 
     await author.goto('/lichtung')
     await author.getByRole('button', { name: /Benachrichtigungen/ }).click()
