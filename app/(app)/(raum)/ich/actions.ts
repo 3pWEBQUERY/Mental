@@ -4,6 +4,8 @@ import { and, count, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import { journalEntries, letters, profiles, safetyPlans, type SafetyPlan } from '@/db/schema'
+import { openJson, openText, sealJson, sealText } from '@/lib/at-rest'
+import { hit } from '@/lib/server/rate-limit'
 import { getViewer } from '@/lib/server/session'
 import { m } from '@/messages'
 
@@ -48,6 +50,8 @@ export async function addJournalEntry(input: { ciphertext: string; iv: string; s
   // 5000 Zeichen Klartext ergeben höchstens ~27 kB Base64.
   const parsed = z.object({ ciphertext: b64.max(30_000), iv: b64.max(32), salt: b64.max(32) }).safeParse(input)
   if (!parsed.success) return null
+  // Bis 30 kB pro Eintrag – ohne Grenze liesse sich die Datenbank füllen.
+  if (!(await hit(`journal:${v.userId}`, 100, 24 * 60 * 60_000)).ok) return null
   const [r] = await db
     .insert(journalEntries)
     .values({ userId: v.userId, ...parsed.data })
@@ -71,7 +75,7 @@ export async function getSafetyPlan(): Promise<SafetyPlan | null> {
   const v = await getViewer()
   if (!v) return null
   const [row] = await db.select({ plan: safetyPlans.plan }).from(safetyPlans).where(eq(safetyPlans.userId, v.userId))
-  return row?.plan ?? null
+  return openJson(v.userId, row?.plan ?? null)
 }
 
 export async function saveSafetyPlan(input: SafetyPlan): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -87,8 +91,8 @@ export async function saveSafetyPlan(input: SafetyPlan): Promise<{ ok: true } | 
   }
   await db
     .insert(safetyPlans)
-    .values({ userId: v.userId, plan })
-    .onConflictDoUpdate({ target: safetyPlans.userId, set: { plan, updatedAt: new Date() } })
+    .values({ userId: v.userId, plan: sealJson(v.userId, plan) })
+    .onConflictDoUpdate({ target: safetyPlans.userId, set: { plan: sealJson(v.userId, plan), updatedAt: new Date() } })
   return { ok: true }
 }
 
@@ -100,7 +104,7 @@ export async function myLetters(): Promise<LetterView[]> {
   const v = await getViewer()
   if (!v) return []
   const rows = await db.select().from(letters).where(eq(letters.userId, v.userId)).orderBy(desc(letters.createdAt)).limit(50)
-  return rows.map((l) => ({ id: l.id, body: l.body, createdAt: l.createdAt.toISOString(), shownAt: l.shownAt?.toISOString() ?? null }))
+  return rows.map((l) => ({ id: l.id, body: openText(v.userId, l.body), createdAt: l.createdAt.toISOString(), shownAt: l.shownAt?.toISOString() ?? null }))
 }
 
 export async function writeLetter(body: string): Promise<{ ok: true; letter: LetterView } | { ok: false; error: string }> {
@@ -110,8 +114,8 @@ export async function writeLetter(body: string): Promise<{ ok: true; letter: Let
   if (!text.success) return { ok: false, error: m.common.error }
   const [{ n } = { n: 0 }] = await db.select({ n: count() }).from(letters).where(eq(letters.userId, v.userId))
   if (n >= 50) return { ok: false, error: m.letters.tooMany }
-  const [l] = await db.insert(letters).values({ userId: v.userId, body: text.data }).returning()
-  return { ok: true, letter: { id: l!.id, body: l!.body, createdAt: l!.createdAt.toISOString(), shownAt: null } }
+  const [l] = await db.insert(letters).values({ userId: v.userId, body: sealText(v.userId, text.data) }).returning()
+  return { ok: true, letter: { id: l!.id, body: text.data, createdAt: l!.createdAt.toISOString(), shownAt: null } }
 }
 
 export async function deleteLetter(id: string): Promise<boolean> {

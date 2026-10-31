@@ -12,7 +12,9 @@ import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimit
 import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media'
 import { moderateContent } from './jobs/moderation'
 import { expirePosts } from './jobs/posts'
+import { applyRetention } from './jobs/retention'
 import { sendPush } from './jobs/push'
+import { safeMessage } from '../lib/log-safe'
 
 const TZ = 'Europe/Zurich'
 
@@ -46,7 +48,7 @@ async function main() {
           await fn(job.data)
         } catch (e) {
           // pg-boss wiederholt den Job; ohne Log wäre ein Fehler hier unsichtbar.
-          console.error(`[${job.name}] ${job.id} fehlgeschlagen:`, (e as Error).message)
+          console.error(`[${job.name}] ${job.id} fehlgeschlagen:`, safeMessage(e))
           throw e
         }
       }
@@ -70,6 +72,7 @@ async function main() {
     [QUEUES.cleanupNotifications, '41 3 * * *', cleanupNotifications],
     [QUEUES.purgeDeleted, '17 4 * * *', purgeDueAccounts],
     [QUEUES.purgeInactive, '29 4 * * 0', purgeInactiveAccounts],
+    [QUEUES.retention, '53 4 * * *', applyRetention],
   ]
   for (const [name, schedule, fn] of cron) {
     await boss.schedule(name, schedule, null, { tz: TZ })
@@ -85,7 +88,7 @@ async function main() {
       .insert(workerHeartbeats)
       .values({ instance })
       .onConflictDoUpdate({ target: workerHeartbeats.instance, set: { seenAt: new Date() } })
-      .catch((e) => console.error('[worker] Lebenszeichen fehlgeschlagen:', (e as Error).message))
+      .catch((e) => console.error('[worker] Lebenszeichen fehlgeschlagen:', safeMessage(e)))
   await beat()
   const heartbeat = setInterval(() => void beat(), 30_000)
 
@@ -102,6 +105,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('[worker] Start fehlgeschlagen', e)
+  console.error('[worker] Start fehlgeschlagen:', safeMessage(e, 600))
   process.exit(1)
 })

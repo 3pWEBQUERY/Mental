@@ -2,6 +2,7 @@ import { and, isNotNull, isNull, lt } from 'drizzle-orm'
 import { db } from '../../db'
 import { posts } from '../../db/schema'
 import { hardDeletePost } from '../../lib/post-delete'
+import { safeMessage } from '../../lib/log-safe'
 
 /** «Gedanke loslassen»: abgelaufene Gedanken endgültig löschen – wie über den «Löschen»-Knopf. */
 export async function expirePosts() {
@@ -12,7 +13,7 @@ export async function expirePosts() {
     .limit(500)
   let n = 0
   for (const { id } of due) {
-    if (await hardDeletePost(id).catch((e) => (console.error(`[expire] ${id} fehlgeschlagen:`, (e as Error).message), false))) n++
+    if (await hardDeletePost(id).catch((e) => (console.error(`[expire] ${id} fehlgeschlagen:`, safeMessage(e)), false))) n++
   }
   if (n) console.log(`[expire] ${n} Gedanken losgelassen`)
 }

@@ -11,6 +11,7 @@ import webpush from 'web-push'
 import { db, pool } from '../db'
 import { isPushEndpoint } from '../lib/push-endpoint'
 import { monitorIncidents, notifications, pushSubscriptions, users, workerHeartbeats } from '../db/schema'
+import { safeMessage } from '../lib/log-safe'
 
 const STALE_S = 180
 const BACKLOG_MAX = 50
@@ -104,7 +105,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('[monitor] fehlgeschlagen:', (e as Error).message)
+    console.error('[monitor] fehlgeschlagen:', safeMessage(e))
     process.exitCode = 1
   })
   .finally(() => pool.end())

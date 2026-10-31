@@ -1,6 +1,7 @@
 import { detectCrisis, maxLevel, type CrisisLevel, type CrisisTerm } from './crisis'
 import { detectPii } from './pii'
 import { normalize } from './text'
+import { safeMessage } from './log-safe'
 
 export type ModerationFlag = 'hate' | 'harassment' | 'spam' | 'sexual' | 'personal_data'
 export type Classification = { crisis: CrisisLevel; flags: ModerationFlag[] }
@@ -47,7 +48,7 @@ export async function classify(text: string, terms: readonly CrisisTerm[]): Prom
     const flags = (remote.flags ?? []).filter((f): f is ModerationFlag => allowed.includes(f as ModerationFlag))
     return { crisis: maxLevel(local.crisis, crisis), flags: [...new Set([...local.flags, ...flags])] }
   } catch (e) {
-    console.error('[moderation] Anbieter nicht erreichbar, lokale Einstufung gilt:', (e as Error).message)
+    console.error('[moderation] Anbieter nicht erreichbar, lokale Einstufung gilt:', safeMessage(e))
     return local
   }
 }

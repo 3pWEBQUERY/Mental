@@ -14,6 +14,8 @@
     "db:seed": "tsx db/seed.ts",
     "db:demo": "tsx db/demo.ts",
     "admin:grant": "tsx scripts/grant-role.ts",
+    "data:encrypt": "tsx scripts/encrypt-at-rest.ts",
+    "data:replay-deletions": "tsx scripts/replay-deletions.ts",
     "vapid:generate": "web-push generate-vapid-keys",
     "test": "vitest run",
     "test:e2e": "playwright test"

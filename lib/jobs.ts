@@ -1,4 +1,5 @@
 import { PgBoss } from 'pg-boss'
+import { safeMessage } from './log-safe'
 
 /** Alle Hintergrundjobs. Der Web-Service legt sie an, der Worker arbeitet sie ab. */
 export const QUEUES = {
@@ -17,6 +18,7 @@ export const QUEUES = {
   cleanupExports: 'cleanup-exports',
   purgeDeleted: 'purge-deleted-accounts',
   purgeInactive: 'purge-inactive-accounts',
+  retention: 'apply-retention',
 } as const
 
 export type JobData = {
@@ -52,7 +54,7 @@ export function getBoss(role: 'web' | 'worker' = 'web'): Promise<PgBoss> {
   })()
   // Ein fehlgeschlagener Start (DB kurz weg) darf nicht bis zum Neustart gecacht bleiben.
   starting.catch((e) => {
-    console.error('[pg-boss] Start fehlgeschlagen', (e as Error).message)
+    console.error('[pg-boss] Start fehlgeschlagen', safeMessage(e))
     if (globalThis.__lichtungBoss === starting) globalThis.__lichtungBoss = undefined
   })
   globalThis.__lichtungBoss = starting

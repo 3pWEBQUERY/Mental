@@ -5,6 +5,7 @@ import { pushSubscriptions } from '../../db/schema'
 import { isPushEndpoint } from '../../lib/push-endpoint'
 import { inQuietHours } from '../../lib/quiet-hours'
 import { zurichHour } from '../../lib/time'
+import { safeMessage } from '../../lib/log-safe'
 
 let configured = false
 function configure() {
@@ -41,7 +42,7 @@ export async function sendPush({ userId, postId, alert }: { userId: string; post
     } catch (e) {
       const status = (e as { statusCode?: number }).statusCode
       if (status === 404 || status === 410) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id))
-      else console.error('[push]', status, (e as Error).message)
+      else console.error('[push]', status, safeMessage(e))
     }
   }
 }

@@ -63,6 +63,25 @@ Projekt «Lichtung», alles in **EU West (Amsterdam)**. Config-as-Code (`railway
 
 Variablen beider Services: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `BUCKET`/`ACCESS_KEY_ID`/`SECRET_ACCESS_KEY`/`REGION`/`ENDPOINT` als `${{media.*}}`-Referenzen, `APP_URL`, `VAPID_*`; im Web zusätzlich `SESSION_SECRET`. Die CORS-Regel des Buckets (PUT, nur `APP_URL`) setzt `scripts/bucket-cors.ts` bei jedem Deploy selbst. VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
 
+### Verschlüsselung besonders schützenswerter Daten
+
+Notfallplan, Briefe an sich selbst und Check-in-Notizen werden mit AES-256-GCM verschlüsselt gespeichert, sobald `DATA_ENCRYPTION_KEY` gesetzt ist (32 Byte Base64: `openssl rand -base64 32`). Der Schlüssel gehört in **web und worker**, nie in die Datenbank – und muss zusätzlich offline gesichert werden (Passwort-Manager des Teams): **Ohne ihn sind diese Texte nicht mehr lesbar**, auch nicht aus Backups. Nach dem ersten Setzen einmal `npm run data:encrypt` ausführen (Railway-Shell des web-Service); es verschlüsselt alte Klartext-Werte und ist beliebig wiederholbar. Ohne Schlüssel läuft alles wie bisher im Klartext. Das Tagebuch ist unabhängig davon Ende-zu-Ende verschlüsselt (Schlüssel nur bei der Person).
+
+### Backups und Wiederherstellung
+
+- **Postgres:** In Railway beim Service `Postgres` → *Backups* geplante Volume-Backups einschalten (täglich, Aufbewahrung höchstens 30 Tage – so steht es in der Datenschutzerklärung) und optional Point-in-Time-Recovery (`railway postgres pitr`). Restore: Backup wählen → *Restore* → gestagte Änderung prüfen → *Deploy*.
+- **Bucket (Bilder, Exporte):** Bilder sind ersetzbar (die Gedanken bleiben ohne Bild bestehen); Exporte leben nur 24 Stunden. Kein eigenes Backup nötig.
+- **Gelöscht bleibt gelöscht:** Jede Löschung (Gedanke, Konto) landet im Lösch-Journal im Bucket (`deletions/`, nur Art, ID, Zeitpunkt; 60 Tage). Nach jedem Restore **sofort** `npm run data:replay-deletions -- JJJJ-MM-TT` (Datum des Backups) ausführen – sonst kämen gelöschte Konten und losgelassene Gedanken zurück.
+- **Probe:** Einmal pro Quartal ein Backup in eine Test-Umgebung zurückspielen und das Replay laufen lassen.
+
+### Aufbewahrung (Job `apply-retention`, täglich)
+
+Benachrichtigungen 30 Tage · erledigte Meldungen nach 12 Monaten ohne Notiz und ohne meldende Person · Zeilen gelöschter Gedanken nach 30 Tagen ganz weg · Audit-Log der Moderation 24 Monate (der Datenbank-Trigger erlaubt nur dieses Löschen) · Lösch-Journal 60 Tage · IP-Hashes und Rate-Limits 24 Stunden.
+
+### CI
+
+`.github/workflows/ci.yml` prüft jeden Pull Request: Typen, Unit-Tests, Build ohne Datenbank (wie auf Railway), `npm audit` (hoch/kritisch) und die ganze E2E-Suite gegen Postgres 16. Dependabot schlägt wöchentlich gesammelte Updates vor.
+
 ## Architektur in Kürze
 
 - `app/(public)` – Landing, Hilfe (`ensureStatic = 'navigation'`, funktioniert ohne DB), Regeln, Datenschutz

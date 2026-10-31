@@ -23,6 +23,7 @@ import { syncReplyCount } from '@/lib/reply-count'
 import { assertModerator, canModerate, memberFromToken } from '@/lib/server/admin'
 import { notifyModeration } from '@/lib/server/notify'
 import { m } from '@/messages'
+import { safeMessage } from '@/lib/log-safe'
 
 const ACTIONS = ['approve', 'care', 'hide', 'cw', 'warn', 'mute24', 'mute7', 'ban', 'dismiss'] as const
 type Action = (typeof ACTIONS)[number]
@@ -253,7 +254,7 @@ export async function cleanImage(form: FormData): Promise<void> {
   if (!mediaId.success) throw new Error('invalid')
   await assertModerator('mod')
   // Bucket oder Anbieter kurz weg: Bild bleibt in der Quarantäne, die Seite zeigt es weiter an.
-  await processMedia(mediaId.data, 'review').catch((e) => console.error(`[media] ${mediaId.data} bereinigen fehlgeschlagen:`, (e as Error).message))
+  await processMedia(mediaId.data, 'review').catch((e) => console.error(`[media] ${mediaId.data} bereinigen fehlgeschlagen:`, safeMessage(e)))
   refresh()
 }
 

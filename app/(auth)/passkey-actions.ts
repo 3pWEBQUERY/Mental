@@ -32,6 +32,8 @@ async function canAddPasskey(password?: string) {
     db.select({ n: count() }).from(passkeys).where(eq(passkeys.userId, viewer.userId)),
   ])
   if (!u) return { ok: false as const }
+  // Mehr als zehn Geräte braucht niemand – ohne Grenze liesse sich die Tabelle füllen.
+  if (n >= 10) return { ok: false as const }
   const staff = u.role !== 'member'
   if (staff && n > 0 && viewer.authMethod !== 'passkey') return { ok: false as const, needsPasskey: true as const }
   const fresh = s && Date.now() - s.createdAt.getTime() < FRESH_MS

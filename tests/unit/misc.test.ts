@@ -3,6 +3,7 @@ import { WORDS } from '@/lib/auth/wordlist'
 import { clientIp, ipBucket } from '@/lib/client-ip'
 import { isPushEndpoint } from '@/lib/push-endpoint'
 import { displayNameProblem } from '@/lib/display-name'
+import { openJson, openText, sealJson, sealText } from '@/lib/at-rest'
 import { glyphPath, rng } from '@/lib/glyph'
 import { sniffImage } from '@/lib/image-sniff'
 import { inQuietHours } from '@/lib/quiet-hours'
@@ -119,5 +120,30 @@ describe('displayNameProblem', () => {
   })
   it('lehnt vorgetäuschte Autorität ab', () => {
     for (const n of ['Moderation', 'Lichtung Team', 'Admin Sara', 'Offizieller Support', 'Modératrice']) expect(displayNameProblem(n)).toBe('official')
+  })
+})
+
+describe('Verschlüsselung im Ruhezustand', () => {
+  const key = Buffer.alloc(32, 7).toString('base64')
+  const A = '11111111-1111-4111-8111-111111111111'
+  const B = '22222222-2222-4222-8222-222222222222'
+  it('verschlüsselt mit Schlüssel, liest zurück und bindet an das Konto', () => {
+    process.env.DATA_ENCRYPTION_KEY = key
+    const sealed = sealText(A, 'Mein Notfallplan')
+    expect(sealed).toMatch(/^enc:v1:/)
+    expect(sealed).not.toContain('Notfallplan')
+    expect(openText(A, sealed)).toBe('Mein Notfallplan')
+    expect(() => openText(B, sealed)).toThrow()
+    expect(sealText(A, sealed)).toBe(sealed)
+    const plan = { signs: 'a', self: 'b' }
+    expect(openJson(A, sealJson(A, plan))).toEqual(plan)
+    delete process.env.DATA_ENCRYPTION_KEY
+  })
+  it('liest alten Klartext weiter und lässt ohne Schlüssel alles unverändert', () => {
+    delete process.env.DATA_ENCRYPTION_KEY
+    expect(sealText(A, 'klar')).toBe('klar')
+    expect(openText(A, 'klar')).toBe('klar')
+    expect(openJson(A, { signs: 'x' })).toEqual({ signs: 'x' })
+    expect(sealText(A, null)).toBeNull()
   })
 })

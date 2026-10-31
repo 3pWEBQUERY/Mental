@@ -6,6 +6,7 @@ import { postMedia } from '../db/schema'
 import { LIMITS } from './constants'
 import { sniffImage } from './image-sniff'
 import { deleteObject, getObjectBytes, putObject } from './s3'
+import { safeMessage } from './log-safe'
 
 /**
  * Optionale Bildprüfung durch einen Anbieter (EU/CH). Ohne Konfiguration wird nur technisch geprüft;
@@ -110,6 +111,6 @@ async function encode_(input: Uint8Array) {
     const { data: px, info } = await sharp(webp.data).resize(32, 32, { fit: 'inside' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     return { webp, avif, blurhash: encode(new Uint8ClampedArray(px), info.width, info.height, 4, 3) }
   } catch (e) {
-    throw new BadImage(`nicht lesbar (${(e as Error).message})`)
+    throw new BadImage(`nicht lesbar (${safeMessage(e)})`)
   }
 }
