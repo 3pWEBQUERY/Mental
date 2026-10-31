@@ -26,7 +26,7 @@ const fail = (error: string, field?: string) => ({ ok: false as const, error, fi
 /* ------------------------------------------------------- Registrierung */
 
 export async function checkUsername(raw: string): Promise<Result<{ realName: boolean }>> {
-  const limit = await hit(`uname:${await ipHash()}`, 40, 10 * MIN)
+  const limit = await hit(`uname:${await ipHash()}`, env.usernameChecksPer10Min, 10 * MIN)
   if (!limit.ok) return fail(m.common.rateLimited)
   const username = normalizeUsername(raw)
   if (!isValidUsername(username)) return fail(m.register.usernameInvalid, 'username')
