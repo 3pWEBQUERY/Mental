@@ -89,7 +89,7 @@ export function AppChrome({
   return (
     <>
       <a className="skip" href="#inhalt">
-        Zum Inhalt
+        {m.nav.skip}
       </a>
       <div className="app">
         <Rail

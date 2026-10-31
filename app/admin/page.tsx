@@ -14,11 +14,11 @@ const ACUTE_SLA_MS = 30 * 60_000
 /** Gleich wie in actions.ts: so lange gilt eine Übernahme. */
 const CLAIM_MS = 20 * 60_000
 
-const REASON_LABEL: Record<string, string> = {
+const reasonLabel = (): Record<string, string> => ({
   ...m.report.reasons,
   auto_acute: m.admin.autoAcute,
   auto_flag: m.admin.autoFlag,
-}
+})
 
 /**
  * Warteschlange: «acute» vor Meldungen vor automatischen Treffern.
@@ -181,7 +181,7 @@ export default async function QueuePage() {
               <div className="reasons-list">
                 {Object.entries(counts).map(([reason, n]) => (
                   <span key={reason} style={{ marginRight: 14 }}>
-                    {REASON_LABEL[reason] ?? reason} ×{n}
+                    {reasonLabel()[reason] ?? reason} ×{n}
                   </span>
                 ))}
                 {g.items

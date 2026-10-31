@@ -8,6 +8,7 @@ import { db } from '@/db'
 import { profiles, sessions, users, type Settings } from '@/db/schema'
 import { sha256, token } from './crypto'
 import { env } from './env'
+import { isLocale, LOCALE_COOKIE } from '@/messages'
 
 export const SESSION_COOKIE = 'lichtung_session'
 const TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -75,6 +76,27 @@ export async function createSession(userId: string, authMethod: AuthMethod) {
     path: '/',
     maxAge: TTL_MS / 1000,
   })
+  await syncLocale(userId)
+}
+
+/**
+ * Sprache zwischen Konto und Gerät abgleichen: Hat das Konto eine Sprache, gilt sie auf diesem Gerät;
+ * sonst übernimmt das Konto die Sprache, mit der sich die Person gerade angemeldet oder registriert hat.
+ */
+async function syncLocale(userId: string) {
+  const jar = await cookies()
+  const [p] = await db.select({ locale: sql<string | null>`${profiles.settings}->>'locale'` }).from(profiles).where(eq(profiles.userId, userId))
+  if (!p) return
+  if (isLocale(p.locale)) {
+    jar.set(LOCALE_COOKIE, p.locale, { path: '/', sameSite: 'lax', maxAge: 365 * 24 * 60 * 60, secure: env.isProd })
+    return
+  }
+  const device = jar.get(LOCALE_COOKIE)?.value
+  if (isLocale(device))
+    await db
+      .update(profiles)
+      .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ locale: device })}::jsonb` })
+      .where(eq(profiles.userId, userId))
 }
 
 /** Liest die Sitzung einmal pro Request. Gleitend 30 Tage gültig. */

@@ -1,10 +1,11 @@
 /**
- * Läuft vor dem ersten Paint und setzt Farbschema, Schriftgrösse und Animation aus dem lokalen Speicher.
+ * Läuft vor dem ersten Paint und setzt Farbschema, Schriftgrösse und Animation aus dem lokalen Speicher –
+ * und <html lang> auf Französisch, wenn das so gewählt ist (ausser auf den nur deutschen, vorgerenderten Seiten).
  * Ohne gespeicherte Wahl ist Lichtung hell.
  * Der Inhalt ist konstant; sein SHA-256-Hash steht in der Content Security Policy (proxy.ts).
  */
 export const PREFS_KEY = 'lichtung-prefs'
-export const PREFS_SCRIPT = `try{var p=JSON.parse(localStorage.getItem('${PREFS_KEY}')||'{}'),d=document.documentElement;if(p.theme&&p.theme!=='light')d.dataset.theme=p.theme;if(p.fontSize&&p.fontSize!=='normal')d.dataset.font=p.fontSize;if(p.motion&&p.motion!=='on')d.dataset.motion=p.motion;if(p.discreet)d.dataset.discreet='1'}catch(e){}`
+export const PREFS_SCRIPT = `try{var p=JSON.parse(localStorage.getItem('${PREFS_KEY}')||'{}'),d=document.documentElement;if(p.theme&&p.theme!=='light')d.dataset.theme=p.theme;if(p.fontSize&&p.fontSize!=='normal')d.dataset.font=p.fontSize;if(p.motion&&p.motion!=='on')d.dataset.motion=p.motion;if(p.discreet)d.dataset.discreet='1'}catch(e){}try{var d=document.documentElement,pa=location.pathname.split('/')[1];if(pa==='aide'||(['hilfe','datenschutz','impressum','offline'].indexOf(pa)<0&&(' '+document.cookie+';').indexOf(' lichtung_lang=fr;')>=0))d.lang='fr-CH'}catch(e){}`
 
 export type LocalPrefs = {
   theme?: 'system' | 'light' | 'dark'

@@ -27,7 +27,7 @@ import type { Settings } from '@/db/schema'
 import { toast } from '@/lib/client/bus'
 import { applyLocalPrefs, readLocalPrefs } from '@/lib/prefs-script'
 import { formatDate } from '@/lib/time'
-import { m } from '@/messages'
+import { currentLocale, lazy, m } from '@/messages'
 import { usePasskeySetup } from '../auth/passkey-setup'
 import { askConfirm } from '../confirm'
 import { PanicButton } from '../panic'
@@ -35,7 +35,7 @@ import { circleColor } from '../app/circles'
 import { attempt } from '@/lib/client/attempt'
 import { RadioGroup } from '../radio-group'
 
-const s = m.settings
+const s = lazy('settings')
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -472,6 +472,14 @@ export function SettingsView({ data }: { data: SettingsData }) {
 
       <Section title={s.sections.display}>
         <div className="sub">
+          <span className="field-label">{s.language}</span>
+          {/* Sprachnamen immer in ihrer eigenen Sprache. Wechsel lädt die Seite in der neuen Sprache neu. */}
+          <Segment
+            value={currentLocale()}
+            options={{ de: 'Deutsch', fr: 'Français' }}
+            onChange={(l) => window.location.assign(`/sprache?l=${l}&zurueck=/einstellungen`)}
+            label={s.language}
+          />
           <span className="field-label">{s.theme}</span>
           <Segment value={prefs.theme ?? 'light'} options={s.themes} onChange={(v) => setPref({ theme: v })} label={s.theme} />
           <span className="field-label">{s.fontSize}</span>

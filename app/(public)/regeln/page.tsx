@@ -1,12 +1,22 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import { PublicShell } from '@/components/ui'
 import { getCirclesForStaticPage } from '@/lib/server/terms'
+import { localizeCircle } from '@/lib/localize'
 import { m } from '@/messages'
 
-export const metadata: Metadata = { title: m.rules.title }
+// Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
+export const instant = false
+
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.rules.title }
+}
 
 export default async function RulesPage() {
-  const circles = await getCirclesForStaticPage()
+  // Pro Anfrage: in der gewählten Sprache (die Kreise kommen weiter aus dem Cache).
+  await connection()
+  const circles = (await getCirclesForStaticPage()).map((c) => localizeCircle(c))
   return (
     <PublicShell>
       <div className="prose" style={{ margin: '0 auto' }}>

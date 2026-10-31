@@ -13,7 +13,7 @@ import { useViewer } from '../viewer'
 export function Side({ circles, step }: { circles: ReactNode; step: ReactNode }) {
   const viewer = useViewer()
   return (
-    <aside className="side" aria-label="Seitenleiste">
+    <aside className="side" aria-label={m.nav.side}>
       <section>
         <h2 className="section-label">{m.circles.title}</h2>
         {circles}

@@ -5,7 +5,7 @@ import { TabBar } from '@/components/tab-bar'
 import { m } from '@/messages'
 
 type Level = 'peer' | 'mod' | 'admin'
-const ITEMS: { href: string; label: string; level: Level }[] = [
+const items = (): { href: string; label: string; level: Level }[] => [
   { href: '/admin', label: m.admin.nav.queue, level: 'peer' },
   { href: '/admin/bilder', label: m.admin.nav.images, level: 'mod' },
   { href: '/admin/kreise', label: m.admin.nav.circles, level: 'admin' },
@@ -25,7 +25,7 @@ export function AdminNav({ level, imagesWaiting }: { level: Level; imagesWaiting
       active={path}
       keepScroll={false}
       style={{ width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap', marginBottom: 28 }}
-      items={ITEMS.filter((i) => RANK[level] >= RANK[i.level]).map((i) => ({
+      items={items().filter((i) => RANK[level] >= RANK[i.level]).map((i) => ({
         key: i.href,
         href: i.href,
         label: (

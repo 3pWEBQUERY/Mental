@@ -16,18 +16,21 @@ import { openText } from '@/lib/at-rest'
 import { m } from '@/messages'
 import { getSafetyPlan, journalState, myLetters } from './actions'
 
-export const metadata: Metadata = { title: m.me.title }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.me.title }
+}
 
 const TABS = ['verlauf', 'gedanken', 'gutgetan', 'merkliste', 'tagebuch', 'fuermich'] as const
 type Tab = (typeof TABS)[number]
-const LABEL: Record<Tab, string> = {
+const label = (): Record<Tab, string> => ({
   verlauf: m.me.tabs.history,
   gedanken: m.me.tabs.posts,
   gutgetan: m.me.tabs.saved,
   merkliste: m.me.tabs.bookmarks,
   tagebuch: m.me.tabs.journal,
   fuermich: m.me.tabs.forMe,
-}
+})
 
 export default function MePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   return (
@@ -55,7 +58,7 @@ async function Me({ searchParams }: { searchParams: Promise<{ tab?: string }> })
       <TabBar
         label={m.me.title}
         active={tab}
-        items={TABS.map((t) => ({ key: t, label: LABEL[t], href: t === 'verlauf' ? '/ich' : `/ich?tab=${t}` }))}
+        items={TABS.map((t) => ({ key: t, label: label()[t], href: t === 'verlauf' ? '/ich' : `/ich?tab=${t}` }))}
         style={{ marginBottom: 24, width: 'fit-content' }}
       />
       {tab === 'verlauf' && <History v={v} />}

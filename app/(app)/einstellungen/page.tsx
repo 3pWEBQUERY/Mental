@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { localCircleName } from '@/lib/localize'
 import { asc, eq } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { Loading } from '@/components/ui'
@@ -9,7 +10,10 @@ import { requireViewer } from '@/lib/server/session'
 import { m } from '@/messages'
 import { listBlocked, listSessions } from './actions'
 
-export const metadata: Metadata = { title: m.settings.title }
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.settings.title }
+}
 
 export default function SettingsPage() {
   return (
@@ -39,7 +43,7 @@ async function Data() {
         displayName: v.displayName,
         defaultVisibility: v.defaultVisibility,
         settings: { theme: v.settings.theme, fontSize: v.settings.fontSize, motion: v.settings.motion, breathSound: v.settings.breathSound, hidePresence: v.settings.hidePresence, collapseWarnings: v.settings.collapseWarnings, discreet: v.settings.discreet, listener: v.settings.listener },
-        circles: circleRows.map((c) => ({ slug: c.slug, name: c.name, color: c.color, state: prefs.find((p) => p.circleId === c.id)?.state ?? null })),
+        circles: circleRows.map((c) => ({ slug: c.slug, name: localCircleName(c.name, c.i18n), color: c.color, state: prefs.find((p) => p.circleId === c.id)?.state ?? null })),
         sessions,
         blocked,
         quiet: { from: sub?.quietFrom ?? 22, to: sub?.quietTo ?? 7 },

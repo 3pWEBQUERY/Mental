@@ -236,8 +236,8 @@ export async function recover(input: { username: string; key: string; password: 
   // angelegt hat, behält ihn sonst über die Wiederherstellung hinaus.
   await db.delete(passkeys).where(eq(passkeys.userId, u.id))
   await endOtherSessions(u.id)
-  await notifySystem([u.id], m.security.recovered)
-  if (u.role !== 'member') await notifyAdmins(m.security.staffRecovered(memberRef(u.id)), u.id)
+  await notifySystem([u.id], (t) => t.security.recovered)
+  if (u.role !== 'member') await notifyAdmins((t) => t.security.staffRecovered(memberRef(u.id)), u.id)
   await afterLogin(u.id, u.status)
   await createSession(u.id, 'recovery')
   await clear(`login-fail:${username}:${ip}`)

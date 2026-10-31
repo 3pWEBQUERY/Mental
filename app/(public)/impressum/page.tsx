@@ -9,6 +9,10 @@ export default function ImprintPage() {
     <PublicShell>
       <div className="prose" style={{ margin: '0 auto' }}>
         <h1 className="display">Impressum</h1>
+        {/* Rechtstexte gibt es vorerst nur auf Deutsch – die französische Fassung folgt nach rechtlicher Prüfung. */}
+        <p className="fine" lang="fr">
+          Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
+        </p>
 
         <h2>Verantwortlich für Lichtung</h2>
         <address className="imprint">

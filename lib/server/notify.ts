@@ -5,6 +5,7 @@ import { notifications, users, type NotificationPayload } from '@/db/schema'
 import type { SupportKind } from '../constants'
 import { enqueue, QUEUES } from '../jobs'
 import { safeMessage } from '../log-safe'
+import { localesOf, renderText, type Text } from '../recipient-locale'
 
 export const NOTIFY_CHANNEL = 'lichtung_notify'
 
@@ -52,20 +53,25 @@ export async function notifySupport(ownerId: string, postId: string, kind: Suppo
   await ping(ownerId)
 }
 
-export async function notifyModeration(userId: string, postId: string | null, message: string, appealable = false) {
+/** `message` als Funktion des Wörterbuchs, damit sie in der Sprache der empfangenden Person ankommt. */
+export async function notifyModeration(userId: string, postId: string | null, text: Text, appealable = false) {
+  const message = renderText(text, (await localesOf([userId])).get(userId)!)
   await db.insert(notifications).values({ userId, kind: 'moderation', postId, payload: appealable ? { message, appealable } : { message } })
   await ping(userId)
 }
 
 /** Hinweis zur Kontosicherheit oder zum Betrieb – erscheint in der Glocke, nicht als Push. */
-export async function notifySystem(userIds: string[], message: string) {
+export async function notifySystem(userIds: string[], text: Text) {
   if (!userIds.length) return
-  await db.insert(notifications).values(userIds.map((userId) => ({ userId, kind: 'system' as const, postId: null, payload: { message } })))
+  const locales = await localesOf(userIds)
+  await db
+    .insert(notifications)
+    .values(userIds.map((userId) => ({ userId, kind: 'system' as const, postId: null, payload: { message: renderText(text, locales.get(userId)!) } })))
   for (const id of userIds) await ping(id)
 }
 
 /** Alle Admins – für Ereignisse, die ein zweites Paar Augen brauchen (z. B. neuer Passkey an einem Moderationskonto). */
-export async function notifyAdmins(message: string, except?: string) {
+export async function notifyAdmins(message: Text, except?: string) {
   const admins = await db.select({ id: users.id }).from(users).where(inArray(users.role, ['admin']))
   await notifySystem(
     admins.map((a) => a.id).filter((id) => id !== except),

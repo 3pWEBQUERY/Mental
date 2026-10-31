@@ -18,14 +18,17 @@ const serif = localFont({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: { default: m.brand, template: `%s · ${m.brand}` },
-  description: m.meta.description,
-  applicationName: m.brand,
-  appleWebApp: { capable: true, title: m.brand, statusBarStyle: 'default' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
-  robots: { index: true, follow: true },
-  referrer: 'no-referrer',
+// Pro Anfrage (Sprache); vorgerenderte Seiten bekommen die deutsche Beschreibung.
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { default: m.brand, template: `%s · ${m.brand}` },
+    description: m.meta.description,
+    applicationName: m.brand,
+    appleWebApp: { capable: true, title: m.brand, statusBarStyle: 'default' },
+    icons: { apple: '/icons/apple-touch-icon.png' },
+    robots: { index: true, follow: true },
+    referrer: 'no-referrer',
+  }
 }
 
 export const viewport: Viewport = {

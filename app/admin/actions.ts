@@ -23,7 +23,7 @@ import { processMedia, rejectMedia } from '@/lib/media'
 import { syncReplyCount } from '@/lib/reply-count'
 import { assertModerator, canModerate, memberFromToken, ROLE_PROPOSAL_DAYS } from '@/lib/server/admin'
 import { notifyAdmins, notifyModeration, notifySystem } from '@/lib/server/notify'
-import { m } from '@/messages'
+import { m, type Messages } from '@/messages'
 import { safeMessage } from '@/lib/log-safe'
 
 const ACTIONS = ['approve', 'care', 'hide', 'cw', 'warn', 'mute24', 'mute7', 'ban', 'dismiss'] as const
@@ -31,7 +31,11 @@ type Action = (typeof ACTIONS)[number]
 /** Peer-Moderator:innen: nur ausblenden und Inhaltshinweis, keine Sperren. */
 const PEER_ACTIONS: Action[] = ['hide', 'cw']
 
-const MESSAGES: Partial<Record<Action, (reason: string) => string>> = m.admin.notify
+/** Nachricht an die betroffene Person je Massnahme – in ihrer Sprache (siehe notifyModeration). */
+const notice = (action: Action, reason: string) => {
+  if (!(action in m.admin.notify)) return null
+  return (t: Messages) => (t.admin.notify as Partial<Record<Action, (r: string) => string>>)[action]!(reason)
+}
 
 export async function moderate(form: FormData) {
   const parsed = z
@@ -123,7 +127,7 @@ export async function moderate(form: FormData) {
   if (target.userId && ['mute24', 'mute7', 'ban'].includes(action)) {
     await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: target.userId, action, reason: reason || null })
   }
-  const message = MESSAGES[action]?.(reason)
+  const message = notice(action, reason)
   if (message && target.userId)
     await notifyModeration(target.userId, targetType === 'post' ? targetId : target.postId, message, ['hide', 'warn', 'mute24', 'mute7'].includes(action))
   refresh()
@@ -175,7 +179,7 @@ export async function resolveAppeal(form: FormData) {
     action: decision === 'accept' ? 'appeal_accept' : 'appeal_reject',
     reason: reason || null,
   })
-  await notifyModeration(r.userId, null, decision === 'accept' ? m.appeal.accepted(reason) : m.appeal.rejected(reason))
+  await notifyModeration(r.userId, null, (t) => (decision === 'accept' ? t.appeal.accepted(reason) : t.appeal.rejected(reason)))
   refresh()
 }
 
@@ -197,7 +201,7 @@ export async function restoreAccount(form: FormData) {
     .returning({ id: users.id })
   if (!changed) return refresh()
   await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: userId, action, reason: reason || null })
-  await notifyModeration(userId, null, action === 'unban' ? m.admin.account.unbanned : m.admin.account.unmuted)
+  await notifyModeration(userId, null, (t) => (action === 'unban' ? t.admin.account.unbanned : t.admin.account.unmuted))
   refresh()
 }
 
@@ -228,7 +232,7 @@ export async function proposeRole(form: FormData) {
     .values({ userId, role, proposedBy: admin.userId, reason })
     .onConflictDoUpdate({ target: roleProposals.userId, set: { role, proposedBy: admin.userId, reason, createdAt: new Date() } })
   await audit(admin.userId, 'role_propose', userId, `${u.role} → ${role}: ${reason}`)
-  await notifyAdmins(m.admin.roles.proposedNotice, admin.userId)
+  await notifyAdmins((t) => t.admin.roles.proposedNotice, admin.userId)
   refresh()
 }
 
@@ -261,8 +265,8 @@ export async function decideRole(form: FormData) {
   const { p, applied, from } = result
   await audit(admin.userId, applied ? 'role_accept' : 'role_reject', userId, applied ? `${from} → ${p.role}` : p.role)
   if (applied) {
-    await notifySystem([userId], m.admin.roles.changedNotice(m.admin.account.roles[p.role]))
-    await notifyAdmins(m.admin.roles.appliedNotice(m.admin.account.roles[p.role]), admin.userId)
+    await notifySystem([userId], (t) => t.admin.roles.changedNotice(t.admin.account.roles[p.role]))
+    await notifyAdmins((t) => t.admin.roles.appliedNotice(t.admin.account.roles[p.role]), admin.userId)
   }
   refresh()
 }
@@ -311,7 +315,9 @@ export async function reviewImage(form: FormData): Promise<void> {
     action: result === 'ready' ? 'image_approve' : 'image_reject',
     reason: reason || null,
   })
-  await notifyModeration(row.userId, row.postId, result === 'ready' ? m.admin.images.approvedNote : m.admin.images.rejectedNote(decision === 'reject' ? reason : ''))
+  await notifyModeration(row.userId, row.postId, (t) =>
+    result === 'ready' ? t.admin.images.approvedNote : t.admin.images.rejectedNote(decision === 'reject' ? reason : ''),
+  )
   refresh()
 }
 
@@ -345,9 +351,22 @@ export async function saveCircle(form: FormData) {
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       sort: z.coerce.number().int().min(0).max(999),
       isActive: z.string().optional(),
+      nameFr: z.string().trim().max(40).optional(),
+      descriptionFr: z.string().trim().max(400).optional(),
+      rulesFr: z.string().trim().max(400).optional(),
     })
     .parse(Object.fromEntries(form))
-  const values = { slug: d.slug, name: d.name, description: d.description, rules: d.rules, color: d.color, sort: d.sort, isActive: d.isActive === 'on' }
+  const fr = { name: d.nameFr || undefined, description: d.descriptionFr || undefined, rules: d.rulesFr || undefined }
+  const values = {
+    slug: d.slug,
+    name: d.name,
+    description: d.description,
+    rules: d.rules,
+    color: d.color,
+    sort: d.sort,
+    isActive: d.isActive === 'on',
+    i18n: fr.name || fr.description || fr.rules ? { fr } : {},
+  }
   if (d.id) await db.update(circles).set(values).where(eq(circles.id, d.id))
   else await db.insert(circles).values(values)
   await audit(admin.userId, d.id ? 'circle:update' : 'circle:create', admin.userId, d.slug)
@@ -409,9 +428,10 @@ export async function saveStep(form: FormData) {
       circleId: z.uuid().optional().or(z.literal('')),
       sort: z.coerce.number().int().min(0).max(999),
       isActive: z.string().optional(),
+      textFr: z.string().trim().max(200).optional(),
     })
     .parse(Object.fromEntries(form))
-  const values = { text: d.text, circleId: d.circleId || null, sort: d.sort, isActive: d.isActive === 'on' }
+  const values = { text: d.text, circleId: d.circleId || null, sort: d.sort, isActive: d.isActive === 'on', i18n: d.textFr ? { fr: { text: d.textFr } } : {} }
   if (d.id) await db.update(steps).set(values).where(eq(steps.id, d.id))
   else await db.insert(steps).values(values)
   await audit(admin.userId, 'steps:update', admin.userId, d.text.slice(0, 60))

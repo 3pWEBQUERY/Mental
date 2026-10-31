@@ -1,15 +1,23 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import { PublicShell } from '@/components/ui'
 import { getTransparency, type Figure } from '@/lib/server/transparency'
-import { m } from '@/messages'
+import { lazy, localeTag, m } from '@/messages'
 
-export const metadata: Metadata = { title: m.transparency.title }
+// Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
+export const instant = false
 
-const t = m.transparency
-const fmt = (f: Figure) => ('below' in f ? t.below(f.below) : f.n.toLocaleString('de-CH'))
+// Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: m.transparency.title }
+}
+
+const t = lazy('transparency')
+const fmt = (f: Figure) => ('below' in f ? t.below(f.below) : f.n.toLocaleString(localeTag()))
 
 /** Öffentlicher Transparenzbericht: Zahlen pro Quartal, kleine Werte unterdrückt. Vorgerendert, stündlich neu. */
 export default async function TransparencyPage() {
+  await connection()
   const quarters = await getTransparency()
   return (
     <PublicShell>

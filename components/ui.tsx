@@ -4,6 +4,7 @@ import { glyphPath } from '@/lib/glyph'
 import type { HelpResource } from '@/lib/help'
 import { m, type Messages } from '@/messages'
 import { ThemeToggle } from './theme-toggle'
+import { LangSwitch } from './lang-switch'
 
 export function Mark({ className = 'mark' }: { className?: string }) {
   return (
@@ -113,9 +114,8 @@ export function PublicShell({
         <Link href="/transparenz">{t.landing.transparency}</Link>
         <Link href="/impressum">{t.landing.imprint}</Link>
         <Link href={helpHref}>{t.landing.help}</Link>
-        <Link href={t.help.otherLanguageHref} lang={t.help.otherLanguageHref === '/aide' ? 'fr' : 'de'}>
-          {t.help.otherLanguage}
-        </Link>
+        {/* Sprache wechseln – von den einsprachigen Hilfeseiten springt /sprache auf die jeweils andere. */}
+        <LangSwitch to={t.help.otherLanguageHref === '/aide' ? 'fr' : 'de'} label={t.help.otherLanguage} fallback={active === 'help' ? helpHref : '/'} />
       </footer>
     </div>
   )

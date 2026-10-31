@@ -1,27 +1,38 @@
-# Mehrsprachigkeit – Stand und nächster Schritt
+# Mehrsprachigkeit (Deutsch / Französisch)
 
-## Stand
+## So funktioniert es
 
-- Alle Texte liegen in `messages/de.ts`. `messages/fr.ts` enthält die vollständige französische Fassung, mit derselben Struktur. TypeScript prüft das (`Messages`): Fehlt ein Text oder hat eine Funktion andere Parameter, bricht der Build ab.
-- **Schon live auf Französisch:**
-  - **Hilfeseite `/aide`:** öffentlich, vorgerendert, offline im Service Worker, gegenseitig mit `/hilfe` verlinkt. Die Nummern sind dieselben, Namen und Angaben stehen auf Französisch (`help_resources.language = 'fr'`, gepflegt unter Admin → Hilfe).
-  - **Krisenbegriffe:** `DEFAULT_CRISIS_TERMS_FR` in `lib/crisis.ts`, `crisis_terms.language = 'fr'`, gepflegt unter Admin → Begriffe. Sie gelten in jeder Sprache der Oberfläche: Wer in der deutschen App auf Französisch schreibt, bekommt denselben Hinweis.
-- **Die übrige App ist Deutsch.** Sie wird erst umgeschaltet, wenn die sicherheitskritischen Texte von Menschen geprüft sind (siehe `fr-pruefung.md`).
+- **Wahl der Sprache**
+  - Das Cookie `lichtung_lang` (`de` | `fr`) gilt für das Gerät. Bei Angemeldeten steht die Sprache zusätzlich im Konto (`settings.locale`).
+  - **Erster Besuch:** `proxy.ts` übernimmt die Sprache aus `Accept-Language` (`pickLocale`), Französisch nur, wenn es vor Deutsch steht.
+  - **Wechseln:** Einstellungen → Darstellung → Sprache, oder «En français» / «Auf Deutsch» im Footer. Beides führt über `/sprache?l=…&zurueck=…`: Cookie setzen, Konto merken, zurück zur Seite.
+  - **Anmelden:** Die Sprache des Kontos gilt auf dem neuen Gerät (`syncLocale` in `lib/server/session.ts`). Hat das Konto noch keine, übernimmt es die des Geräts (z. B. bei der Registrierung).
+- **Texte**
+  - Alle Texte liegen in `messages/de.ts` und `messages/fr.ts`. TypeScript prüft, dass beide dieselbe Struktur haben.
+  - `m` (`messages/index.ts`) ist ein Proxy und liefert bei jedem Zugriff die aktuelle Sprache:
+    - **Browser:** aus dem Cookie. Ein Wechsel lädt die Seite neu.
+    - **Server:** pro Anfrage aus dem Cookie (`lib/server/request-locale.ts`, beim Start über `instrumentation.ts` registriert). Das liest den Anfrage-Speicher von Next, also intern. `tests/e2e/i18n.spec.ts` prüft nach jedem Upgrade, dass Französisch ankommt.
+    - **Ohne Anfrage** (Build, `'use cache'`, Worker): Deutsch.
+  - **Regel:** `m` nie in Konstanten auf Modulebene lesen. Für Abkürzungen gibt es `lazy('bereich')`, Seitentitel kommen aus `generateMetadata`.
+- **Texte an andere Personen**
+  - Gemeint sind Moderation, Sicherheitshinweise, Zuhören, Krisen-Alarm und Push.
+  - Sie kommen in der Sprache der **empfangenden** Person an. Dafür nehmen `notifySystem`, `notifyModeration` und `notifyAdmins` eine Funktion `(t) => t.…` entgegen (`lib/recipient-locale.ts`).
+- **Inhalte aus der Datenbank**
+  - Kreise und kleine Schritte haben eine Spalte `i18n.fr`. Fehlt dort eine Übersetzung, gilt der deutsche Text.
+  - Hilfe-Nummern und Krisenbegriffe haben die Spalte `language`.
+  - Gepflegt wird alles im Admin-Bereich. Der Seed ergänzt die französischen Standardtexte einmalig.
+  - Krisenbegriffe aller Sprachen gelten immer, egal welche Sprache die Oberfläche hat.
 
-## Nächster Schritt: Umschalten (eigener PR, nach der Prüfung)
+## Bewusst (noch) nur Deutsch
 
-Entscheid: **Sprache im Pfad** (`/fr/...`). Deutsch bleibt ohne Präfix, damit bestehende Links und Lesezeichen gelten.
+- **Vorgerenderte Seiten:** `/hilfe`, `/offline` und die Fehlerseiten müssen auch ohne Datenbank und offline funktionieren. Die französische Hilfe ist `/aide`, ebenfalls vorgerendert. «Sofort Hilfe» in der App ist zweisprachig.
+- **Rechtstexte** (`/datenschutz`, `/impressum`): Ein Hinweis auf Französisch steht oben auf der Seite. Die Übersetzung folgt nach rechtlicher Prüfung.
+- **Moderationsbereich:** Ein Teil der Beschriftungen ist dort fest auf Deutsch.
+- **Gespeicherte Benachrichtigungen** bleiben in der Sprache, die beim Erstellen galt.
+- **Datenexport** und PWA-Manifest.
 
-1. **Routen:** `app/[lang]/…` mit `generateStaticParams` → `['de', 'fr']`.
-   - Lesen über `next/root-params` (`lang()`) in Server Components, ohne die Sprache durch alle Komponenten durchreichen zu müssen.
-   - `proxy.ts` schreibt Pfade ohne Präfix intern auf `/de/…` um und wählt beim ersten Besuch anhand von `Accept-Language` vor.
-2. **Texte:**
-   - Server: `getMessages(await lang())` statt des globalen `m`.
-   - Client: Die Wörterbücher kommen per `MessagesProvider` aus dem Layout, mit `useMessages()` statt `m`. Das betrifft etwa 75 Dateien, die Umstellung ist mechanisch.
-3. **Server Actions und Worker:** `next/root-params` gibt es dort nicht. Die Sprache steht deshalb im Profil (`settings.locale`).
-   - Benachrichtigungen, Push-Texte und die Fürsorge-Nachricht der Moderation verwenden die Sprache der *empfangenden* Person.
-   - Gespeicherte Benachrichtigungen bekommen einen Schlüssel statt eines fertigen Texts, wo das heute noch nicht so ist.
-4. **Daten aus der Datenbank:** Hilfe-Nummern und Krisenbegriffe haben schon eine Spalte `language`. Kreise und kleine Schritte brauchen sie noch.
-5. **Tests:** E2E einmal pro Sprache für die Krisenpfade (Hinweis beim Tippen, Vollbild, Sofort Hilfe, Offline-Seite).
+## Vor dem öffentlichen Einsatz
 
-Italienisch folgt demselben Weg mit einer `it.ts`.
+Die sicherheitskritischen Texte von einer Fachperson aus der Romandie prüfen lassen, siehe `fr-pruefung.md`.
+
+Italienisch folgt demselben Weg: `it.ts`, `LOCALES` erweitern, `i18n.it` in Kreisen und Schritten, `language = 'it'` für Hilfe und Begriffe.

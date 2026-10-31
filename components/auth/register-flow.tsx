@@ -7,11 +7,12 @@ import { checkPassword, checkUsername, prepareRecoveryKey, register, setInitialD
 import { forgetPrivate } from '@/lib/client/private-storage'
 import { solvePow } from '@/lib/client/pow'
 import { suggestUsername } from '@/lib/username'
-import { m } from '@/messages'
+import { getMessages, lazy, m } from '@/messages'
 import { usePasskeySetup } from './passkey-setup'
 
-const r = m.register
-const STEPS = r.steps.length
+const r = lazy('register')
+// Die Anzahl ist in jeder Sprache gleich (der Typ Messages prüft die Länge).
+const STEPS = getMessages('de').register.steps.length
 
 function Progress({ step }: { step: number }) {
   return (

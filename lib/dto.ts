@@ -1,4 +1,6 @@
 import { LIMITS, type Need, type SupportKind } from './constants'
+import type { CircleI18n } from '../db/schema'
+import { localCircleName } from './localize'
 
 /**
  * Öffentliche Datenformen. Sie enthalten NIE user_id oder username –
@@ -82,6 +84,8 @@ export type PostRow = {
   moderationNote: string | null
   circleSlug: string
   circleName: string
+  /** Übersetzte Kreisnamen; optional, damit ältere Abfragen/Tests ohne sie auskommen. */
+  circleI18n?: CircleI18n | null
   circleColor: string
 }
 
@@ -139,7 +143,7 @@ export function toPublicPost(
     anonymous: p.visibility === 'anonymous',
     glyphSeed: p.glyphSeed,
     mood: p.mood,
-    circle: { slug: p.circleSlug, name: p.circleName, color: p.circleColor },
+    circle: { slug: p.circleSlug, name: localCircleName(p.circleName, p.circleI18n), color: p.circleColor },
     need: p.need,
     body: p.body,
     contentWarning: p.contentWarning,

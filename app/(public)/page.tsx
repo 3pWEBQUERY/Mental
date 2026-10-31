@@ -1,10 +1,15 @@
 import Link from 'next/link'
+import { connection } from 'next/server'
 import { HeroArt } from '@/components/landing/hero-art'
 import { PublicShell } from '@/components/ui'
 import { m } from '@/messages'
 
-/** Statische Landing-Page. Eingeloggte werden vom Proxy direkt in die Lichtung geleitet. */
-export default function Landing() {
+// Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
+export const instant = false
+
+/** Landing-Page in der gewählten Sprache (pro Anfrage). Eingeloggte leitet der Proxy direkt in die Lichtung. */
+export default async function Landing() {
+  await connection()
   const l = m.landing
   return (
     <PublicShell>
