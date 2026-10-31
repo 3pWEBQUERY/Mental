@@ -272,6 +272,7 @@ export function Composer() {
               <div>
                 <h3>{c.mood}</h3>
                 <RadioGroup
+                  fluid
                   className="opt-row"
                   itemClassName="opt"
                   label={c.mood}

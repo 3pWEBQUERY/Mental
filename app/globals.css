@@ -193,15 +193,18 @@ ul, ol { list-style: none; }
 .tab[aria-selected='true'], .tab[aria-current='page'] { background: var(--ink); color: var(--paper); }
 /* Three.js-Tropfen (use-blob: Reiter-Leisten, Auswahlgruppen): Das Canvas zeichnet die Pille, die helle Schrift
    liegt als ausgeschnittene Kopie darüber. Ohne WebGL fehlt .blob-on – dann gilt die CSS-Pille oben. */
-.tabs, .segment, .opt-row, .circles { position: relative; }
+.tabs, .segment, .opt-row, .circles, .moods { position: relative; }
 .blob-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
-.blob-on .blob-canvas { display: block; }
+/* Über den Knöpfen (manche haben einen deckenden Hintergrund), unter der hellen Schrift; Klicks gehen durch. */
+.blob-on .blob-canvas { display: block; z-index: 1; }
 .blob-on [data-blob] { position: relative; }
-.blob-on.blob-on [data-blob]:is([aria-current='page'], [aria-current='true'], [aria-checked='true']) { background: transparent; color: var(--ink-2); border-color: transparent; }
+.blob-on.blob-on [data-blob]:is([aria-current='page'], [aria-current='true'], [aria-checked='true']) { background: transparent; color: var(--ink-2); }
 /* Gleiche Anordnung wie die Auswahl, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path). */
-.blob-ink { position: absolute; inset: 0; display: inherit; flex-direction: inherit; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 1; }
+.blob-ink { position: absolute; inset: 0; display: inherit; flex-direction: inherit; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 2; }
 .blob-on .blob-ink .blob-copy, .blob-on .blob-ink .blob-copy * { color: var(--paper); }
-.blob-on .blob-ink .blob-copy { border-color: transparent; }
+.blob-on .blob-ink .blob-copy { border-color: transparent; background: transparent; }
+/* Farbpunkte der Stimmungen: heller Ring, damit auch der dunkle Punkt im Tropfen sichtbar bleibt. */
+.blob-on .blob-ink .opt .dot { box-shadow: 0 0 0 1.5px var(--paper); }
 /* Kreisliste: Zähler der gewählten Zeile bleibt lesbar, bis der Tropfen ankommt. */
 .blob-on .circle[aria-current='true'] small { color: var(--ink-3); }
 /* «Meine Kreise»-Ring folgt im Tropfen der hellen Schrift. */
