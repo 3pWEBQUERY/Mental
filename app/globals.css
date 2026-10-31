@@ -147,7 +147,9 @@ ul, ol { list-style: none; }
 .rail .mobile-only { display: none; }
 
 /* ---------- Stage (Three.js) ---------- */
-.stage { position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 32px; }
+/* Scrollbar statt abgeschnitten: Bei grosser Schrift, Zoom oder niedrigen Fenstern bleiben Notiz und Knöpfe erreichbar.
+   touch-action: Waagrechtes Wischen wechselt die Folien, senkrecht scrollt und Zoomen bleibt erlaubt. */
+.stage { position: sticky; top: 0; height: 100vh; height: 100dvh; border-right: 1px solid var(--line); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; display: flex; flex-direction: column; justify-content: space-between; padding: 28px 32px; }
 .orb { position: absolute; left: 0; right: 0; top: 0; height: 64%; }
 .orb canvas { display: block; }
 .orb-fallback { position: absolute; left: 50%; top: 44%; width: 240px; height: 240px; margin: -120px 0 0 -120px; }
@@ -610,6 +612,8 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 /* Finger statt Maus: kleine Text-Schaltflächen bekommen die volle Zielgrösse (WCAG 2.5.5). */
 @media (pointer: coarse) {
   .reply-actions button, .reply-toggle, .linkish { min-height: 44px; }
+  /* iOS zoomt beim Antippen in Felder unter 16px – das verschiebt die Seite und irritiert. */
+  .input, .note-row textarea, .reply-form input, .appeal textarea { font-size: max(16px, calc(15px * var(--fz))); }
   .dots { width: 44px; height: 44px; margin: -6px; }
 }
 
@@ -633,7 +637,8 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   .rail a, .rail button { width: 44px; height: 44px; }
   .rail [data-label]::after { display: none; }
   .rail .badge { top: 9px; right: 9px; }
-  .stage { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px 24px; justify-content: flex-start; }
+  /* Mobil fliesst der Raum mit der Seite: kein eigener Scrollbereich, nur seitlich abgeschnitten (Kugel ragt über den Rand). */
+  .stage { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 16px 24px; justify-content: flex-start; overflow-x: clip; overflow-y: visible; overscroll-behavior: auto; }
   .orb { position: relative; height: 300px; margin: 0 -16px; order: 1; }
   .stage-top { order: 0; }
   .stage-top .hide-btn { display: inline-flex; }

@@ -103,15 +103,18 @@ export default async function QueuePage() {
     </section>
   )
 
+  const title = <h1 className="sr-only">{m.admin.nav.queue}</h1>
   if (!list.length)
     return (
       <>
+        {title}
         {appealList}
         <p className="notice">{m.admin.queueEmpty}</p>
       </>
     )
   return (
     <>
+      {title}
       {appealList}
       <ul>
         <datalist id="mod-templates">

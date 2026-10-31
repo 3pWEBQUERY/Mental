@@ -80,7 +80,8 @@ export default function Gathering({ onUnavailable }: { onUnavailable: () => void
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     renderer.setClearColor(0x000000, 0)
     el.appendChild(renderer.domElement)
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off'
+    // «Reduziert» und «Aus» aus den Einstellungen zählen wie die Systemeinstellung.
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches || Boolean(document.documentElement.dataset.motion)
 
     const scene = new THREE.Scene()
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50)
@@ -191,6 +192,9 @@ export default function Gathering({ onUnavailable }: { onUnavailable: () => void
     }
     const mo = new MutationObserver(recolor)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    // Farbschema «System»: auch den abendlichen Wechsel des Betriebssystems mitnehmen.
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', recolor)
 
     function resize() {
       const w = el!.clientWidth
@@ -345,6 +349,7 @@ export default function Gathering({ onUnavailable }: { onUnavailable: () => void
       io.disconnect()
       ro.disconnect()
       mo.disconnect()
+      mq.removeEventListener('change', recolor)
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener('pointermove', onMove)
       disposables.forEach((d) => d.dispose())

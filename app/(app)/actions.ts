@@ -108,6 +108,8 @@ const postSchema = z.object({
   visibility: z.enum(['anonymous', 'pseudonym']),
   contentWarning: z.boolean(),
   mediaId: z.uuid().nullish(),
+  /** Bildbeschreibung für Screenreader (freiwillig). */
+  mediaAlt: z.string().trim().max(300).nullish(),
   /** «Gedanke loslassen»: nach so vielen Tagen automatisch löschen (0 = nie). */
   letGoDays: z.union([z.literal(0), z.literal(1), z.literal(7), z.literal(30)]).default(0),
 })
@@ -158,7 +160,7 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
   if (d.mediaId) {
     const attached = await db
       .update(postMedia)
-      .set({ postId })
+      .set({ postId, alt: d.mediaAlt || null })
       .where(and(eq(postMedia.id, d.mediaId), eq(postMedia.userId, v.userId), isNull(postMedia.postId)))
       .returning({ id: postMedia.id })
     // Der Gedanke ist gespeichert; scheitert nur der Auftrag, holt der Worker das Bild per Zeitplan nach.

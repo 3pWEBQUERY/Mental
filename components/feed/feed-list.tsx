@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { loadFeed } from '@/app/(app)/actions'
 import { emit, on } from '@/lib/client/bus'
 import type { PublicPost } from '@/lib/dto'
@@ -36,6 +36,28 @@ export function FeedList({
   const [report, setReport] = useState<ReportTarget>(null)
   const [pending, start] = useTransition()
   const [openId, setOpenId] = useState<string | null>(null)
+  // Fokus nicht verlieren: Verschwindet eine Karte (gelöscht, blockiert, ausgeblendet) oder kommen neue dazu
+  // («Mehr laden»), landet der Fokus auf der passenden Karte statt auf dem Seitenanfang.
+  const listRef = useRef<HTMLDivElement>(null)
+  const focusIndex = useRef<number | null>(null)
+  useEffect(() => {
+    const i = focusIndex.current
+    if (i === null) return
+    focusIndex.current = null
+    const cards = listRef.current?.querySelectorAll<HTMLElement>(':scope > article')
+    const target = cards?.[Math.min(i, cards.length - 1)]
+    if (!target) return
+    target.tabIndex = -1
+    target.focus({ preventScroll: false })
+  }, [posts])
+
+  function remove(id: string) {
+    const i = posts.findIndex((x) => x.id === id)
+    const card = i >= 0 ? listRef.current?.querySelectorAll<HTMLElement>(':scope > article')[i] : null
+    // Nur umsetzen, wenn der Fokus in der Karte lag (oder im Dialog dazu) – sonst nicht springen.
+    if (card && (card.contains(document.activeElement) || openId === id)) focusIndex.current = i
+    setPosts((cur) => cur.filter((x) => x.id !== id))
+  }
 
   // Kein Zurücksetzen bei Server-Refresh: Eine Karte, auf die gerade geantwortet wird, bleibt stehen –
   // auch wenn sie danach nicht mehr zu «Braucht Zuspruch» gehört. Ansicht- und Kreiswechsel setzen per key neu.
@@ -52,9 +74,12 @@ export function FeedList({
   useEffect(() => on('post-updated', (p) => setPosts((cur) => cur.map((x) => (x.id === p.id ? p : x)))), [])
 
   function more() {
+    const hadFocus = Boolean(document.activeElement?.closest('.more'))
+    const first = posts.length
     start(async () => {
       const page = await attempt(() => loadFeed(view, circle, cursor))
       if (!page) return
+      if (hadFocus) focusIndex.current = first
       setPosts((cur) => [...cur, ...page.posts.filter((p) => !cur.some((c) => c.id === p.id))])
       setCursor(page.nextCursor)
       setCaughtUp(page.caughtUp)
@@ -64,7 +89,7 @@ export function FeedList({
   const f = m.feed
   return (
     <>
-      <div className="list">
+      <div className="list" ref={listRef}>
         {posts.length === 0 ? (
           <div className="empty">
             <b>{view === 'unheard' ? f.emptyUnheard : f.empty}</b>
@@ -83,7 +108,7 @@ export function FeedList({
               key={p.id}
               post={p}
               onChange={(np) => setPosts((cur) => cur.map((x) => (x.id === np.id ? np : x)))}
-              onRemove={(id) => setPosts((cur) => cur.filter((x) => x.id !== id))}
+              onRemove={remove}
               onReport={setReport}
               onOpen={() => setOpenId(p.id)}
             />
@@ -113,7 +138,7 @@ export function FeedList({
         post={posts.find((p) => p.id === openId) ?? null}
         onClose={() => setOpenId(null)}
         onChange={(np) => setPosts((cur) => cur.map((x) => (x.id === np.id ? np : x)))}
-        onRemove={(id) => setPosts((cur) => cur.filter((x) => x.id !== id))}
+        onRemove={remove}
         onReport={setReport}
       />
       <ReportDialog target={report} onClose={() => setReport(null)} />

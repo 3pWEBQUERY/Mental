@@ -81,6 +81,7 @@ export function Composer() {
   const [anonymous, setAnonymous] = useState(viewer.defaultVisibility === 'anonymous')
   const [cw, setCw] = useState(false)
   const [upload, setUpload] = useState<Upload>(null)
+  const [alt, setAlt] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [restored, setRestored] = useState(false)
@@ -170,6 +171,7 @@ export function Composer() {
     setLetGo(0)
     if (upload) URL.revokeObjectURL(upload.preview)
     setUpload(null)
+    setAlt('')
     setEdit(null)
     try {
       localStorage.removeItem(DRAFT_KEY)
@@ -200,6 +202,7 @@ export function Composer() {
       visibility: anonymous ? 'anonymous' : 'pseudonym',
       contentWarning: cw,
       mediaId: upload && 'mediaId' in upload ? upload.mediaId : null,
+      mediaAlt: upload && alt.trim() ? alt.trim() : null,
       letGoDays: letGo,
     }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
@@ -348,6 +351,21 @@ export function Composer() {
                       {c.image}
                     </label>
                   </>
+                )}
+                {upload && (
+                  <div className="stack" style={{ gap: 6, flexBasis: '100%' }}>
+                    <label className="field-label" htmlFor="composer-alt">
+                      {c.imageAlt}
+                    </label>
+                    <input
+                      id="composer-alt"
+                      className="input"
+                      maxLength={300}
+                      value={alt}
+                      onChange={(e) => setAlt(e.target.value)}
+                      placeholder={c.imageAltPlaceholder}
+                    />
+                  </div>
                 )}
                 <span className="fine" style={{ flexBasis: '100%' }}>
                   {c.imageHint}

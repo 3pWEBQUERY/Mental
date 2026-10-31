@@ -14,6 +14,8 @@ export function SinglePost({ post: initial }: { post: PublicPost | null }) {
   const [report, setReport] = useState<ReportTarget>(null)
   return (
     <>
+      {/* Seitentitel für Screenreader und die Überschriften-Navigation. */}
+      <h1 className="sr-only">{m.feed.single}</h1>
       <p style={{ marginBottom: 12 }}>
         <Link className="linkish" href="/lichtung">
           ← {m.feed.title}

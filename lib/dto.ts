@@ -12,6 +12,7 @@ export type PublicMedia = {
   width: number | null
   height: number | null
   blurhash: string | null
+  alt: string | null
 }
 
 export type PublicReply = {

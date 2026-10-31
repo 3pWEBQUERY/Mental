@@ -219,10 +219,28 @@ export function SettingsView({ data }: { data: SettingsData }) {
             })
           }}
         >
-          <span className="field-label">{s.password}</span>
+          <h3 className="field-label">{s.password}</h3>
           <input type="text" autoComplete="username" hidden readOnly />
-          <input className="input" type="password" placeholder={s.currentPassword} aria-label={s.currentPassword} autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} />
-          <input className="input" type="password" placeholder={s.newPassword} aria-label={s.newPassword} autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
+          {/* Sichtbare Beschriftungen statt nur Platzhalter – und die Mindestlänge steht da, nicht nur im grauen Knopf. */}
+          <label className="field-label" htmlFor="pw-current">
+            {s.currentPassword}
+          </label>
+          <input id="pw-current" className="input" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} />
+          <label className="field-label" htmlFor="pw-next">
+            {s.newPassword}
+          </label>
+          <input
+            id="pw-next"
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            aria-describedby="pw-next-hint"
+            value={pw.next}
+            onChange={(e) => setPw({ ...pw, next: e.target.value })}
+          />
+          <p className="help-text" id="pw-next-hint">
+            {s.newPasswordHint}
+          </p>
           {pwMsg && <p className="fine" role="status">{pwMsg}</p>}
           <div>
             <button className="btn ghost" disabled={pending || !pw.current || pw.next.length < 10}>

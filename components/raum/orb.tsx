@@ -415,7 +415,16 @@ export default function Orb({
       breath.end?.(finished)
     }
 
+    let skip = false
     function frame(now: number) {
+      // Ruhezustand (kein Atmen, keine Verwandlung, kein Puls): halbe Bildrate reicht für das langsame Wogen
+      // und schont Akku und Lüfter – die Kugel ist auf dem Desktop dauernd im Bild.
+      const idle = !breath.on && !morph.running && uniforms.uPulse.value < 0.02
+      skip = idle && !skip
+      if (skip) {
+        raf = requestAnimationFrame(frame)
+        return
+      }
       const dt = Math.min((now - last) / 1000, 0.05)
       last = now
       const k = reduce ? 0.3 : 1

@@ -124,6 +124,9 @@ export function useDrops<T extends HTMLElement>(pressed: string[], color: string
     let alive = true
     let ro: ResizeObserver | null = null
     let mo: MutationObserver | null = null
+    let mq: MediaQueryList | null = null
+    const recolorOs = () => field.current?.recolor()
+    let self: DropField | null = null
     import('./drop-field').then(({ createDropField }) => {
       if (!alive || !canvas.current || !host.current) return
       const f = createDropField(canvas.current, {
@@ -134,8 +137,17 @@ export function useDrops<T extends HTMLElement>(pressed: string[], color: string
           mark(moving)
         },
         onIdle: () => releaseRef.current(),
+        onLost: () => {
+          // Nur für das aktuelle Feld – das eigene Freigeben (forceContextLoss) löst das Ereignis später auch aus.
+          if (!field.current || field.current !== self) return
+          field.current = null
+          live.current = false
+          setOn(false)
+          setGen(0)
+        },
       })
       if (!f) return
+      self = f
       field.current = f
       const fit = () => {
         const el = host.current
@@ -168,6 +180,9 @@ export function useDrops<T extends HTMLElement>(pressed: string[], color: string
       ro.observe(host.current)
       mo = new MutationObserver(() => f.recolor())
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+      // Farbschema «System»: Wechsel des Betriebssystems auf Dunkel mitnehmen.
+      mq = matchMedia('(prefers-color-scheme: dark)')
+      mq.addEventListener('change', recolorOs)
       setOn(true)
       // Kam der Zeiger nur vorbei, ohne etwas zu ändern: gleich wieder freigeben.
       if (!f.busy) releaseRef.current()
@@ -176,6 +191,7 @@ export function useDrops<T extends HTMLElement>(pressed: string[], color: string
       alive = false
       ro?.disconnect()
       mo?.disconnect()
+      mq?.removeEventListener('change', recolorOs)
       field.current?.dispose()
       field.current = null
       boxes.current = []

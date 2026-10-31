@@ -140,6 +140,7 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
         width: postMedia.width,
         height: postMedia.height,
         blurhash: postMedia.blurhash,
+        alt: postMedia.alt,
       })
       .from(postMedia)
       .where(inArray(postMedia.postId, ids)),
@@ -162,7 +163,7 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
     const media = mediaRows.find((mr) => mr.postId === p.id)
     const publicMedia: PublicMedia | null =
       media && (media.status === 'ready' || mine)
-        ? { id: media.id, status: media.status, width: media.width, height: media.height, blurhash: media.blurhash }
+        ? { id: media.id, status: media.status, width: media.width, height: media.height, blurhash: media.blurhash, alt: media.alt }
         : null
     return toPublicPost(p, {
       viewerId,
