@@ -310,6 +310,7 @@ export const de = {
     reply: 'Jemand hat dir geantwortet',
     support: (n: number) => (n === 1 ? '1 Mensch hat dir Zuspruch geschickt' : `${n} Menschen haben dir Zuspruch geschickt`),
     moderation: 'Eine Entscheidung zu deinem Inhalt',
+    system: 'Betrieb',
     markRead: 'Alle gelesen',
     open: 'Ansehen',
   },

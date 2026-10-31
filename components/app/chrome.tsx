@@ -167,9 +167,11 @@ export function AppChrome({
                       ? m.notifications.reply
                       : n.kind === 'support'
                         ? m.notifications.support(n.count)
-                        : m.notifications.moderation}
+                        : n.kind === 'system'
+                          ? m.notifications.system
+                          : m.notifications.moderation}
                   </div>
-                  {n.kind === 'moderation' && n.message ? (
+                  {(n.kind === 'moderation' || n.kind === 'system') && n.message ? (
                     <p>{n.message}</p>
                   ) : n.postDeleted ? (
                     <p>{m.feed.deletedPost}</p>

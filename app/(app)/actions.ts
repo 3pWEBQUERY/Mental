@@ -585,7 +585,7 @@ export async function setCirclePref(slug: string, state: 'follow' | 'mute' | nul
 
 export type ClientNotification = {
   id: string
-  kind: 'reply' | 'support' | 'moderation'
+  kind: 'reply' | 'support' | 'moderation' | 'system'
   postId: string | null
   postDeleted: boolean
   count: number
@@ -617,7 +617,7 @@ export async function listNotifications(): Promise<ClientNotification[]> {
     id: r.id,
     kind: r.kind,
     postId: r.deletedAt ? null : r.postId,
-    postDeleted: Boolean(r.deletedAt) || (r.kind !== 'moderation' && !r.postId),
+    postDeleted: Boolean(r.deletedAt) || (r.kind !== 'moderation' && r.kind !== 'system' && !r.postId),
     count: r.payload.count ?? 1,
     excerpt: r.payload.excerpt ?? null,
     message: r.payload.message ?? null,
