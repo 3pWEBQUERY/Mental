@@ -90,11 +90,13 @@ float snoise(vec3 v){
 
 const VS = /* glsl */ `${NOISE}
 uniform float uTime, uAmp, uBreath, uPulse, uPR;
-uniform float uMix, uFromS, uToS, uDir;
+uniform float uMix, uFromS, uToS, uDir, uGlow;
 uniform mat3 uRot;
 attribute float aRand;
 attribute vec3 aFrom, aTo;
 varying float vA;
+varying float vG;
+varying float vHi;
 void main(){
   vec3 base = position;
   float n  = snoise(base*1.3 + vec3(0.0, uTime*0.18, uTime*0.12));
@@ -119,19 +121,35 @@ void main(){
   vec4 mv = viewMatrix * w;
   gl_Position = projectionMatrix * mv;
   float g = mix(1.0 - uFromS, 1.0 - uToS, e);
-  gl_PointSize = (1.4 + aRand*2.0) * uPR * (5.0 / -mv.z) * mix(1.0, 1.12, g);
+  // Bei Nacht glimmt die Ziffer: weichere, etwas grössere Punkte (siehe FS).
+  gl_PointSize = (1.4 + aRand*2.0) * uPR * (5.0 / -mv.z) * mix(1.0, mix(1.12, 1.55, uGlow), g);
   float aS = (0.25 + 0.75*smoothstep(-0.6, 0.8, n)) * (0.35 + 0.65*smoothstep(-1.4, 1.4, w.z));
   float aD = 0.5 + 0.45 * aRand;
+  // Bei Nacht leises Funkeln, wie Glut – jeder Punkt in eigenem Takt.
+  aD *= 1.0 - uGlow * (0.3 + 0.22 * sin(uTime * (1.6 + aRand * 2.4) + aRand * 40.0));
   vA = mix(aS, aD, g);
+  vG = g;
+  // Verlauf in der Ziffer: unten tiefer, oben wärmer; einzelne helle Funken.
+  vHi = clamp(p.y / 2.6 + 0.5, 0.0, 1.0) * 0.75 + step(0.93, aRand) * 0.5;
 }`
 
 const FS = /* glsl */ `
-uniform vec3 uColor;
+uniform vec3 uColor, uWarm;
+uniform float uGlow;
 varying float vA;
+varying float vG;
+varying float vHi;
 void main(){
   vec2 c = gl_PointCoord - 0.5;
-  if (dot(c,c) > 0.25) discard;
-  gl_FragColor = vec4(uColor, vA);
+  float d2 = dot(c, c);
+  if (d2 > 0.25) discard;
+  float glow = uGlow * vG;
+  // Hell: scharfe Scheibe wie bisher. Nacht-Ziffer: weich auslaufender Glutpunkt.
+  float a = vA * mix(1.0, exp(-d2 * 14.0), glow);
+  vec3 col = mix(uColor, uWarm, glow * clamp(vHi, 0.0, 1.0));
+  // Vormultipliziert: Mit Deckkraft 1 wie normales Überblenden (Hellmodus, Kugel), mit weniger Deckkraft
+  // addiert sich das Licht – dicht liegende Punkte der Nacht-Ziffer glimmen heller.
+  gl_FragColor = vec4(col * a, a * mix(1.0, 0.3, glow));
 }`
 
 function cssColor(token: string) {
@@ -289,8 +307,28 @@ export default function Orb({
       uToS: { value: 1 },
       uDir: { value: 1 },
       uRot: { value: new THREE.Matrix3() },
+      uGlow: { value: 0 },
+      uWarm: { value: new THREE.Color(cssColor('--clay-ink')) },
     }
-    const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false })
+    const mat = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: VS,
+      fragmentShader: FS,
+      transparent: true,
+      depthWrite: false,
+      // Vormultipliziertes Alpha (siehe FS): erlaubt der Nacht-Ziffer, Licht zu addieren.
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+    })
+    // Nacht: Ziffer als Glut in Aprikose → Gold. Hell: unverändert.
+    const theme = () => {
+      const bg = new THREE.Color(cssColor('--paper'))
+      const night = bg.r * 0.2126 + bg.g * 0.7152 + bg.b * 0.0722 < 0.3
+      uniforms.uGlow.value = night ? 1 : 0
+      uniforms.uWarm.value.set(night ? '#f7c58d' : cssColor('--clay-ink'))
+    }
+    theme()
     const group = new THREE.Group()
     const points = new THREE.Points(geo, mat)
     // Die Ziffern liegen ausserhalb der Kugel-Bounding-Sphere – nie wegschneiden.
@@ -459,6 +497,7 @@ export default function Orb({
 
     // Farbschema-Wechsel: Farben neu aus den CSS-Tokens lesen.
     const recolor = () => {
+      theme()
       target.color.set(cssColor(uniforms.uToS.value < 0.5 ? '--clay-ink' : MOODS[target.mood]!.token))
       emberColor.set(cssColor('--clay'))
     }
