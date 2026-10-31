@@ -108,6 +108,15 @@ Ohne Nachtbereitschaft ist das Team von 22 bis 7 Uhr (Schweizer Zeit) nicht erre
 - `worker/` – Bildverarbeitung, Moderation (Stufe 2), Push, Export, Löschung, Aufräumen
 - `proxy.ts` – CSP mit Nonce, Weiterleitung geschützter Routen
 
+### Schnittstelle für die Apps (`/api/v1`)
+
+Die iOS-App (Repository `mental-ios`) spricht mit denselben Server Actions wie die Web-App: `POST /api/v1/<name>` mit `{ "args": [...] }` ruft die gleichnamige Action auf – mit denselben Prüfungen, Grenzen, Texten und Benachrichtigungen. Erlaubt sind nur die Aufrufe in der Liste in `app/api/v1/[name]/route.ts`; dazu kommen lesende Abfragen aus `lib/server/mobile.ts` (`me`, `feed`, `post`, `history` …), die im Web in Server Components stecken.
+
+- **Sitzung:** `Authorization: Bearer <token>`. Nach `login`, `register` und `recover` steht das neue Token in der Antwort (`{ result, token }`). Es ist dieselbe Tabelle `sessions` wie im Web – die App erscheint unter «Aktive Sitzungen» als «iPhone · App» und lässt sich dort beenden.
+- **Kein CSRF:** Auf `/api/v1` zählen Cookies nie, und es werden nur Anfragen mit `Content-Type: application/json` angenommen (`lib/server/api-context.ts`).
+- **Bilder** laden wie im Web über `/api/uploads` (signierte PUT-URL) und `/api/media/<id>`; beide akzeptieren das Bearer-Token.
+- **Tagebuch:** gleiches Format wie `lib/client/journal-crypto.ts` – Einträge sind in Web und App lesbar, der Server sieht nur Chiffretext.
+
 ### Bewusste Entscheidungen
 
 - **Eigene Sitzungen statt Better Auth.** Better Auth verlangt in seinem Kernschema eine E-Mail-Adresse. Die PRD verbietet genau das. Sitzungen, Argon2id, Rate-Limits und Passkeys sind deshalb direkt umgesetzt, nach dem Datenmodell der PRD.
