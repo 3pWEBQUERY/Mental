@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Box, TabBlob } from './tab-blob'
 
 type Item = { key: string; label: string; href: string }
@@ -11,10 +11,11 @@ function reducedMotion() {
 }
 
 /**
- * Ansichten des Feeds («Alle», «Braucht Zuspruch», «Mut-Momente»). Der aktive Reiter ist ein Three.js-Tropfen,
- * der beim Wechsel zum neuen Reiter fliesst. Ohne WebGL oder bei reduzierter Bewegung bleibt die CSS-Pille.
+ * Reiter-Leiste mit Links (Feed-Ansichten, «Ich»). Der aktive Reiter ist ein Three.js-Tropfen, der beim
+ * Wechsel zum neuen Reiter fliesst – auch in die nächste Zeile, wenn die Leiste umbricht.
+ * Ohne WebGL oder bei reduzierter Bewegung bleibt die CSS-Pille.
  */
-export function FeedTabs({ items, active, label }: { items: Item[]; active: string; label: string }) {
+export function TabBar({ items, active, label, style }: { items: Item[]; active: string; label: string; style?: CSSProperties }) {
   const nav = useRef<HTMLElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const ink = useRef<HTMLDivElement>(null)
@@ -91,7 +92,7 @@ export function FeedTabs({ items, active, label }: { items: Item[]; active: stri
   }, [current])
 
   return (
-    <nav ref={nav} className={`tabs${gl ? ' tabs-gl' : ''}`} aria-label={label}>
+    <nav ref={nav} className={`tabs${gl ? ' tabs-gl' : ''}`} aria-label={label} style={style}>
       <canvas ref={canvas} className="tabs-canvas" aria-hidden="true" />
       {gl && (
         <div ref={ink} className="tabs-ink" aria-hidden="true">

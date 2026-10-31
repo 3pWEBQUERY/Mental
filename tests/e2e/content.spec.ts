@@ -338,3 +338,14 @@ test('Ansichten-Leiste: Three.js-Tropfen fliesst zum gewählten Reiter, URL und 
   await expect.poll(clip).not.toBe(before)
   await expect(nav.getByRole('link', { name: 'Alle' })).not.toHaveAttribute('aria-current', 'page')
 })
+
+test('«Ich»-Reiter: derselbe Tropfen, Inhalt folgt', async ({ page }) => {
+  await register(page)
+  await page.goto('/ich')
+  const nav = page.getByRole('navigation', { name: 'Ich', exact: true })
+  await expect(nav).toHaveClass(/tabs-gl/)
+  await nav.getByRole('link', { name: 'Merkliste', exact: true }).click()
+  await expect(nav.getByRole('link', { name: 'Merkliste', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page).toHaveURL(/tab=merkliste/)
+  await expect(nav.getByRole('link', { name: 'Verlauf', exact: true })).not.toHaveAttribute('aria-current', 'page')
+})

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
 import { Suspense } from 'react'
+import { TabBar } from '@/components/tab-bar'
 import { Loading } from '@/components/ui'
 import { PostList } from '@/components/feed/post-list'
 import { Letters, SafetyPlanEditor } from '@/components/me/for-me'
@@ -50,13 +51,12 @@ async function Me({ searchParams }: { searchParams: Promise<{ tab?: string }> })
         </Link>
       </div>
       <p className="manifest">{m.me.intro}</p>
-      <nav className="tabs" aria-label={m.me.title} style={{ marginBottom: 24, width: 'fit-content' }}>
-        {TABS.map((t) => (
-          <Link key={t} className="tab" href={t === 'verlauf' ? '/ich' : `/ich?tab=${t}`} aria-current={tab === t ? 'page' : undefined} scroll={false}>
-            {LABEL[t]}
-          </Link>
-        ))}
-      </nav>
+      <TabBar
+        label={m.me.title}
+        active={tab}
+        items={TABS.map((t) => ({ key: t, label: LABEL[t], href: t === 'verlauf' ? '/ich' : `/ich?tab=${t}` }))}
+        style={{ marginBottom: 24, width: 'fit-content' }}
+      />
       {tab === 'verlauf' && <History v={v} />}
       {tab === 'gedanken' && <PostList initial={await getMyPosts(v.userId)} empty={m.me.postsEmpty} />}
       {tab === 'gutgetan' && <Saved v={v} />}
