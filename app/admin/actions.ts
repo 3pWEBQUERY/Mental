@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq, ne } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -78,12 +78,21 @@ export async function moderate(form: FormData) {
     case 'mute7':
       if (target.userId) {
         const hours = action === 'mute24' ? 24 : 24 * 7
-        await db.update(users).set({ status: 'muted', mutedUntil: new Date(Date.now() + hours * 3600_000) }).where(eq(users.id, target.userId))
+        const until = new Date(Date.now() + hours * 3600_000)
+        // Nur aktive oder schon stumme Konten: Eine Sperre oder eine laufende Löschung darf nicht zu «stumm» werden
+        // (sonst wäre die Sperre nach Ablauf aufgehoben und die Löschung fände nie statt). Läuft schon eine längere
+        // Stummschaltung, bleibt die längere.
+        await db
+          .update(users)
+          .set({ status: 'muted', mutedUntil: sql`GREATEST(COALESCE(${users.mutedUntil}, now()), ${until})` })
+          .where(and(eq(users.id, target.userId), inArray(users.status, ['active', 'muted'])))
       }
       break
     case 'ban':
       if (target.userId) {
-        await db.update(users).set({ status: 'banned' }).where(eq(users.id, target.userId))
+        // Eine beantragte Löschung bleibt bestehen (deleteAfter wird nicht angetastet) – der Worker löscht auch
+        // gesperrte Konten, deren Frist abgelaufen ist.
+        await db.update(users).set({ status: 'banned', mutedUntil: null }).where(eq(users.id, target.userId))
         await db.delete(sessions).where(eq(sessions.userId, target.userId))
       }
       break

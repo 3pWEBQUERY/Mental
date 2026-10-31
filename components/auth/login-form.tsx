@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
 import { login, passkeyLogin, passkeyLoginOptions } from '@/app/(auth)/actions'
 import { toast } from '@/lib/client/bus'
+import { forgetPrivate } from '@/lib/client/private-storage'
 import { m } from '@/messages'
 
 export function LoginForm() {
@@ -16,6 +17,8 @@ export function LoginForm() {
   const [busy, setBusy] = useState(false)
   const [webauthn, setWebauthn] = useState(false)
   useEffect(() => setWebauthn(browserSupportsWebAuthn()), [])
+  // Niemand angemeldet: Entwurf und Aufgedecktes der vorigen Person vom Gerät nehmen.
+  useEffect(forgetPrivate, [])
 
   function done(notice: string | null) {
     if (notice) toast(notice)

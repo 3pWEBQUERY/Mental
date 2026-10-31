@@ -5,9 +5,9 @@ import { and, eq, gt, isNotNull } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { db } from '@/db'
-import { profiles, reservedUsernames, users } from '@/db/schema'
+import { passkeys, profiles, reservedUsernames, users } from '@/db/schema'
 import { LIMITS } from '@/lib/constants'
-import { randomSeed, seal, unseal } from '@/lib/server/crypto'
+import { memberRef, randomSeed, seal, unseal } from '@/lib/server/crypto'
 import { burnTime, hashSecret, isPwned, verifySecret } from '@/lib/server/password'
 import { authenticationOptions, verifyAuthentication } from '@/lib/server/passkey'
 import { clear, hit, ipHash, peek } from '@/lib/server/rate-limit'
@@ -15,6 +15,7 @@ import { generateRecoveryKey, normalizeRecoveryKey } from '@/lib/server/recovery
 import { createSession, destroySession, endOtherSessions, getViewer } from '@/lib/server/session'
 import { verifyPow } from '@/lib/server/altcha'
 import { env } from '@/lib/server/env'
+import { notifyAdmins, notifySystem } from '@/lib/server/notify'
 import { isValidUsername, looksLikeRealName, normalizeUsername } from '@/lib/username'
 import { m } from '@/messages'
 
@@ -75,6 +76,7 @@ export async function register(input: z.input<typeof registerSchema>): Promise<R
 
   if (!(await verifyPow(pow))) return fail(m.register.botFailed)
   const ip = await ipHash()
+  // Vorab nur schauen (schnelle Absage); gezählt wird unten atomar, bevor das Konto entsteht.
   if ((await peek(`register:${ip}`, 24 * 60 * MIN)) >= env.registrationsPerIpPerDay) return fail(m.register.tooMany)
   if (!isValidUsername(username)) return fail(m.register.usernameInvalid, 'username')
   if (await usernameTaken(username)) return fail(m.register.usernameTaken, 'username')
@@ -82,6 +84,9 @@ export async function register(input: z.input<typeof registerSchema>): Promise<R
   if (!pw.ok) return pw
   const words = unseal<string[]>(sealedKey, 'recovery-key')
   if (!words) return fail(m.common.error)
+
+  // Atomar zählen, bevor das Konto entsteht – parallele Anfragen kommen sonst alle an der Grenze vorbei.
+  if (!(await hit(`register:${ip}`, env.registrationsPerIpPerDay, 24 * 60 * MIN)).ok) return fail(m.register.tooMany)
 
   const now = new Date()
   const [passwordHash, recoveryHash] = await Promise.all([hashSecret(password), hashSecret(words.join(' '))])
@@ -98,7 +103,6 @@ export async function register(input: z.input<typeof registerSchema>): Promise<R
   } catch {
     return fail(m.register.usernameTaken, 'username')
   }
-  await hit(`register:${ip}`, env.registrationsPerIpPerDay, 24 * 60 * MIN)
   await createSession(userId, 'password')
   return { ok: true }
 }
@@ -127,12 +131,36 @@ async function afterLogin(userId: string, status: string) {
   return null
 }
 
+/**
+ * Sperre nach Fehlversuchen – pro Benutzername UND Herkunft (IP-Hash). Sonst könnte jede fremde Person ein Konto
+ * mit fünf falschen Passwörtern beliebig oft aussperren; auf einer Krisenplattform heisst das: Wer gerade Hilfe
+ * sucht, kommt nicht ins eigene Konto. Gegen verteiltes Raten von vielen Adressen gilt zusätzlich eine hohe
+ * Schwelle pro Benutzername.
+ */
+const FAILS_PER_ORIGIN = 5
+const FAILS_PER_USERNAME = 50
+
+async function isLocked(username: string, ip: string) {
+  return (await peek(`login-lock:${username}:${ip}`, LOCK_MS)) > 0 || (await peek(`login-lock:${username}`, LOCK_MS)) > 0
+}
+
+/** Zählt einen Fehlversuch; true, wenn damit gesperrt ist. */
+async function countFailure(username: string, ip: string) {
+  const [origin, total] = await Promise.all([hit(`login-fail:${username}:${ip}`, FAILS_PER_ORIGIN, LOCK_MS), hit(`login-fail:${username}`, FAILS_PER_USERNAME, LOCK_MS)])
+  if (!total.ok) await hit(`login-lock:${username}`, 1, LOCK_MS)
+  if (!origin.ok) {
+    await hit(`login-lock:${username}:${ip}`, 1, LOCK_MS)
+    await clear(`login-fail:${username}:${ip}`)
+  }
+  return !origin.ok || !total.ok
+}
+
 export async function login(input: { username: string; password: string }): Promise<Result<{ notice: string | null }>> {
   const username = normalizeUsername(String(input.username ?? ''))
   const password = String(input.password ?? '')
   const ip = await ipHash()
   if (!(await hit(`login-ip:${ip}`, 30, LOCK_MS)).ok) return fail(m.common.rateLimited)
-  if ((await peek(`login-lock:${username}`, LOCK_MS)) > 0) return fail(m.auth.locked)
+  if (await isLocked(username, ip)) return fail(m.auth.locked)
 
   const [u] = await db
     .select({ id: users.id, hash: users.passwordHash, status: users.status })
@@ -142,16 +170,11 @@ export async function login(input: { username: string; password: string }): Prom
   const valid = u ? await verifySecret(u.hash, password) : (await burnTime(password), false)
 
   if (!u || !valid) {
-    const fails = await hit(`login-fail:${username}`, 5, LOCK_MS)
-    if (!fails.ok) {
-      await hit(`login-lock:${username}`, 1, LOCK_MS)
-      await clear(`login-fail:${username}`)
-      return fail(m.auth.locked)
-    }
+    if (await countFailure(username, ip)) return fail(m.auth.locked)
     return fail(m.auth.invalid)
   }
   if (u.status === 'banned') return fail(m.auth.banned)
-  await clear(`login-fail:${username}`)
+  await clear(`login-fail:${username}:${ip}`)
   const notice = await afterLogin(u.id, u.status)
   await createSession(u.id, 'password')
   return { ok: true, notice }
@@ -185,20 +208,19 @@ export async function recover(input: { username: string; key: string; password: 
   const password = String(input.password ?? '')
   const ip = await ipHash()
   if (!(await hit(`recover-ip:${ip}`, 10, 60 * MIN)).ok) return fail(m.common.rateLimited)
-  if ((await peek(`login-lock:${username}`, LOCK_MS)) > 0) return fail(m.auth.locked)
+  if (await isLocked(username, ip)) return fail(m.auth.locked)
 
   const pw = await checkPassword(password)
   if (!pw.ok) return pw
 
   const [u] = await db
-    .select({ id: users.id, recoveryHash: users.recoveryHash, status: users.status })
+    .select({ id: users.id, recoveryHash: users.recoveryHash, status: users.status, role: users.role })
     .from(users)
     .where(eq(users.username, username))
     .limit(1)
   const valid = u && key.split(' ').length === 12 ? await verifySecret(u.recoveryHash, key) : (await burnTime(key), false)
   if (!u || !valid) {
-    const fails = await hit(`login-fail:${username}`, 5, LOCK_MS)
-    if (!fails.ok) await hit(`login-lock:${username}`, 1, LOCK_MS)
+    if (await countFailure(username, ip)) return fail(m.auth.locked)
     return fail(m.auth.recoverInvalid)
   }
   if (u.status === 'banned') return fail(m.auth.banned)
@@ -207,9 +229,14 @@ export async function recover(input: { username: string; key: string; password: 
   const words = generateRecoveryKey()
   const [passwordHash, recoveryHash] = await Promise.all([hashSecret(password), hashSecret(words.join(' '))])
   await db.update(users).set({ passwordHash, recoveryHash }).where(eq(users.id, u.id))
+  // Passkeys entfernen: Wer sich fremden Zugang über Passwort oder Schlüssel verschafft und einen eigenen Passkey
+  // angelegt hat, behält ihn sonst über die Wiederherstellung hinaus.
+  await db.delete(passkeys).where(eq(passkeys.userId, u.id))
   await endOtherSessions(u.id)
+  await notifySystem([u.id], m.security.recovered)
+  if (u.role !== 'member') await notifyAdmins(m.security.staffRecovered(memberRef(u.id)), u.id)
   await afterLogin(u.id, u.status)
   await createSession(u.id, 'recovery')
-  await clear(`login-fail:${username}`)
+  await clear(`login-fail:${username}:${ip}`)
   return { ok: true, words }
 }

@@ -9,6 +9,7 @@
 import { desc, eq, inArray, sql } from 'drizzle-orm'
 import webpush from 'web-push'
 import { db, pool } from '../db'
+import { isPushEndpoint } from '../lib/push-endpoint'
 import { monitorIncidents, notifications, pushSubscriptions, users, workerHeartbeats } from '../db/schema'
 
 const STALE_S = 180
@@ -61,6 +62,7 @@ async function tell(message: string) {
     .where(inArray(pushSubscriptions.userId, staff.map((u) => u.id)))
   const payload = JSON.stringify({ title: 'Lichtung · Betrieb', body: message.split('.')[0], url: '/lichtung' })
   for (const s of subs) {
+    if (!isPushEndpoint(s.endpoint)) continue
     await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 60 * 60, urgency: 'high' }).catch(async (e) => {
       const status = (e as { statusCode?: number }).statusCode
       if (status === 404 || status === 410) await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id))

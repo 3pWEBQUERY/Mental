@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { WORDS } from '@/lib/auth/wordlist'
-import { clientIp } from '@/lib/client-ip'
+import { clientIp, ipBucket } from '@/lib/client-ip'
+import { isPushEndpoint } from '@/lib/push-endpoint'
 import { glyphPath, rng } from '@/lib/glyph'
 import { sniffImage } from '@/lib/image-sniff'
 import { inQuietHours } from '@/lib/quiet-hours'
@@ -70,5 +71,40 @@ describe('clientIp', () => {
   })
   it('fällt ohne Header auf «unknown» zurück', () => {
     expect(clientIp(h({}))).toBe('unknown')
+  })
+})
+
+describe('ipBucket', () => {
+  it('lässt IPv4 unverändert', () => {
+    expect(ipBucket('203.0.113.7')).toBe('203.0.113.7')
+  })
+  it('fasst IPv6 auf das /64-Netz zusammen – Adresswechsel im selben Netz umgehen kein Limit', () => {
+    expect(ipBucket('2001:db8:85a3:12::1')).toBe('2001:db8:85a3:12::/64')
+    expect(ipBucket('2001:db8:85a3:12:ffff:abcd:1:2')).toBe('2001:db8:85a3:12::/64')
+    expect(ipBucket('2001:0db8:85a3:0012:0000:0000:0000:0042')).toBe('2001:db8:85a3:12::/64')
+  })
+  it('behandelt :: am Anfang, Zonen und eingebettete IPv4', () => {
+    expect(ipBucket('::1')).toBe('0:0:0:0::/64')
+    expect(ipBucket('fe80::1%eth0')).toBe('fe80:0:0:0::/64')
+    expect(ipBucket('::ffff:198.51.100.2')).toBe('198.51.100.2')
+  })
+})
+
+describe('isPushEndpoint', () => {
+  it('erlaubt die Push-Dienste der Browser', () => {
+    expect(isPushEndpoint('https://fcm.googleapis.com/fcm/send/abc:def')).toBe(true)
+    expect(isPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/gAAA')).toBe(true)
+    expect(isPushEndpoint('https://web.push.apple.com/QGx')).toBe(true)
+    expect(isPushEndpoint('https://wns2-par02p.notify.windows.com/w/?token=x')).toBe(true)
+  })
+  it('lehnt interne und fremde Adressen ab (kein SSRF über den Worker)', () => {
+    expect(isPushEndpoint('http://postgres.railway.internal/')).toBe(false)
+    expect(isPushEndpoint('http://10.0.0.1:5432')).toBe(false)
+    expect(isPushEndpoint('https://fcm.googleapis.com.evil.example/x')).toBe(false)
+    expect(isPushEndpoint('https://evilfcm.googleapis.com/x')).toBe(false)
+    expect(isPushEndpoint('http://fcm.googleapis.com/fcm/send/x')).toBe(false)
+    expect(isPushEndpoint('https://fcm.googleapis.com:8443/x')).toBe(false)
+    expect(isPushEndpoint('https://user:pw@fcm.googleapis.com/x')).toBe(false)
+    expect(isPushEndpoint('kein url')).toBe(false)
   })
 })

@@ -22,6 +22,7 @@ import { detectDerogation } from '@/lib/derogation'
 import type { PublicPost, PublicReply } from '@/lib/dto'
 import { detectPii } from '@/lib/pii'
 import { formatDate, relativeTime } from '@/lib/time'
+import { REVEALED_KEY } from '@/lib/client/private-storage'
 import { m } from '@/messages'
 import { AcuteDialog, CareNote } from '../app/care'
 import { askConfirm } from '../confirm'
@@ -30,7 +31,6 @@ import { useViewer } from '../viewer'
 import { PostImage } from './post-image'
 import type { ReportTarget } from './report-dialog'
 
-const REVEALED_KEY = 'lichtung-revealed'
 function wasRevealed(id: string) {
   try {
     return (JSON.parse(localStorage.getItem(REVEALED_KEY) ?? '[]') as string[]).includes(id)

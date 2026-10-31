@@ -380,6 +380,7 @@ export const de = {
     passkeyReauth: 'Zur Sicherheit: Bestätige mit deinem Passwort, dass du es bist.',
     passkeyAdded: 'Passkey eingerichtet.',
     passkeyNone: 'Noch kein Passkey eingerichtet.',
+    passkeyNeedsPasskey: 'Weitere Passkeys an einem Moderationskonto legst du nur an, wenn du mit einem Passkey angemeldet bist.',
     passkeyRemove: 'Entfernen',
     recovery: 'Neuer Wiederherstellungsschlüssel',
     recoveryHint: 'Der alte Schlüssel wird ungültig.',
@@ -625,6 +626,14 @@ export const de = {
     back: 'Zurück zum Atmen',
     doneLead: 'Du bist hier.',
     doneNote: 'Das hast du gut gemacht. Wenn es noch zu viel ist, ist «Sofort Hilfe» immer einen Tipp entfernt.',
+  },
+  security: {
+    passkeyAdded: 'Zu deinem Konto wurde ein neuer Passkey hinzugefügt. Warst du das nicht: Entferne ihn unter Einstellungen → Sicherheit und ändere dein Passwort.',
+    staffPasskeyAdded: (ref: string, role: string) =>
+      `Am Moderationskonto ${ref} (${role}) wurde ein neuer Passkey angelegt. Wenn das nicht abgesprochen war: Konto prüfen und notfalls sperren.`,
+    recovered: 'Dein Konto wurde mit dem Wiederherstellungsschlüssel zurückgesetzt. Alle anderen Sitzungen sind beendet und bisherige Passkeys entfernt – richte bei Bedarf einen neuen ein.',
+    staffRecovered: (ref: string) =>
+      `Das Moderationskonto ${ref} wurde mit dem Wiederherstellungsschlüssel zurückgesetzt; seine Passkeys sind entfernt. Wenn das nicht abgesprochen war: Konto prüfen.`,
   },
   errors: {
     notFoundLead: 'Diese Seite',

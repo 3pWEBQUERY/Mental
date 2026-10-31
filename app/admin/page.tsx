@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { posts, replies, reports } from '@/db/schema'
 import { canModerate, requireModerator } from '@/lib/server/admin'
@@ -19,7 +19,21 @@ const REASON_LABEL: Record<string, string> = {
  */
 export default async function QueuePage() {
   const mod = await requireModerator('peer')
-  const open = await db.select().from(reports).where(eq(reports.status, 'open')).orderBy(asc(reports.priority), asc(reports.createdAt)).limit(400)
+  // Nur Meldungen, deren Inhalt es noch gibt – verwaiste Meldungen dürfen keine Plätze vor akuten Fällen belegen.
+  const open = await db
+    .select()
+    .from(reports)
+    .where(
+      and(
+        eq(reports.status, 'open'),
+        or(
+          and(eq(reports.targetType, 'post'), sql`EXISTS (SELECT 1 FROM posts p WHERE p.id = ${reports.targetId})`),
+          and(eq(reports.targetType, 'reply'), sql`EXISTS (SELECT 1 FROM replies r WHERE r.id = ${reports.targetId})`),
+        ),
+      ),
+    )
+    .orderBy(asc(reports.priority), asc(reports.createdAt))
+    .limit(400)
 
   const groups = new Map<string, { type: 'post' | 'reply'; id: string; priority: number; first: Date; items: typeof open }>()
   for (const r of open) {
