@@ -10,7 +10,8 @@ function isDark() {
 }
 
 /** Hell/Dunkel im Header. Hell ist Standard; die Wahl bleibt in diesem Browser gespeichert. */
-export function ThemeToggle() {
+export function ThemeToggle({ labels }: { labels?: { toLight: string; toDark: string; toggle: string } } = {}) {
+  const l = labels ?? { toLight: m.settings.toLight, toDark: m.settings.toDark, toggle: m.settings.toggleTheme }
   // Server und erster Client-Render sind hell – erst nach dem Mount gilt die gespeicherte Wahl.
   const [dark, setDark] = useState(false)
   useEffect(() => setDark(isDark()), [])
@@ -27,8 +28,8 @@ export function ThemeToggle() {
       className="theme-toggle"
       onClick={toggle}
       aria-pressed={dark}
-      aria-label={dark ? m.settings.toLight : m.settings.toDark}
-      title={m.settings.toggleTheme}
+      aria-label={dark ? l.toLight : l.toDark}
+      title={l.toggle}
     >
       {dark ? (
         <svg viewBox="0 0 24 24" aria-hidden="true">

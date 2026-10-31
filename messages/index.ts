@@ -1,14 +1,15 @@
 import { de, type Messages } from './de'
+import { fr } from './fr'
 
-export const LOCALES = ['de'] as const
+export const LOCALES = ['de', 'fr'] as const
 export type Locale = (typeof LOCALES)[number]
 export const DEFAULT_LOCALE: Locale = 'de'
 
-const dictionaries: Record<Locale, Messages> = { de }
+const dictionaries: Record<Locale, Messages> = { de, fr }
 
 /**
- * Version 1 spricht nur Deutsch. Alle Texte laufen trotzdem über dieses Wörterbuch,
- * damit Französisch und Italienisch (Phase 4) nur eine neue Datei brauchen.
+ * Die App spricht Deutsch. Französisch gibt es bisher nur für die öffentliche Hilfeseite /aide – die Umschaltung
+ * der ganzen App folgt nach der Prüfung der Texte (docs/i18n/README.md).
  */
 export function getMessages(locale: Locale = DEFAULT_LOCALE): Messages {
   return dictionaries[locale]

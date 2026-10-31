@@ -524,6 +524,8 @@ export const helpResources = pgTable('help_resources', {
   audience: text('audience').notNull(),
   sort: integer('sort').notNull().default(0),
   region: text('region').notNull().default('CH'),
+  /** Sprache der Texte (Name, Zeiten, Für wen): «de» für /hilfe, «fr» für /aide. */
+  language: text('language').notNull().default('de'),
 })
 
 export const crisisTerms = pgTable(

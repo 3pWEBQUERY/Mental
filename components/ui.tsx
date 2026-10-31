@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { glyphPath } from '@/lib/glyph'
 import type { HelpResource } from '@/lib/help'
-import { m } from '@/messages'
+import { m, type Messages } from '@/messages'
 import { ThemeToggle } from './theme-toggle'
 
 export function Mark({ className = 'mark' }: { className?: string }) {
@@ -22,11 +22,22 @@ export function Glyph({ seed, mood, small }: { seed: number; mood: number; small
   )
 }
 
-export function HelpList({ resources, intro = true, eyebrow = true }: { resources: HelpResource[]; intro?: boolean; eyebrow?: boolean }) {
+export function HelpList({
+  resources,
+  intro = true,
+  eyebrow = true,
+  t = m,
+}: {
+  resources: HelpResource[]
+  intro?: boolean
+  eyebrow?: boolean
+  /** Wörterbuch – Standard Deutsch, /aide gibt das französische mit. */
+  t?: Messages
+}) {
   return (
     <>
-      {eyebrow && <h3>{m.help.eyebrow}</h3>}
-      {intro && <p>{m.help.intro}</p>}
+      {eyebrow && <h3>{t.help.eyebrow}</h3>}
+      {intro && <p>{t.help.intro}</p>}
       {resources.map((h) =>
         h.phone ? (
           <a key={h.name} className="line" href={`tel:${h.phone.replace(/\s/g, '')}`}>
@@ -48,7 +59,7 @@ export function HelpList({ resources, intro = true, eyebrow = true }: { resource
                 {h.audience} · {h.hours}
               </span>
             </span>
-            <b>{m.help.chat}</b>
+            <b>{t.help.chat}</b>
           </a>
         ) : null,
       )}
@@ -56,39 +67,55 @@ export function HelpList({ resources, intro = true, eyebrow = true }: { resource
   )
 }
 
-export function PublicShell({ children, active }: { children: ReactNode; active?: 'login' | 'register' | 'help' }) {
+export function PublicShell({
+  children,
+  active,
+  t = m,
+  lang,
+}: {
+  children: ReactNode
+  active?: 'login' | 'register' | 'help'
+  /** Wörterbuch und Sprache der Seite – Standard Deutsch (das <html>-Element bleibt de-CH). */
+  t?: Messages
+  lang?: string
+}) {
+  // Die eigene Hilfeseite ist jeweils die «andere» der anderen Sprache.
+  const helpHref = t.help.otherLanguageHref === '/aide' ? '/hilfe' : '/aide'
   return (
-    <div className="public">
+    <div className="public" lang={lang}>
       <a className="skip" href="#inhalt">
-        Zum Inhalt
+        {t.nav.skip}
       </a>
       <header className="public-top">
         <Link href="/" className="brand">
           <Mark />
-          {m.brand}
+          {t.brand}
         </Link>
-        <nav aria-label={m.nav.label}>
+        <nav aria-label={t.nav.label}>
           {active !== 'login' && (
             <Link className="btn ghost small hide-sm" href="/anmelden">
-              {m.auth.login}
+              {t.auth.login}
             </Link>
           )}
-          <Link className="help-pill" href="/hilfe" aria-current={active === 'help' ? 'page' : undefined}>
-            {m.nav.help}
+          <Link className="help-pill" href={helpHref} aria-current={active === 'help' ? 'page' : undefined}>
+            {t.nav.help}
           </Link>
-          <ThemeToggle />
+          <ThemeToggle labels={{ toLight: t.settings.toLight, toDark: t.settings.toDark, toggle: t.settings.toggleTheme }} />
         </nav>
       </header>
       <main id="inhalt" className="public-main">
         {children}
       </main>
       <footer className="public-foot">
-        <span>{m.common.fine}</span>
-        <Link href="/regeln">{m.landing.rules}</Link>
-        <Link href="/datenschutz">{m.landing.privacy}</Link>
-        <Link href="/transparenz">{m.landing.transparency}</Link>
-        <Link href="/impressum">{m.landing.imprint}</Link>
-        <Link href="/hilfe">{m.landing.help}</Link>
+        <span>{t.common.fine}</span>
+        <Link href="/regeln">{t.landing.rules}</Link>
+        <Link href="/datenschutz">{t.landing.privacy}</Link>
+        <Link href="/transparenz">{t.landing.transparency}</Link>
+        <Link href="/impressum">{t.landing.imprint}</Link>
+        <Link href={helpHref}>{t.landing.help}</Link>
+        <Link href={t.help.otherLanguageHref} lang={t.help.otherLanguageHref === '/aide' ? 'fr' : 'de'}>
+          {t.help.otherLanguage}
+        </Link>
       </footer>
     </div>
   )
@@ -104,8 +131,8 @@ export function Loading() {
 }
 
 /** Für viele ist der erste Satz die grösste Hürde – darum ein paar fertige Anfänge. Ohne JavaScript (details). */
-export function PhoneScript({ open = false }: { open?: boolean }) {
-  const p = m.help.phone
+export function PhoneScript({ open = false, t = m }: { open?: boolean; t?: Messages }) {
+  const p = t.help.phone
   return (
     <details className="phone-script" open={open}>
       <summary>{p.title}</summary>

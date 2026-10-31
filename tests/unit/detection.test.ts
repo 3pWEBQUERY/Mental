@@ -60,3 +60,22 @@ describe('detectAdvice', () => {
     expect(detectAdvice('Du musstest so viel tragen.')).toBe(false)
   })
 })
+
+describe('Krisenerkennung auf Französisch', () => {
+  it('erkennt akute Krisensprache, mit Akzenten und Apostroph', () => {
+    expect(detectCrisis("J'ai envie de mourir.")).toBe('acute')
+    expect(detectCrisis('Je ne veux plus vivre comme ça')).toBe('acute')
+    expect(detectCrisis('Parfois je pense à mettre fin à mes jours')).toBe('acute')
+    expect(detectCrisis('je vais me suicider')).toBe('acute')
+    expect(detectCrisis('J’ai des pensées suicidaires')).toBe('acute')
+  })
+  it('stuft Sorge niedriger ein', () => {
+    expect(detectCrisis("Je n'en peux plus, ma vie n'a plus de sens")).toBe('concern')
+    expect(detectCrisis('Je me sens désespérée')).toBe('concern')
+  })
+  it('lässt Alltagssätze in Ruhe', () => {
+    expect(detectCrisis('Tu vas me tuer de rire')).toBe('none')
+    expect(detectCrisis('Je cherche désespérément mes clés')).toBe('none')
+    expect(detectCrisis('Les dimanches sont les plus durs.')).toBe('none')
+  })
+})

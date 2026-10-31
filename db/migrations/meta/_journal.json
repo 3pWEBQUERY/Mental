@@ -134,6 +134,13 @@
       "when": 1793465625054,
       "tag": "0018_listener_and_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793469491363,
+      "tag": "0019_help_language",
+      "breakpoints": true
     }
   ]
 }
