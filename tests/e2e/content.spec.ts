@@ -397,3 +397,23 @@ test('Kreis-Auswahl: Tropfen in der Seitenleiste und beim Teilen', async ({ page
   await circle.getByRole('radio', { name: 'Trauer' }).click()
   await expect(circle.getByRole('radio', { name: 'Trauer' })).toHaveAttribute('aria-checked', 'true')
 })
+
+test('Stimmungs-Auswahl: Tropfen im Raum und beim Teilen', async ({ page }) => {
+  await register(page)
+  await page.goto('/lichtung')
+  const mood = page.getByRole('radiogroup', { name: 'Stimmung' })
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await mood.hover()
+  await expect(mood).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await mood.getByRole('radio', { name: 'Leichter' }).click()
+  await expect(mood.getByRole('radio', { name: 'Leichter' })).toHaveAttribute('aria-checked', 'true')
+  await mood.getByRole('radio', { name: 'Müde' }).click()
+  await expect(mood.getByRole('radio', { name: 'Müde' })).toHaveAttribute('aria-checked', 'true')
+
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  const feel = page.getByRole('radiogroup', { name: 'Wie geht es dir dabei?' })
+  await feel.hover()
+  await expect(feel).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await feel.getByRole('radio', { name: 'Gut' }).click()
+  await expect(feel.getByRole('radio', { name: 'Gut' })).toHaveAttribute('aria-checked', 'true')
+})

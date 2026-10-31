@@ -149,7 +149,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
         <h2>
           {s.question} <em>{s.questionEm}</em>
         </h2>
-        <RadioGroup className="moods" itemClassName="mood" label={s.moodGroup} value={mood} onChange={pick} options={m.moods.labels.map((label, i) => ({ value: i, label }))} />
+        <RadioGroup fluid className="moods" itemClassName="mood" label={s.moodGroup} value={mood} onChange={pick} options={m.moods.labels.map((label, i) => ({ value: i, label }))} />
         <p className="mood-note" aria-live="polite">
           {mood === null ? (
             s.pick
