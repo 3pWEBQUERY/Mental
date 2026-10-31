@@ -15,6 +15,7 @@ import {
 import { attempt } from '@/lib/client/attempt'
 import { emit, pulse, toast } from '@/lib/client/bus'
 import { LIMITS, NO_ADVICE_NEEDS, SUPPORT_KINDS, type SupportKind } from '@/lib/constants'
+import { useDrops } from '../use-drops'
 import { detectCrisis } from '@/lib/crisis'
 import { detectAdvice } from '@/lib/advice'
 import { detectDerogation } from '@/lib/derogation'
@@ -171,12 +172,17 @@ export function PostCard({
   const visibleReplies = replies.filter((r) => !r.hiddenByAuthor || post.isMine || r.isMine)
   const rc = replies.filter((r) => !r.deleted && !r.isAuthor).length
 
+  // Zuspruch füllt den Knopf als Tropfen (Three.js), vom Klickpunkt aus.
+  const drops = useDrops<HTMLDivElement>(post.isMine ? [] : mySupport, '--sage')
+
   function support(k: SupportKind) {
     startTransition(async () => {
       toggleOptimistic(k)
       const res = await toggleSupport(post.id, k)
       if (!res.ok) return toast(res.error)
-      onChange({ ...post, mySupport: res.sent ? [...post.mySupport, k] : post.mySupport.filter((x) => x !== k) })
+      // Nach dem await gehört ein Update nicht mehr automatisch zur Transition – ohne erneutes startTransition
+      // fiele der optimistische Zustand kurz zurück, bevor das Ergebnis ankommt (sichtbares Flackern).
+      startTransition(() => onChange({ ...post, mySupport: res.sent ? [...post.mySupport, k] : post.mySupport.filter((x) => x !== k) }))
       if (res.sent) {
         pulse()
         toast(m.support.sent)
@@ -380,7 +386,15 @@ export function PostCard({
 
       {!rc && !post.isMine && !post.closed && <p className="unheard">{f.unheard}</p>}
 
-      <div className="support">
+      <div ref={drops.host} className={`support${drops.on ? ' blob-on' : ''}`}>
+        {!post.isMine &&
+          drops.layers(
+            SUPPORT_KINDS.map((k) => (
+              <span key={k} className="sup blob-copy">
+                {m.support[k]}
+              </span>
+            )),
+          )}
         {post.isMine ? (
           post.supportSummary && (
             <span className="summary">
@@ -392,7 +406,7 @@ export function PostCard({
           )
         ) : (
           SUPPORT_KINDS.map((k) => (
-            <button key={k} type="button" className="sup" aria-pressed={mySupport.includes(k)} onClick={() => support(k)}>
+            <button key={k} type="button" className="sup" data-drop={k} aria-pressed={mySupport.includes(k)} onClick={() => support(k)}>
               {m.support[k]}
             </button>
           ))

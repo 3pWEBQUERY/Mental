@@ -417,3 +417,30 @@ test('Stimmungs-Auswahl: Tropfen im Raum und beim Teilen', async ({ page }) => {
   await feel.getByRole('radio', { name: 'Gut' }).click()
   await expect(feel.getByRole('radio', { name: 'Gut' })).toHaveAttribute('aria-checked', 'true')
 })
+
+test('Zuspruch-Knöpfe: Tropfen füllt und leert, Zustand flackert nicht', async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage()
+  const b = await (await browser.newContext()).newPage()
+  await register(a)
+  await register(b)
+  const text = `Tropfen-Gedanke ${Date.now()}`
+  await share(a, text)
+  await b.goto('/lichtung')
+  const row = b.locator('article', { hasText: text }).locator('.support')
+  const hear = row.getByRole('button', { name: 'Ich höre dich' })
+  // Jeden Wechsel von aria-pressed mitschreiben: pro Klick genau einer (früher sprang er kurz zurück).
+  await hear.evaluate((el) => {
+    const w = window as unknown as { __flips: string[] }
+    w.__flips = []
+    new MutationObserver(() => w.__flips.push(String(el.getAttribute('aria-pressed')))).observe(el, { attributes: true, attributeFilter: ['aria-pressed'] })
+  })
+  // Der Tropfen entsteht erst bei Annäherung – vorher die gleich aussehende CSS-Pille.
+  await row.hover()
+  await expect(row).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await hear.click()
+  await expect(hear).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(() => b.evaluate(() => (window as unknown as { __flips: string[] }).__flips.join(','))).toBe('true')
+  await hear.click()
+  await expect(hear).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(() => b.evaluate(() => (window as unknown as { __flips: string[] }).__flips.join(','))).toBe('true,false')
+})
