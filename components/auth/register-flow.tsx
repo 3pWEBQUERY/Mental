@@ -135,7 +135,7 @@ export function RegisterFlow() {
     setBusy(false)
     // Die genaue Meldung zeigen (z. B. «keine Telefonnummer im Anzeigenamen»), nicht nur «Fehler».
     if (!res.ok) return setError(res.error)
-    router.replace('/lichtung')
+    router.replace('/start')
   }
 
   const errorEl = error ? (

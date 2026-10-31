@@ -1,7 +1,7 @@
 /**
  * Läuft vor dem ersten Paint und setzt Farbschema, Schriftgrösse und Animation aus dem lokalen Speicher –
  * und <html lang> auf Französisch, wenn das so gewählt ist (ausser auf den nur deutschen, vorgerenderten Seiten).
- * Ohne gespeicherte Wahl ist Lichtung hell.
+ * Ohne gespeicherte Wahl ist Jiaia hell.
  * Der Inhalt ist konstant; sein SHA-256-Hash steht in der Content Security Policy (proxy.ts).
  */
 export const PREFS_KEY = 'lichtung-prefs'

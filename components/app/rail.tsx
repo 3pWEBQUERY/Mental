@@ -15,14 +15,14 @@ export function Rail({ unread, onCircles }: { unread: number; onCircles: () => v
   const viewer = useViewer()
   const n = m.nav
   const here = (p: string) => (path === p || path.startsWith(`${p}/`) ? 'page' : undefined)
-  const inRoom = path.startsWith('/lichtung') || path.startsWith('/ich')
+  const inRoom = path.startsWith('/start') || path.startsWith('/ich')
 
   return (
     <nav className="rail" aria-label={n.label}>
-      <Link href="/lichtung" aria-label={n.feed} className="home desktop-only">
+      <Link href="/start" aria-label={n.feed} className="home desktop-only">
         <Mark />
       </Link>
-      <Link href="/lichtung" data-label={n.feed} aria-label={n.feed} aria-current={here('/lichtung')}>
+      <Link href="/start" data-label={n.feed} aria-label={n.feed} aria-current={here('/start')}>
         {Icon.feed}
       </Link>
       <button type="button" data-label={n.share} aria-label={n.share} onClick={() => emit('compose')}>
@@ -32,7 +32,7 @@ export function Rail({ unread, onCircles }: { unread: number; onCircles: () => v
         type="button"
         data-label={n.breathe}
         aria-label={n.breathe}
-        onClick={() => (inRoom ? emit('breathe') : router.push('/lichtung?atmen=1'))}
+        onClick={() => (inRoom ? emit('breathe') : router.push('/start?atmen=1'))}
       >
         {Icon.breathe}
       </button>

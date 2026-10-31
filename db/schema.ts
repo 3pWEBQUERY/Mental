@@ -82,6 +82,12 @@ export const passkeys = pgTable(
     label: text('label'),
     createdAt: createdAt(),
     lastUsedAt: ts('last_used_at'),
+    /**
+     * Für welche Domain der Passkey gilt (WebAuthn RP ID). Nach einem Domainwechsel funktionieren alte Passkeys
+     * nicht mehr – sie zählen dann nicht mehr als «hat einen Passkey», sonst kämen Moderationskonten nie wieder
+     * zu einem neuen (dafür bräuchten sie eine Passkey-Sitzung).
+     */
+    rpId: text('rp_id'),
   },
   (t) => [index('passkeys_user_idx').on(t.userId)],
 )

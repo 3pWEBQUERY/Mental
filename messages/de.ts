@@ -3,7 +3,7 @@
  * Weitere Sprachen bekommen eine Datei mit derselben Struktur (siehe messages/index.ts).
  */
 export const de = {
-  brand: 'Lichtung',
+  brand: 'Jiaia',
   meta: {
     description: 'Ein ruhiger, anonymer Ort, um Gedanken zu teilen und Zuspruch zu bekommen. Keine Likes, keine Follower, keine Rangliste.',
   },
@@ -24,13 +24,13 @@ export const de = {
     muted: 'Du bist gerade stummgeschaltet und kannst nur lesen.',
     anonymous: 'Anonym',
     you: 'Du',
-    fine: 'Lichtung ersetzt keine Therapie. Beiträge werden behutsam moderiert.',
+    fine: 'Jiaia ersetzt keine Therapie. Beiträge werden behutsam moderiert.',
   },
   nav: {
     label: 'Hauptnavigation',
     side: 'Seitenleiste',
     skip: 'Zum Inhalt',
-    feed: 'Lichtung',
+    feed: 'Jiaia',
     share: 'Gedanken teilen',
     breathe: '1 Minute atmen',
     circles: 'Kreise',
@@ -238,14 +238,14 @@ export const de = {
     titleLead: 'Du bist nicht',
     titleEm: 'allein.',
     body: 'Bitte sprich jetzt mit einem Menschen. Die Nummern sind kostenlos und anonym.',
-    note: 'Lichtung kennt deine Identität nicht und kann niemanden zu dir schicken. Darum ist der direkte Weg so wichtig.',
+    note: 'Jiaia kennt deine Identität nicht und kann niemanden zu dir schicken. Darum ist der direkte Weg so wichtig.',
     stay: 'Ich bleibe noch in der App',
     pending: 'Dein Gedanke ist gespeichert und nur für dich sichtbar, bis jemand aus dem Team ihn angesehen hat.',
   },
   night: {
     acute:
-      'Gerade ist niemand aus dem Lichtung-Team online (22 bis 7 Uhr). Dein Gedanke wartet bis zum Morgen. Wenn es jetzt zu viel ist: 143 ist rund um die Uhr da, bei Gefahr 144.',
-    help: 'Nachts (22 bis 7 Uhr) ist das Lichtung-Team nicht online. Diese Nummern sind trotzdem jetzt für dich da:',
+      'Gerade ist niemand aus dem Jiaia-Team online (22 bis 7 Uhr). Dein Gedanke wartet bis zum Morgen. Wenn es jetzt zu viel ist: 143 ist rund um die Uhr da, bei Gefahr 144.',
+    help: 'Nachts (22 bis 7 Uhr) ist das Jiaia-Team nicht online. Diese Nummern sind trotzdem jetzt für dich da:',
   },
   help: {
     title: 'Sofort Hilfe',
@@ -258,9 +258,9 @@ export const de = {
     pageTitleLead: 'Sofort',
     pageTitleEm: 'Hilfe.',
     pageIntro:
-      'Diese Seite funktioniert immer – auch ohne Anmeldung und wenn bei Lichtung gerade etwas ausfällt. Alle Angebote sind kostenlos.',
+      'Diese Seite funktioniert immer – auch ohne Anmeldung und wenn bei Jiaia gerade etwas ausfällt. Alle Angebote sind kostenlos.',
     honest:
-      'Ehrlich gesagt: Lichtung kennt keine Identität und kann niemanden lokalisieren. Eine Notfallmeldung an Behörden ist technisch nicht möglich. Wenn du in Gefahr bist, ruf bitte direkt 144 an.',
+      'Ehrlich gesagt: Jiaia kennt keine Identität und kann niemanden lokalisieren. Eine Notfallmeldung an Behörden ist technisch nicht möglich. Wenn du in Gefahr bist, ruf bitte direkt 144 an.',
     phone: {
       title: 'Was ich am Telefon sagen kann',
       lead: 'Du musst nichts vorbereiten. Ein Satz reicht als Anfang:',
@@ -347,7 +347,7 @@ export const de = {
   journal: {
     title: 'Tagebuch',
     intro:
-      'Deine Einträge werden in diesem Browser verschlüsselt, bevor sie gespeichert werden. Niemand – auch nicht das Lichtung-Team – kann sie lesen.',
+      'Deine Einträge werden in diesem Browser verschlüsselt, bevor sie gespeichert werden. Niemand – auch nicht das Jiaia-Team – kann sie lesen.',
     setupTitle: 'Wähle eine Tagebuch-PIN',
     setupHint: 'Mindestens 6 Zeichen. Wenn du die PIN vergisst, ist das Tagebuch nicht mehr lesbar. Es gibt keine Wiederherstellung.',
     pin: 'Tagebuch-PIN',
@@ -381,7 +381,7 @@ export const de = {
     },
     displayName: 'Anzeigename',
     displayNamePersonal: 'Bitte keine Telefonnummer, E-Mail, @Profil, Adresse oder Link im Anzeigenamen – er ist für alle sichtbar.',
-    displayNameOfficial: 'Namen wie «Moderation», «Admin» oder «Lichtung-Team» sind für das Team reserviert.',
+    displayNameOfficial: 'Namen wie «Moderation», «Admin» oder «Jiaia-Team» sind für das Team reserviert.',
     displayNameHint: 'So heisst du, wenn du nicht ganz anonym schreibst. Er ist nicht einzigartig und führt zu keinem Profil.',
     defaultVisibility: 'Standard für neue Gedanken',
     visibility: { anonymous: 'Ganz anonym', pseudonym: 'Mit Anzeigename' },
@@ -415,12 +415,12 @@ export const de = {
     motionOptions: { on: 'An', reduced: 'Reduziert', off: 'Aus' },
     breathSound: 'Leiser Ton beim Atmen',
     push: 'Push-Nachrichten bei neuen Antworten',
-    pushHint: 'Der Text ist immer neutral: «Lichtung: Jemand hat dir geantwortet». Nie der Inhalt.',
+    pushHint: 'Der Text ist immer neutral: «Jiaia: Jemand hat dir geantwortet». Nie der Inhalt.',
     listener: 'Zuhören, wenn es still bleibt',
-    listenerHint: 'Bleibt ein Gedanke 6 Stunden ohne Antwort, kann Lichtung dir Bescheid geben – höchstens einmal am Tag, nur in der Glocke. Niemand erfährt, wer gefragt wurde.',
+    listenerHint: 'Bleibt ein Gedanke 6 Stunden ohne Antwort, kann Jiaia dir Bescheid geben – höchstens einmal am Tag, nur in der Glocke. Niemand erfährt, wer gefragt wurde.',
     pushOn: 'Push ist auf diesem Gerät aktiv.',
     pushOff: 'Push ist aus.',
-    pushUnsupported: 'Dieser Browser unterstützt keine Push-Nachrichten. Auf dem iPhone geht es, wenn Lichtung zum Home-Bildschirm hinzugefügt ist.',
+    pushUnsupported: 'Dieser Browser unterstützt keine Push-Nachrichten. Auf dem iPhone geht es, wenn Jiaia zum Home-Bildschirm hinzugefügt ist.',
     pushDenied: 'Push ist im Browser blockiert.',
     quiet: 'Ruhezeiten',
     quietFrom: 'von',
@@ -454,7 +454,7 @@ export const de = {
     deleteButton: 'Konto löschen',
     logout: 'Abmelden',
     panic: 'Schnell ausblenden',
-    panicHint: 'Dreimal Esc oder dieser Knopf: Lichtung verschwindet sofort und deine Sitzung im Tab endet.',
+    panicHint: 'Dreimal Esc oder dieser Knopf: Jiaia verschwindet sofort und deine Sitzung im Tab endet.',
   },
   auth: {
     login: 'Anmelden',
@@ -494,7 +494,7 @@ export const de = {
       },
       {
         title: 'Keine Therapie.',
-        body: 'Lichtung ersetzt keine Fachperson. Wenn es gerade zu viel ist, findest du die Hilfe-Nummern auf jeder Seite unter «Sofort Hilfe».',
+        body: 'Jiaia ersetzt keine Fachperson. Wenn es gerade zu viel ist, findest du die Hilfe-Nummern auf jeder Seite unter «Sofort Hilfe».',
       },
       {
         title: 'Drei Hausregeln.',
@@ -545,7 +545,7 @@ export const de = {
     displayIntro:
       'Wenn du nicht ganz anonym schreibst, sehen andere diesen Namen und eine Form, die zu dir gehört. Er führt zu keinem Profil und lässt sich jederzeit ändern.',
     displayPlaceholder: 'z. B. Mira',
-    finish: 'In die Lichtung',
+    finish: 'Zu Jiaia',
     botCheck: 'Kurzer Check, dass du kein Bot bist …',
     botFailed: 'Die Prüfung hat nicht geklappt. Lade die Seite bitte neu.',
     tooMany: 'Von hier wurden heute schon mehrere Konten erstellt. Versuch es morgen wieder.',
@@ -577,7 +577,7 @@ export const de = {
   transparency: {
     title: 'Transparenz',
     intro:
-      'Wie viel auf Lichtung los ist und was die Moderation tut – in Zahlen, pro abgeschlossenem Quartal. Nie Inhalte, nie Konten. Zahlen unter 10 zeigen wir nur als «weniger als 10», damit niemand erkennbar wird.',
+      'Wie viel auf Jiaia los ist und was die Moderation tut – in Zahlen, pro abgeschlossenem Quartal. Nie Inhalte, nie Konten. Zahlen unter 10 zeigen wir nur als «weniger als 10», damit niemand erkennbar wird.',
     unavailable: 'Die Zahlen sind gerade nicht verfügbar. Versuch es später noch einmal.',
     below: (k: number) => `weniger als ${k}`,
     tooFew: 'zu wenige für eine Aussage',
@@ -609,14 +609,14 @@ export const de = {
   },
   rules: {
     title: 'Hausregeln',
-    intro: 'Lichtung funktioniert, weil alle behutsam miteinander umgehen. Diese Regeln gelten in allen Kreisen.',
+    intro: 'Jiaia funktioniert, weil alle behutsam miteinander umgehen. Diese Regeln gelten in allen Kreisen.',
     items: [
       ['Freundlich bleiben.', 'Hier schreiben Menschen in schweren Momenten. Antworte so, wie du es dir selbst wünschen würdest.'],
       ['Keine Ratschläge aufdrängen.', 'Wer «Zuhören» oder «Einfach raus damit» wählt, möchte gehört werden – nicht gelöst.'],
       ['Keine persönlichen Daten.', 'Weder deine noch die anderer: keine Namen, Nummern, Adressen, Social-Media-Namen.'],
       ['Kein Vergleichen, kein Abwerten.', '«Anderen geht es schlechter» oder «Stell dich nicht so an» haben hier keinen Platz.'],
       ['Keine Anleitungen zu Selbstverletzung.', 'Solche Inhalte werden sofort entfernt. Wenn du dir Sorgen um jemanden machst: melden mit «Ich mache mir Sorgen».'],
-      ['Keine Werbung, keine Diagnosen.', 'Lichtung ist kein Marktplatz und keine Praxis.'],
+      ['Keine Werbung, keine Diagnosen.', 'Jiaia ist kein Marktplatz und keine Praxis.'],
     ],
     moderation:
       'Jeder Gedanke und jede Antwort wird nach dem Teilen automatisch geprüft. Ein Moderationsteam sieht sich Meldungen an. Es sieht nur den Inhalt, nie deinen Benutzernamen.',
@@ -631,9 +631,9 @@ export const de = {
     saved: 'Gespeichert. Du findest ihn auch unter «Sofort Hilfe».',
     open: 'Mein Notfallplan',
     print: 'Drucken',
-    printNote: 'Mein Notfallplan – aus Lichtung. Rund um die Uhr: 143 Die Dargebotene Hand · 147 Pro Juventute · 144 Notruf.',
+    printNote: 'Mein Notfallplan – aus Jiaia. Rund um die Uhr: 143 Die Dargebotene Hand · 147 Pro Juventute · 144 Notruf.',
     offline: 'Auch ohne Internet auf diesem Gerät zeigen',
-    offlineHint: 'Eine Kopie bleibt im Browser dieses Geräts, bis du dich abmeldest oder Lichtung schnell ausblendest. Nur auf einem Gerät, das nur du benutzt.',
+    offlineHint: 'Eine Kopie bleibt im Browser dieses Geräts, bis du dich abmeldest oder Jiaia schnell ausblendest. Nur auf einem Gerät, das nur du benutzt.',
     offlineOn: 'Der Plan ist jetzt auch offline auf diesem Gerät da.',
     offlineOff: 'Die Offline-Kopie ist von diesem Gerät gelöscht.',
     fields: {
@@ -647,7 +647,7 @@ export const de = {
   },
   letters: {
     title: 'Brief an mein späteres Ich',
-    intro: 'Schreib an einem guten Tag ein paar Zeilen an dich. Wenn du das nächste Mal «Schwer» wählst, zeigt Lichtung sie dir.',
+    intro: 'Schreib an einem guten Tag ein paar Zeilen an dich. Wenn du das nächste Mal «Schwer» wählst, zeigt Jiaia sie dir.',
     placeholder: 'Liebes Ich, heute ging es mir gut, weil …',
     write: 'Brief ablegen',
     saved: 'Abgelegt. Er wartet auf einen Tag, an dem du ihn brauchst.',
@@ -703,7 +703,7 @@ export const de = {
       },
       {
         title: 'Hilfe ist immer einen Tipp entfernt.',
-        body: '«Sofort Hilfe» zeigt dir Nummern, die rund um die Uhr da sind (143, 147, 144). Dreimal Esc blendet Lichtung sofort aus. Und Lichtung ersetzt keine Therapie – sie ist ein Ort zum Durchatmen.',
+        body: '«Sofort Hilfe» zeigt dir Nummern, die rund um die Uhr da sind (143, 147, 144). Dreimal Esc blendet Jiaia sofort aus. Und Jiaia ersetzt keine Therapie – sie ist ein Ort zum Durchatmen.',
       },
     ],
   },
@@ -730,7 +730,7 @@ export const de = {
     notFoundLead: 'Diese Seite',
     notFoundEm: 'gibt es nicht.',
     notFoundBody: 'Vielleicht wurde der Gedanke gelöscht oder der Link ist unvollständig.',
-    back: 'Zur Lichtung',
+    back: 'Zurück zu Jiaia',
     errorLead: 'Hier ist etwas',
     errorEm: 'schiefgegangen.',
     errorBody: 'Das liegt an uns, nicht an dir. Versuch es gleich noch einmal. Wenn es gerade zu viel ist: Die Nummern unten erreichst du immer.',
@@ -738,7 +738,7 @@ export const de = {
   },
   push: {
     reply: 'Jemand hat dir geantwortet',
-    acuteTitle: 'Lichtung · Moderation',
+    acuteTitle: 'Jiaia · Moderation',
     acuteBody: 'Ein akuter Hinweis wartet.',
   },
   listener: {
@@ -747,7 +747,7 @@ export const de = {
   offline: {
     titleLead: 'Gerade',
     titleEm: 'offline.',
-    body: 'Lichtung braucht eine Verbindung. Die Hilfe-Nummern erreichst du trotzdem jederzeit.',
+    body: 'Jiaia braucht eine Verbindung. Die Hilfe-Nummern erreichst du trotzdem jederzeit.',
     plan: 'Dein Notfallplan',
   },
   panic: {
@@ -855,7 +855,7 @@ export const de = {
       openTitle: 'Offene Rollen-Vorschläge',
       proposedNotice: 'Ein Rollenwechsel wurde vorgeschlagen und wartet auf deine Bestätigung (Moderation → Warteschlange).',
       appliedNotice: (role: string) => `Ein Rollenwechsel ist bestätigt und gilt jetzt: ${role}.`,
-      changedNotice: (role: string) => `Deine Rolle in Lichtung ist jetzt: ${role}. Bei Fragen melde dich beim Team.`,
+      changedNotice: (role: string) => `Deine Rolle in Jiaia ist jetzt: ${role}. Bei Fragen melde dich beim Team.`,
     },
     overdue: 'überfällig',
     images: {

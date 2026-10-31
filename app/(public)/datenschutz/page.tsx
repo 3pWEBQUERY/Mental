@@ -15,7 +15,7 @@ export default function PrivacyPage() {
           Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
         </p>
         <p>
-          Lichtung verarbeitet Gedanken zu Gesundheit und Gefühlen. Nach dem Schweizer Datenschutzgesetz sind das
+          Jiaia verarbeitet Gedanken zu Gesundheit und Gefühlen. Nach dem Schweizer Datenschutzgesetz sind das
           besonders schützenswerte Daten. Darum gilt bei uns: Was wir nicht speichern, kann nicht leaken.
         </p>
         <h2>Was wir nicht erheben</h2>
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             Wenn du die Offline-Kopie deines Notfallplans einschaltest, liegt sie zusätzlich im Speicher deines Browsers auf diesem Gerät – bis du dich abmeldest
-            oder Lichtung schnell ausblendest.
+            oder Jiaia schnell ausblendest.
           </li>
           <li>
             Wenn du «Zuhören, wenn es still bleibt» einschaltest, merken wir uns, wann wir dich zuletzt auf einen wartenden Gedanken hingewiesen haben (höchstens
@@ -96,7 +96,7 @@ export default function PrivacyPage() {
         <h2>Verantwortlich</h2>
         <p>
           Alexander Sulschani, Schaffhauserstrasse 6, 8180 Bülach, Schweiz. Fragen zum Datenschutz und Auskunftsbegehren an{' '}
-          <a href="mailto:kontakt@lichtung.ch">kontakt@lichtung.ch</a>. Weitere Angaben im <a href="/impressum">Impressum</a>.
+          <a href="mailto:kontakt@jiaia.app">kontakt@jiaia.app</a>. Weitere Angaben im <a href="/impressum">Impressum</a>.
         </p>
       </div>
     </PublicShell>

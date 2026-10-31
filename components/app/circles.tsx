@@ -32,7 +32,7 @@ export function CirclesList({ presence, onPick }: { presence: Record<string, num
     q.delete('cursor')
     items.push({
       key: 'meine',
-      href: `/lichtung${q.size ? `?${q}` : ''}`,
+      href: `/start${q.size ? `?${q}` : ''}`,
       body: (
         <>
           <i className="dot" style={{ background: 'transparent', border: '1.5px solid var(--ink)' }} />
@@ -50,7 +50,7 @@ export function CirclesList({ presence, onPick }: { presence: Record<string, num
     q.delete('cursor')
     items.push({
       key: c.slug,
-      href: `/lichtung${q.size ? `?${q}` : ''}`,
+      href: `/start${q.size ? `?${q}` : ''}`,
       body: (
         <>
           <i className="dot" style={{ background: circleColor(c.color) }} />

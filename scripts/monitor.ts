@@ -63,7 +63,7 @@ async function checks(): Promise<Check[]> {
   ]
 }
 
-async function tell(message: string, url = '/lichtung') {
+async function tell(message: string, url = '/start') {
   const staff = await db.select({ id: users.id }).from(users).where(inArray(users.role, ['admin', 'mod']))
   if (!staff.length) return
   await db.insert(notifications).values(staff.map((u) => ({ userId: u.id, kind: 'system' as const, postId: null, payload: { message } })))
@@ -72,12 +72,12 @@ async function tell(message: string, url = '/lichtung') {
   const pub = process.env.VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
   if (!pub || !priv) return
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? 'mailto:kontakt@lichtung.ch', pub, priv)
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? 'mailto:kontakt@jiaia.app', pub, priv)
   const subs = await db
     .select()
     .from(pushSubscriptions)
     .where(inArray(pushSubscriptions.userId, staff.map((u) => u.id)))
-  const payload = JSON.stringify({ title: 'Lichtung · Betrieb', body: message.split('.')[0], url })
+  const payload = JSON.stringify({ title: 'Jiaia · Betrieb', body: message.split('.')[0], url })
   for (const s of subs) {
     if (!isPushEndpoint(s.endpoint)) continue
     await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 60 * 60, urgency: 'high' }).catch(async (e) => {

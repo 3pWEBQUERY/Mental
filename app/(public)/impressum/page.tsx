@@ -14,7 +14,7 @@ export default function ImprintPage() {
           Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
         </p>
 
-        <h2>Verantwortlich für Lichtung</h2>
+        <h2>Verantwortlich für Jiaia</h2>
         <address className="imprint">
           Alexander Sulschani
           <br />
@@ -25,7 +25,7 @@ export default function ImprintPage() {
           Schweiz
           <br />
           <br />
-          E-Mail: <a href="mailto:kontakt@lichtung.ch">kontakt@lichtung.ch</a>
+          E-Mail: <a href="mailto:kontakt@jiaia.app">kontakt@jiaia.app</a>
         </address>
         <p className="fine">
           Per E-Mail gibt es keine Krisenberatung, und wir lesen sie nicht rund um die Uhr. Wenn es dir gerade schlecht geht:
@@ -34,7 +34,7 @@ export default function ImprintPage() {
 
         <h2>Kein Notfalldienst</h2>
         <p>
-          Lichtung ist ein Ort zum Teilen und Zuhören und ersetzt keine Therapie, Beratung oder ärztliche Behandlung. In
+          Jiaia ist ein Ort zum Teilen und Zuhören und ersetzt keine Therapie, Beratung oder ärztliche Behandlung. In
           einer Krise erreichst du rund um die Uhr Die Dargebotene Hand unter <a href="tel:143">143</a>, Pro Juventute
           unter <a href="tel:147">147</a> und bei akuter Gefahr den Notruf <a href="tel:144">144</a>.
         </p>
@@ -54,7 +54,7 @@ export default function ImprintPage() {
 
         <h2>Urheberrechte</h2>
         <p>
-          Gestaltung, Texte und Grafiken von Lichtung gehören dem Betreiber. Beiträge bleiben bei den Mitgliedern, die
+          Gestaltung, Texte und Grafiken von Jiaia gehören dem Betreiber. Beiträge bleiben bei den Mitgliedern, die
           sie verfasst haben.
         </p>
       </div>

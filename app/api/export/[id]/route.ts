@@ -17,6 +17,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     .where(and(eq(exports.id, id), eq(exports.userId, v.userId), eq(exports.status, 'ready'), gt(exports.expiresAt, new Date())))
   if (!row?.bucketKey || !row.expiresAt) return new Response(null, { status: 404 })
   const seconds = Math.max(60, Math.floor((row.expiresAt.getTime() - Date.now()) / 1000))
-  const url = await presignDownload(row.bucketKey, seconds, { contentType: 'application/zip', filename: 'lichtung-export.zip' })
+  const url = await presignDownload(row.bucketKey, seconds, { contentType: 'application/zip', filename: 'jiaia-export.zip' })
   return new Response(null, { status: 302, headers: { Location: url, 'Cache-Control': 'no-store' } })
 }

@@ -10,7 +10,7 @@ test('Hilfe ist ohne Anmeldung erreichbar, mit tel:-Links', async ({ page }) => 
 
 test('Hilfe ist in der App von jedem Screen einen Tipp entfernt', async ({ page }) => {
   await register(page)
-  for (const path of ['/lichtung', '/ich', '/einstellungen']) {
+  for (const path of ['/start', '/ich', '/einstellungen']) {
     await page.goto(path)
     await page.getByRole('button', { name: 'Sofort Hilfe' }).click()
     await expect(page.getByRole('dialog')).toContainText('143')
@@ -18,7 +18,7 @@ test('Hilfe ist in der App von jedem Screen einen Tipp entfernt', async ({ page 
   }
 })
 
-test('Dreimal Esc blendet Lichtung aus und beendet die Sitzung', async ({ page }) => {
+test('Dreimal Esc blendet Jiaia aus und beendet die Sitzung', async ({ page }) => {
   await page.route('https://www.meteoschweiz.admin.ch/**', (r) => r.fulfill({ body: '<title>Wetter</title>', contentType: 'text/html' }))
   await register(page)
   await page.keyboard.press('Escape')
@@ -40,7 +40,7 @@ test('Konto löschen – ein Login innerhalb von 7 Tagen bricht die Löschung ab
   await page.getByRole('dialog').getByRole('button', { name: 'Konto löschen' }).click()
   await page.waitForURL((u) => u.pathname === '/')
   await login(page, username)
-  await page.waitForURL('**/lichtung')
+  await page.waitForURL('**/start')
   await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible()
 })
 
@@ -57,7 +57,7 @@ test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
   // … und ist nach dem Abmelden weg – die nächste Person am Gerät sieht ihn nicht.
   await expect.poll(() => page.evaluate(() => localStorage.getItem('lichtung-draft'))).toBeNull()
   await login(page, username)
-  await page.waitForURL('**/lichtung')
+  await page.waitForURL('**/start')
   await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
   await expect(page.locator('#composer-text')).toHaveValue('')
 })

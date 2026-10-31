@@ -1,7 +1,7 @@
 {
-  "name": "lichtung",
+  "name": "jiaia",
   "version": "0.1.0",
-  "description": "Lichtung – ein ruhiger, anonymer Ort zum Teilen und Zuhören.",
+  "description": "Jiaia – ein ruhiger, anonymer Ort zum Teilen und Zuhören.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

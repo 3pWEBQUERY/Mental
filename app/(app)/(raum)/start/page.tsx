@@ -62,7 +62,7 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
     const p = new URLSearchParams()
     if (v !== 'all') p.set('ansicht', v)
     if (circle) p.set('kreis', circle)
-    return p.size ? `/lichtung?${p}` : '/lichtung'
+    return p.size ? `/start?${p}` : '/start'
   }
   return (
     <>
@@ -75,7 +75,7 @@ function FeedHead({ view, circle }: { view: FeedView; circle: string | null }) {
         {view === 'unheard' && (
           <>
             {' '}
-            <Link href="/lichtung/wartet">{m.waiting.open} →</Link>
+            <Link href="/start/wartet">{m.waiting.open} →</Link>
           </>
         )}
       </p>
@@ -101,7 +101,7 @@ async function Feed({ searchParams }: { searchParams: Search }) {
       {mine && (
         <div className="filter">
           <span>{m.feed.circle}</span>
-          <Link href={params.size ? `/lichtung?${params}` : '/lichtung'} scroll={false} aria-label={m.feed.clearFilter(m.circles.mine)}>
+          <Link href={params.size ? `/start?${params}` : '/start'} scroll={false} aria-label={m.feed.clearFilter(m.circles.mine)}>
             {m.feed.clearCircle(m.circles.mine)}
           </Link>
           <p className="circle-desc">{m.circles.mineHint}</p>
@@ -110,7 +110,7 @@ async function Feed({ searchParams }: { searchParams: Search }) {
       {circle && (
         <div className="filter">
           <span>{m.feed.circle}</span>
-          <Link href={params.size ? `/lichtung?${params}` : '/lichtung'} scroll={false} aria-label={m.feed.clearFilter(circle.name)}>
+          <Link href={params.size ? `/start?${params}` : '/start'} scroll={false} aria-label={m.feed.clearFilter(circle.name)}>
             {m.feed.clearCircle(circle.name)}
           </Link>
           <p className="circle-desc">

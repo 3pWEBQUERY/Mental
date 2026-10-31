@@ -34,7 +34,7 @@ export async function isPwned(password: string): Promise<boolean> {
   const suffix = sha1.slice(5)
   try {
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: { 'Add-Padding': 'true', 'User-Agent': 'Lichtung' },
+      headers: { 'Add-Padding': 'true', 'User-Agent': 'Jiaia' },
       signal: AbortSignal.timeout(2500),
       cache: 'no-store',
     })

@@ -22,7 +22,7 @@ export function LoginForm() {
 
   function done(notice: string | null) {
     if (notice) toast(notice)
-    router.replace('/lichtung')
+    router.replace('/start')
   }
 
   async function submit(e: FormEvent) {

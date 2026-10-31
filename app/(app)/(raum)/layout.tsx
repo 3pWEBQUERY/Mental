@@ -6,7 +6,7 @@ import { m } from '@/messages'
 
 export const instant = false
 
-/** Der Raum bleibt beim Wechsel zwischen Lichtung und «Ich» stehen – die Kugel wird nicht neu aufgebaut. */
+/** Der Raum bleibt beim Wechsel zwischen Startseite und «Ich» stehen – die Kugel wird nicht neu aufgebaut. */
 export default async function RoomLayout({ children }: { children: ReactNode }) {
   await connection()
   const now = new Date()

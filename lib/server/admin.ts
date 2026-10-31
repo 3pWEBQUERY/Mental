@@ -21,7 +21,7 @@ export function hasStrongAuth(v: Viewer) {
 export async function requireModeratorRole(level: ModLevel = 'peer'): Promise<Viewer> {
   const v = await getViewer()
   if (!v) redirect('/anmelden')
-  if (!canModerate(v, level)) redirect('/lichtung')
+  if (!canModerate(v, level)) redirect('/start')
   return v
 }
 

@@ -26,7 +26,7 @@ test('Sprache in den Einstellungen: ganze App auf Französisch, gilt nach neuer 
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr-CH')
 
   // Feed, Kreise und kleiner Schritt auf Französisch
-  await page.goto('/lichtung')
+  await page.goto('/start')
   await expect(page.getByRole('button', { name: 'Partager une pensée' }).first()).toBeVisible()
   await expect(page.locator('body')).toContainText('Anxiété')
 
@@ -46,7 +46,7 @@ test('Sprache in den Einstellungen: ganze App auf Französisch, gilt nach neuer 
   await other.getByLabel('Benutzername').fill(username)
   await other.getByLabel('Passwort').fill(PASSWORD)
   await other.getByRole('button', { name: 'Anmelden', exact: true }).click()
-  await other.waitForURL('**/lichtung')
+  await other.waitForURL('**/start')
   await other.reload()
   await expect(other.getByRole('button', { name: 'Partager une pensée' }).first()).toBeVisible()
 

@@ -132,6 +132,10 @@ async function main() {
     await db.execute(
       sql`UPDATE steps SET i18n = i18n || jsonb_build_object('fr', jsonb_build_object('text', ${s.fr}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'fr')`,
     )
+  // Passkeys von vor der Spalte rp_id gehören zur Domain, die jetzt gilt. Läuft dieses Deploy noch auf der alten
+  // Domain, sind sie damit richtig markiert – nach dem Wechsel auf jiaia.app zählen sie nicht mehr (passkey-actions.ts).
+  const rpId = process.env.WEBAUTHN_RP_ID ?? new URL(process.env.APP_URL ?? 'http://localhost:3000').hostname
+  await db.execute(sql`UPDATE passkeys SET rp_id = ${rpId} WHERE rp_id IS NULL`)
   console.log('Seed fertig.')
 }
 

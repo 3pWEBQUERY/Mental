@@ -27,12 +27,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="public">
       <header className="public-top">
-        <Link href="/lichtung" className="brand">
+        <Link href="/start" className="brand">
           <Mark />
           {m.admin.title}
         </Link>
         <nav aria-label={m.admin.title}>
-          <Link className="btn ghost small" href="/lichtung">
+          <Link className="btn ghost small" href="/start">
             {m.nav.feed}
           </Link>
         </nav>

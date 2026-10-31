@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { PREFS_SCRIPT } from './lib/prefs-script'
 
 const SESSION_COOKIE = 'lichtung_session'
-const PROTECTED = ['/lichtung', '/ich', '/einstellungen', '/admin']
+const PROTECTED = ['/start', '/ich', '/einstellungen', '/admin']
 const AUTH_ONLY = ['/anmelden', '/registrieren']
 /** Vollständig vorgerenderte Seiten ohne Nutzerinhalte – hier kann es keine Nonce geben. */
 const STATIC_PAGES = ['/hilfe', '/datenschutz', '/impressum', '/offline', '/aide']
@@ -40,6 +40,19 @@ const PREFS_HASH = `'sha256-${createHash('sha256').update(PREFS_SCRIPT).digest('
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+  // Alte Railway-Adresse → die eigene Domain aus APP_URL (sobald APP_URL dorthin zeigt). Cookies und Passkeys
+  // gelten pro Domain – so landen alle auf derselben.
+  const canonical = process.env.APP_URL?.startsWith('https://') ? new URL(process.env.APP_URL) : null
+  const host = request.headers.get('host')
+  if (canonical && host && host !== canonical.host && host.endsWith('.up.railway.app')) {
+    return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, canonical.origin), 308)
+  }
+  // Früher hiess der Feed /lichtung: alte Lesezeichen, Push-Nachrichten und installierte Apps landen dauerhaft auf /start.
+  if (pathname === '/lichtung' || pathname.startsWith('/lichtung/')) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/start${pathname.slice('/lichtung'.length)}`
+    return NextResponse.redirect(url, 308)
+  }
   const hasSession = request.cookies.has(SESSION_COOKIE)
   // Nur Seitenaufrufe umleiten – nie Server Actions (POST), sonst bricht z. B. der letzte Registrierungsschritt.
   const isPage = request.method === 'GET'
@@ -52,7 +65,7 @@ export function proxy(request: NextRequest) {
   }
   if (isPage && hasSession && (pathname === '/' || AUTH_ONLY.includes(pathname))) {
     const url = request.nextUrl.clone()
-    url.pathname = '/lichtung'
+    url.pathname = '/start'
     url.search = ''
     return NextResponse.redirect(url)
   }

@@ -31,7 +31,7 @@ export function WaitingOne({ initial, cursor: initialCursor }: { initial: Public
     <>
       <div className="feed-head">
         <h1>{w.title}</h1>
-        <Link className="btn ghost small" href="/lichtung?ansicht=unheard">
+        <Link className="btn ghost small" href="/start?ansicht=unheard">
           {w.back}
         </Link>
       </div>

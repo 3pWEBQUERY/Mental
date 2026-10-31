@@ -90,7 +90,7 @@ export function PublicShell({
       <header className="public-top">
         <Link href="/" className="brand">
           <Mark />
-          {t.brand}
+          <span className="wordmark">{t.brand}</span>
         </Link>
         <nav aria-label={t.nav.label}>
           {active !== 'login' && (

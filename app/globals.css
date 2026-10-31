@@ -1,5 +1,5 @@
 /* =========================================================
-   Lichtung – Design-Tokens
+   Jiaia – Design-Tokens
    Flache Farben, keine Schatten, keine Verläufe. Viel Typografie.
    ========================================================= */
 :root {
@@ -161,6 +161,8 @@ ul, ol { list-style: none; }
 .stage > *:not(.orb) { position: relative; z-index: 1; }
 .stage-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .brand { font-family: var(--serif); font-size: calc(30px * var(--fz)); letter-spacing: -0.01em; text-decoration: none; }
+/* Wortmarke JIAIA: Grossbuchstaben nur per CSS – Screenreader lesen «Jiaia» als Wort, nicht J-I-A-I-A. */
+.wordmark { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.78em; margin-right: -0.16em; }
 .date { color: var(--ink-3); font-size: calc(13px * var(--fz)); }
 /* Notausgang: auf dem Handy ein volles Touch-Ziel (44 px), nicht ein kleines Etikett. */
 .stage-top .hide-btn { display: none; align-items: center; min-height: 44px; font-size: calc(14px * var(--fz)); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 999px; padding: 0 16px; }

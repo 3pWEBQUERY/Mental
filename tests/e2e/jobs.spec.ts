@@ -84,17 +84,17 @@ test('Zuhören, wenn es still bleibt: unbeantworteter Gedanke geht an Zuhörende
     const [post] = await q<{ nudged: boolean }>(`SELECT nudged_at IS NOT NULL AS nudged FROM posts WHERE body = $1`, [body])
     expect(post!.nudged).toBe(true)
 
-    await page.goto('/lichtung')
+    await page.goto('/start')
     await page.getByRole('button', { name: /Benachrichtigungen/ }).click()
     const bell = page.getByRole('dialog', { name: 'Benachrichtigungen' })
     await expect(bell).toContainText('Ein Gedanke wartet seit einigen Stunden')
     // Kein Ausschnitt des Gedankens in der Glocke – nur der Link.
     await expect(bell).not.toContainText(body)
     await bell.getByRole('link', { name: 'Ansehen' }).first().click()
-    await page.waitForURL('**/lichtung/gedanke/**')
+    await page.waitForURL('**/start/gedanke/**')
     await expect(page.getByText(body).first()).toBeVisible()
 
-    await author.goto('/lichtung')
+    await author.goto('/start')
     await author.getByRole('button', { name: /Benachrichtigungen/ }).click()
     await expect(author.getByRole('dialog', { name: 'Benachrichtigungen' })).not.toContainText('Ein Gedanke wartet seit einigen Stunden')
 

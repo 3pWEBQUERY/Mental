@@ -7,7 +7,7 @@ import { Dialog } from '../dialog'
 import { useViewer } from '../viewer'
 
 /**
- * Drei kurze Karten beim ersten Besuch: was Lichtung ist, wie man antwortet, wo Hilfe ist. Jederzeit
+ * Drei kurze Karten beim ersten Besuch: was Jiaia ist, wie man antwortet, wo Hilfe ist. Jederzeit
  * überspringbar, erscheint nur einmal. Keine Tour durch Knöpfe – nur das, was man wissen muss, um sich sicher zu fühlen.
  */
 export function Onboarding() {

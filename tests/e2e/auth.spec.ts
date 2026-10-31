@@ -13,7 +13,7 @@ test('Registrierung ohne E-Mail, Abmelden, Anmelden', async ({ page }) => {
   await login(page, username, 'falsches passwort 123')
   await expect(page.locator('.error')).toContainText('stimmen nicht')
   await login(page, username)
-  await page.waitForURL('**/lichtung')
+  await page.waitForURL('**/start')
 })
 
 test('Geschützte Seiten leiten auf die Anmeldung', async ({ page }) => {
@@ -54,7 +54,7 @@ test('Darstellung aus dem Konto gilt auf einem neuen Gerät, Schriftgrösse wirk
   // Neues Gerät: leerer Speicher, gleiche Darstellung nach dem Anmelden.
   const second = await (await browser.newContext()).newPage()
   await login(second, username)
-  await second.waitForURL('**/lichtung')
+  await second.waitForURL('**/start')
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(second.locator('html')).toHaveAttribute('data-font', 'xlarge')
 })
@@ -75,5 +75,5 @@ test('Fremde können ein Konto nicht aussperren: Sperre gilt pro Herkunft', asyn
 
   // … die Person selbst kommt trotzdem herein.
   await login(page, username)
-  await page.waitForURL('**/lichtung')
+  await page.waitForURL('**/start')
 })

@@ -180,7 +180,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     api.current?.ground(n < g.steps.length ? g.steps[n]!.n : null, 1)
   }
 
-  // Aus «Sofort Hilfe» heraus: Auf der Lichtung führt der Raum die Übung selbst.
+  // Aus «Sofort Hilfe» heraus: Auf der Startseite führt der Raum die Übung selbst.
   const openGround = useRef(() => {})
   openGround.current = () => {
     const still = document.documentElement.dataset.motion || matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -241,8 +241,8 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
         </div>
       )}
       <div className="stage-top">
-        <Link href="/lichtung" className="brand">
-          {m.brand}
+        <Link href="/start" className="brand">
+          <span className="wordmark">{m.brand}</span>
         </Link>
         <span className="date">{dateLabel}</span>
         <button type="button" className="hide-btn" onClick={panic}>
