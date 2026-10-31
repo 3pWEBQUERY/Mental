@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { forgetPrivate } from '@/lib/client/private-storage'
 import { m } from '@/messages'
 
 /** Schnell ausblenden: Sitzung im Tab beenden und sofort auf eine neutrale Seite wechseln. */
@@ -11,6 +12,7 @@ export function panic() {
   try {
     sessionStorage.clear()
   } catch {}
+  forgetPrivate()
   document.title = 'MeteoSchweiz'
   document.body.style.visibility = 'hidden'
   // replace(): Die Lichtung verschwindet aus dem Zurück-Verlauf dieses Tabs.

@@ -100,7 +100,8 @@ export async function exportAccount({ exportId }: { exportId: string }) {
 export async function purgeAccount({ userId, reason = 'deleted' }: { userId: string; reason?: 'deleted' | 'inactive' }) {
   const [u] = await db.select().from(users).where(eq(users.id, userId))
   if (!u) return
-  if (reason === 'deleted' && (u.status !== 'deleting' || !u.deleteAfter || u.deleteAfter > new Date())) return
+  // Beantragte Löschung: auch wenn das Konto inzwischen gesperrt wurde – die Löschung hat Vorrang.
+  if (reason === 'deleted' && ((u.status !== 'deleting' && u.status !== 'banned') || !u.deleteAfter || u.deleteAfter > new Date())) return
 
   if (bucketConfigured()) {
     const media = await db.select({ key: postMedia.bucketKey }).from(postMedia).where(eq(postMedia.userId, userId))
@@ -115,6 +116,16 @@ export async function purgeAccount({ userId, reason = 'deleted' }: { userId: str
   await db.transaction(async (tx) => {
     await tx.update(replies).set({ body: '', deletedAt: new Date() }).where(eq(replies.userId, userId))
     await syncReplyCount(repliedTo, tx)
+    // Offene Meldungen zu allem, was mit dem Konto verschwindet (eigene Gedanken samt Antworten darauf, eigene
+    // Antworten, das Konto selbst), schliessen – sonst blieben sie unsichtbar offen und verdrängten neue Fälle.
+    await tx.execute(sql`
+      UPDATE reports SET status = 'dismissed', resolved_at = now()
+      WHERE status = 'open' AND (
+        (target_type = 'post' AND target_id IN (SELECT id FROM posts WHERE user_id = ${userId}))
+        OR (target_type = 'reply' AND target_id IN (
+          SELECT id FROM replies WHERE user_id = ${userId} OR post_id IN (SELECT id FROM posts WHERE user_id = ${userId})))
+        OR (target_type = 'user' AND target_id = ${userId})
+      )`)
     await tx
       .insert(reservedUsernames)
       .values({ username: u.username, until: new Date(Date.now() + 90 * DAY) })
@@ -128,7 +139,7 @@ export async function purgeDueAccounts() {
   const due = await db
     .select({ id: users.id })
     .from(users)
-    .where(and(eq(users.status, 'deleting'), isNotNull(users.deleteAfter), lt(users.deleteAfter, new Date())))
+    .where(and(inArray(users.status, ['deleting', 'banned']), isNotNull(users.deleteAfter), lt(users.deleteAfter, new Date())))
   for (const { id } of due) {
     // Ein fehlerhaftes Konto darf die übrigen Löschungen nicht jeden Tag blockieren.
     await purgeAccount({ userId: id }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, (e as Error).message))

@@ -1,11 +1,12 @@
 'use server'
 
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { db } from '@/db'
 import { blocks, exports, passkeys, postHides, profiles, pushSubscriptions, sessions, users, type Settings } from '@/db/schema'
 import { LIMITS } from '@/lib/constants'
+import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
 import { enqueue, QUEUES } from '@/lib/jobs'
 import { hmac } from '@/lib/server/crypto'
 import { hashSecret, isPwned, verifySecret } from '@/lib/server/password'
@@ -163,7 +164,7 @@ export async function unblock(ref: string): Promise<R> {
 /* ------------------------------------------------------------- Push */
 
 const subSchema = z.object({
-  endpoint: z.url().max(1000),
+  endpoint: z.url().max(1000).refine(isPushEndpoint),
   keys: z.object({ p256dh: z.string().max(200), auth: z.string().max(100) }),
 })
 
@@ -179,6 +180,11 @@ export async function savePushSubscription(sub: unknown, quiet: { from: number; 
       target: pushSubscriptions.endpoint,
       set: { userId: v.userId, keys: parsed.data.keys, quietFrom: q.data.from, quietTo: q.data.to },
     })
+  // Höchstens fünf Geräte – die ältesten Abos fallen weg.
+  await db.execute(sql`
+    DELETE FROM push_subscriptions WHERE user_id = ${v.userId} AND id NOT IN (
+      SELECT id FROM push_subscriptions WHERE user_id = ${v.userId} ORDER BY created_at DESC LIMIT ${MAX_PUSH_SUBSCRIPTIONS}
+    )`)
   return { ok: true }
 }
 

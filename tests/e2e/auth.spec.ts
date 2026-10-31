@@ -58,3 +58,22 @@ test('Darstellung aus dem Konto gilt auf einem neuen Gerät, Schriftgrösse wirk
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(second.locator('html')).toHaveAttribute('data-font', 'xlarge')
 })
+
+test('Fremde können ein Konto nicht aussperren: Sperre gilt pro Herkunft', async ({ page, browser }) => {
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+
+  // Jemand anderes (eigene Herkunft) rät fünfmal falsch und ist danach selbst gesperrt …
+  const other = await (await browser.newContext({ extraHTTPHeaders: { 'x-real-ip': '203.0.113.77' } })).newPage()
+  for (let i = 0; i < 6; i++) {
+    await login(other, username, `falsch geraten ${i} xyz`)
+    await expect(other.locator('.error')).toBeVisible()
+  }
+  await expect(other.locator('.error')).toContainText('Zu viele Versuche')
+
+  // … die Person selbst kommt trotzdem herein.
+  await login(page, username)
+  await page.waitForURL('**/lichtung')
+})

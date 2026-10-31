@@ -10,6 +10,7 @@ import {
   register,
   setInitialDisplayName,
 } from '@/app/(auth)/actions'
+import { forgetPrivate } from '@/lib/client/private-storage'
 import { solvePow } from '@/lib/client/pow'
 import { suggestUsername } from '@/lib/username'
 import { m } from '@/messages'
@@ -64,6 +65,8 @@ export function RegisterFlow() {
   // Bot-Schutz rechnet unsichtbar im Hintergrund, während die Person liest.
   useEffect(() => {
     pow.current = solvePow()
+    // Neues Konto auf diesem Gerät: Entwurf und Aufgedecktes einer vorigen Person entfernen.
+    forgetPrivate()
   }, [])
   useEffect(() => {
     heading.current?.focus()

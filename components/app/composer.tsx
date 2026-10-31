@@ -7,13 +7,13 @@ import { IMAGE_TYPES, LIMITS, NEEDS, type Need } from '@/lib/constants'
 import { detectCrisis } from '@/lib/crisis'
 import type { PublicPost } from '@/lib/dto'
 import { detectPii, type PiiMatch } from '@/lib/pii'
+import { DRAFT_KEY } from '@/lib/client/private-storage'
 import { m } from '@/messages'
 import { Dialog } from '../dialog'
 import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
 import { AcuteDialog, CareNote } from './care'
 
-const DRAFT_KEY = 'lichtung-draft'
 type Draft = { text: string; need: Need; circle: string; cw: boolean }
 
 function readDraft(): Draft | null {

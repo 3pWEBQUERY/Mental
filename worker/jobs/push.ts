@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import webpush from 'web-push'
 import { db } from '../../db'
 import { pushSubscriptions } from '../../db/schema'
+import { isPushEndpoint } from '../../lib/push-endpoint'
 import { inQuietHours } from '../../lib/quiet-hours'
 import { zurichHour } from '../../lib/time'
 
@@ -26,6 +27,11 @@ export async function sendPush({ userId, postId }: { userId: string; postId: str
   const hour = zurichHour()
   const payload = JSON.stringify({ title: 'Lichtung', body: 'Jemand hat dir geantwortet', url: `/lichtung/gedanke/${postId}` })
   for (const s of subs) {
+    // Ältere Abos von vor der Prüfung: nur an echte Push-Dienste senden, alles andere entfernen.
+    if (!isPushEndpoint(s.endpoint)) {
+      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id))
+      continue
+    }
     if (inQuietHours(hour, s.quietFrom, s.quietTo)) continue
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 60 * 60 * 12, urgency: 'normal' })

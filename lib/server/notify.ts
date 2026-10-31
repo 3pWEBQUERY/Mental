@@ -1,7 +1,7 @@
 import 'server-only'
-import { and, eq, gt, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { notifications, type NotificationPayload } from '@/db/schema'
+import { notifications, users, type NotificationPayload } from '@/db/schema'
 import type { SupportKind } from '../constants'
 import { enqueue, QUEUES } from '../jobs'
 
@@ -54,4 +54,20 @@ export async function notifySupport(ownerId: string, postId: string, kind: Suppo
 export async function notifyModeration(userId: string, postId: string | null, message: string) {
   await db.insert(notifications).values({ userId, kind: 'moderation', postId, payload: { message } })
   await ping(userId)
+}
+
+/** Hinweis zur Kontosicherheit oder zum Betrieb – erscheint in der Glocke, nicht als Push. */
+export async function notifySystem(userIds: string[], message: string) {
+  if (!userIds.length) return
+  await db.insert(notifications).values(userIds.map((userId) => ({ userId, kind: 'system' as const, postId: null, payload: { message } })))
+  for (const id of userIds) await ping(id)
+}
+
+/** Alle Admins – für Ereignisse, die ein zweites Paar Augen brauchen (z. B. neuer Passkey an einem Moderationskonto). */
+export async function notifyAdmins(message: string, except?: string) {
+  const admins = await db.select({ id: users.id }).from(users).where(inArray(users.role, ['admin']))
+  await notifySystem(
+    admins.map((a) => a.id).filter((id) => id !== except),
+    message,
+  )
 }

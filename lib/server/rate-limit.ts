@@ -2,7 +2,7 @@ import 'server-only'
 import { sql } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { db } from '@/db'
-import { clientIp } from '../client-ip'
+import { clientIp, ipBucket } from '../client-ip'
 import { hmac } from './crypto'
 import { zurichDay } from '../time'
 
@@ -33,9 +33,9 @@ export async function clear(key: string) {
 }
 
 /**
- * IP gesalzen gehasht, das Salz wechselt täglich. Nach 24 Stunden ist ein Hash keiner IP mehr zuzuordnen;
+ * IP gesalzen gehasht (IPv6: das /64-Netz), das Salz wechselt täglich. Nach 24 Stunden ist ein Hash keiner IP mehr zuzuordnen;
  * der Aufräumjob löscht die Zeilen.
  */
 export async function ipHash(): Promise<string> {
-  return hmac(clientIp(await headers()), `ip:${zurichDay()}`).slice(0, 32)
+  return hmac(ipBucket(clientIp(await headers())), `ip:${zurichDay()}`).slice(0, 32)
 }

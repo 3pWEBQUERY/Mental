@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { Pool } from 'pg'
 import { register, share, closeExtraContexts } from './helpers'
 
@@ -443,4 +443,47 @@ test('Zuspruch-Knöpfe: Tropfen füllt und leert, Zustand flackert nicht', async
   await hear.click()
   await expect(hear).toHaveAttribute('aria-pressed', 'false')
   await expect.poll(() => b.evaluate(() => (window as unknown as { __flips: string[] }).__flips.join(','))).toBe('true,false')
+})
+
+test('Melden: «Sorge» und frische Konten blenden nichts aus, drei ältere Konten mit «verletzend» schon', async ({ browser }) => {
+  test.slow()
+  const pages = await Promise.all([0, 1, 2, 3].map(async () => (await browser.newContext()).newPage()))
+  const [author, ...reporters] = pages as [Page, Page, Page, Page]
+  await register(author)
+  const names = []
+  for (const r of reporters) names.push((await register(r)).username)
+  const t = Date.now()
+  const worried = `Ich kann nicht mehr schlafen ${t}`
+  const hurtful = `Ein zweiter Gedanke ${t}`
+  const third = `Ein dritter Gedanke ${t}`
+  await share(author, worried)
+  await share(author, hurtful)
+  await share(author, third)
+
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  const status = async (body: string) => (await pool.query(`SELECT status FROM posts WHERE body = $1`, [body])).rows[0]?.status
+  async function report(page: Page, text: string, reason: string) {
+    await page.goto('/lichtung')
+    const card = page.locator('article', { hasText: text })
+    await card.getByRole('button', { name: 'Weitere Aktionen' }).click()
+    await page.getByRole('menuitem', { name: 'Melden' }).click()
+    await page.getByLabel(reason).check()
+    await page.getByRole('dialog').getByRole('button', { name: 'Melden' }).click()
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Melden' })).toHaveCount(0)
+  }
+  try {
+    // Frische Konten: Auch drei «verletzend»-Meldungen blenden nichts aus.
+    for (const r of reporters) await report(r, hurtful, 'Abwertend oder verletzend')
+    expect(await status(hurtful)).toBe('visible')
+
+    // Ältere Konten (Konto älter als drei Tage) – Sorge blendet trotzdem nicht aus …
+    await pool.query(`UPDATE users SET created_at = now() - interval '5 days' WHERE username = ANY($1)`, [names])
+    for (const r of reporters) await report(r, worried, 'Ich mache mir Sorgen um diese Person')
+    expect(await status(worried)).toBe('visible')
+    // … drei ältere Konten mit «verletzend» blenden bis zur Prüfung aus.
+    for (const r of reporters) await report(r, third, 'Abwertend oder verletzend')
+    expect(await status(third)).toBe('hidden')
+  } finally {
+    await pool.end()
+  }
 })

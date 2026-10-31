@@ -43,3 +43,21 @@ test('Konto löschen – ein Login innerhalb von 7 Tagen bricht die Löschung ab
   await page.waitForURL('**/lichtung')
   await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible()
 })
+
+test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
+  const { username } = await register(page)
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  await page.locator('#composer-text').fill('Ganz privater Entwurf')
+  await page.keyboard.press('Escape')
+  // Der Entwurf liegt im Browser …
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('lichtung-draft'))).toContain('Ganz privater Entwurf')
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+  // … und ist nach dem Abmelden weg – die nächste Person am Gerät sieht ihn nicht.
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('lichtung-draft'))).toBeNull()
+  await login(page, username)
+  await page.waitForURL('**/lichtung')
+  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  await expect(page.locator('#composer-text')).toHaveValue('')
+})

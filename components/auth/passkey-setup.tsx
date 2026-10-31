@@ -19,6 +19,10 @@ export function usePasskeySetup() {
     try {
       const options = await passkeyRegistrationOptions(password)
       if (!options) throw new Error()
+      if ('needsPasskey' in options) {
+        setError(m.settings.passkeyNeedsPasskey)
+        return false
+      }
       if ('reauth' in options) {
         if ('failed' in options) setError(m.auth.invalid)
         return 'reauth'

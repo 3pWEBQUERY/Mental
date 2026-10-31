@@ -1,6 +1,6 @@
 'use server'
 
-import { and, count, desc, eq, gt, gte, isNull, notInArray, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
@@ -22,6 +22,7 @@ import {
   stepLog,
   steps,
   support,
+  users,
 } from '@/db/schema'
 import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
 import { hardDeletePost } from '@/lib/post-delete'
@@ -30,6 +31,7 @@ import { detectCrisis } from '@/lib/crisis'
 import { toPublicReply, type PublicPost, type PublicReply } from '@/lib/dto'
 import { enqueue, QUEUES } from '@/lib/jobs'
 import { randomSeed } from '@/lib/server/crypto'
+import { hit } from '@/lib/server/rate-limit'
 import { notifyReply, notifySupport } from '@/lib/server/notify'
 import { getFeed, getPostById, type FeedPage, type FeedView } from '@/lib/server/posts'
 import { getViewer, type Viewer } from '@/lib/server/session'
@@ -366,6 +368,8 @@ async function targetOwner(type: 'post' | 'reply', id: string) {
 }
 
 const AUTO_HIDE_REPORTS = 3
+/** Konten zählen fürs automatische Ausblenden erst ab diesem Alter. */
+const REPORTER_MIN_AGE_MS = 3 * 24 * 60 * 60_000
 
 export async function reportContent(input: { type: 'post' | 'reply'; id: string; reason: string; note?: string }): Promise<Ok<object> | Fail> {
   const v = await getViewer()
@@ -375,6 +379,9 @@ export async function reportContent(input: { type: 'post' | 'reply'; id: string;
     .safeParse(input)
   if (!parsed.success) return fail(m.common.error)
   const d = parsed.data
+  // Melden ist wichtig, darf aber kein Werkzeug zum Wegdrücken werden.
+  if (!(await hit(`report:${v.userId}`, 15, 60 * 60_000)).ok || !(await hit(`report-day:${v.userId}`, 40, 24 * 60 * 60_000)).ok)
+    return fail(m.common.rateLimited)
   const owner = await targetOwner(d.type, d.id)
   if (!owner || owner === v.userId) return fail(m.common.error)
   await db
@@ -382,11 +389,23 @@ export async function reportContent(input: { type: 'post' | 'reply'; id: string;
     .values({ reporterId: v.userId, targetType: d.type, targetId: d.id, reason: d.reason, note: d.note?.trim() || null, priority: d.reason === 'worry' ? 1 : 2 })
     .onConflictDoNothing()
 
-  // Ab 3 Meldungen verschiedener Konten wird der Inhalt bis zur Prüfung ausgeblendet.
+  // Ab 3 Meldungen verschiedener Konten wird der Inhalt bis zur Prüfung ausgeblendet – aber:
+  // - «Ich mache mir Sorgen» zählt nicht: Sorge soll Hilfe holen, nicht den Gedanken verstecken, der Zuspruch braucht.
+  // - Es zählen nur aktive Konten, die älter als drei Tage sind – frisch angelegte Wegwerfkonten verstecken nichts.
   const [{ n } = { n: 0 }] = await db
     .select({ n: sql<number>`count(DISTINCT ${reports.reporterId})::int` })
     .from(reports)
-    .where(and(eq(reports.targetType, d.type), eq(reports.targetId, d.id), eq(reports.status, 'open'), sql`${reports.reporterId} IS NOT NULL`))
+    .innerJoin(users, eq(users.id, reports.reporterId))
+    .where(
+      and(
+        eq(reports.targetType, d.type),
+        eq(reports.targetId, d.id),
+        eq(reports.status, 'open'),
+        ne(reports.reason, 'worry'),
+        eq(users.status, 'active'),
+        lt(users.createdAt, new Date(Date.now() - REPORTER_MIN_AGE_MS)),
+      ),
+    )
   if (n >= AUTO_HIDE_REPORTS) {
     if (d.type === 'post') await db.update(posts).set({ status: 'hidden' }).where(and(eq(posts.id, d.id), eq(posts.status, 'visible')))
     else {
