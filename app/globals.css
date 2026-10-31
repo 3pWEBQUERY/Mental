@@ -191,6 +191,15 @@ ul, ol { list-style: none; }
 .tabs { display: flex; gap: 2px; background: var(--paper-2); padding: 4px; border-radius: 999px; flex-wrap: wrap; }
 .tab { padding: 7px 14px; border-radius: 999px; font-size: calc(13px * var(--fz)); color: var(--ink-2); transition: background 0.2s, color 0.2s; text-decoration: none; }
 .tab[aria-selected='true'], .tab[aria-current='page'] { background: var(--ink); color: var(--paper); }
+/* Feed-Reiter mit Three.js-Tropfen: Die Pille zeichnet das Canvas, die helle Schrift liegt als ausgeschnittene Kopie darüber. */
+.tabs:has(.tabs-canvas) { position: relative; }
+.tabs-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+.tabs-gl .tabs-canvas { display: block; }
+.tabs-gl .tab { position: relative; }
+.tabs-gl .tab[aria-current='page'] { background: transparent; color: var(--ink-2); }
+/* Gleiche Anordnung wie die Leiste, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path aus tab-blob). */
+.tabs-ink { position: absolute; inset: 0; display: flex; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 1; }
+.tabs-ink .tab { color: var(--paper); }
 .prompt { --inset: 5px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: var(--r); padding: var(--inset) var(--inset) var(--inset) 22px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--card); margin-bottom: 12px; transition: border-color 0.2s; }
 .prompt:hover { border-color: var(--ink); }
 .prompt span { font-family: var(--serif); font-size: calc(25px * var(--fz)); line-height: 1.15; }
