@@ -48,7 +48,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Segment<T extends string>({ value, options, onChange, label }: { value: T; options: Record<T, string>; onChange: (v: T) => void; label: string }) {
   return (
-    <RadioGroup className="segment" label={label} value={value} onChange={onChange} options={(Object.keys(options) as T[]).map((k) => ({ value: k, label: options[k] }))} />
+    <RadioGroup fluid className="segment" label={label} value={value} onChange={onChange} options={(Object.keys(options) as T[]).map((k) => ({ value: k, label: options[k] }))} />
   )
 }
 

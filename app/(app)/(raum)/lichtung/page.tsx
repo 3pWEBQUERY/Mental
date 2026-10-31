@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
 import { Suspense } from 'react'
+import { CirclesList } from '@/components/app/circles'
 import { Side } from '@/components/app/side'
 import { StepCard } from '@/components/app/step-card'
 import { PromptButton } from '@/components/feed/prompt'
@@ -35,9 +36,19 @@ export default function FeedPage({ searchParams }: { searchParams: Search }) {
           <Feed searchParams={searchParams} />
         </Suspense>
       </main>
-      <Suspense fallback={<aside className="side" />}>
-        <SideData />
-      </Suspense>
+      {/* Die Leiste steht sofort – sonst bleibt sie leer, bis die Daten da sind (auch beim Wechsel der Ansicht). */}
+      <Side
+        circles={
+          <Suspense fallback={<CirclesList presence={{}} />}>
+            <SidePresence />
+          </Suspense>
+        }
+        step={
+          <Suspense fallback={<div className="step step-wait" aria-hidden="true" />}>
+            <SideStep />
+          </Suspense>
+        }
+      />
     </>
   )
 }
@@ -118,8 +129,12 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   )
 }
 
-async function SideData() {
+async function SidePresence() {
   await requireViewer()
-  const [presence, step] = await Promise.all([presenceCounts(), currentStep()])
-  return <Side presence={presence} step={step} />
+  return <CirclesList presence={await presenceCounts()} />
+}
+
+async function SideStep() {
+  await requireViewer()
+  return <StepCard initial={await currentStep()} />
 }

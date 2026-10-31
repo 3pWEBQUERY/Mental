@@ -2,21 +2,23 @@
 
 import Link from 'next/link'
 import { m } from '@/messages'
-import type { StepView } from '@/app/(app)/actions'
+import type { ReactNode } from 'react'
 import { HelpList } from '../ui'
 import { useViewer } from '../viewer'
-import { CirclesList } from './circles'
-import { StepCard } from './step-card'
 
-export function Side({ presence, step }: { presence: Record<string, number | null>; step: StepView }) {
+/**
+ * Seitenleiste. Kreise, Hilfe-Nummern und Fusszeile kommen aus dem Layout und stehen sofort da;
+ * nur Anwesenheit und der kleine Schritt werden nachgereicht (`circles`/`step` als gestreamte Slots).
+ */
+export function Side({ circles, step }: { circles: ReactNode; step: ReactNode }) {
   const viewer = useViewer()
   return (
     <aside className="side" aria-label="Seitenleiste">
       <section>
         <h3>{m.circles.title}</h3>
-        <CirclesList presence={presence} />
+        {circles}
       </section>
-      <StepCard initial={step} />
+      {step}
       <section className="help">
         <HelpList resources={viewer.help.filter((h) => h.phone)} />
       </section>
