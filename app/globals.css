@@ -152,10 +152,49 @@ ul, ol { list-style: none; }
 .date { color: var(--ink-3); font-size: calc(13px * var(--fz)); }
 /* Notausgang: auf dem Handy ein volles Touch-Ziel (44 px), nicht ein kleines Etikett. */
 .stage-top .hide-btn { display: none; align-items: center; min-height: 44px; font-size: calc(14px * var(--fz)); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 999px; padding: 0 16px; }
-.checkin > *, .stage-actions > *, .stage-top > * { transition: opacity 0.6s; }
+.stage-actions > *, .stage-top > *, .stage-switch { transition: opacity 0.6s; }
 /* Beim Atmen tritt alles zurück – ausser «Beenden» und «Schnell ausblenden», die müssen gut sichtbar bleiben. */
-.stage.breathing .checkin > :not(.stage-actions), .stage.breathing .stage-actions > :not(:first-child),
-.stage.breathing .stage-top > :not(.hide-btn) { opacity: 0.18; }
+.stage.breathing .slide-breath > :not(.stage-actions), .stage.breathing .stage-actions > :not(:first-child),
+.stage.breathing .stage-top > :not(.hide-btn), .stage.breathing .stage-switch { opacity: 0.18; }
+
+/* Zwei Folien im Raum – Atmen und 5-4-3-2-1. Beide liegen in derselben Zelle (die Höhe springt nicht);
+   die Zeilen gleiten gestaffelt, im Takt der Punkte oben, die von rechts nach links zur Ziffer werden. */
+.stage-switch-wrap { margin-bottom: 22px; }
+.stage-slides { display: grid; }
+.slide { grid-area: 1 / 1; min-width: 0; --dx: 40px; }
+.slide-breath { --out: -1; }
+.slide-ground { --out: 1; }
+.slide > * {
+  transition: transform 0.7s cubic-bezier(0.2, 0.75, 0.2, 1), opacity 0.5s cubic-bezier(0.3, 0.6, 0.3, 1);
+  transition-delay: calc(140ms + var(--i, 0) * 55ms);
+}
+.slide > :nth-child(2) { --i: 1; }
+.slide > :nth-child(3) { --i: 2; }
+.slide > :nth-child(4) { --i: 3; }
+.slide > :nth-child(5) { --i: 4; }
+.slide > :nth-child(n + 6) { --i: 5; }
+.slide[aria-hidden='true'] { pointer-events: none; }
+/* Hinaus geht es zügig und ohne Staffel – das Neue soll nicht auf das Alte warten. */
+.slide[aria-hidden='true'] > * { opacity: 0; transform: translateX(calc(var(--out) * var(--dx))); transition-duration: 0.36s, 0.26s; transition-delay: 0s; transition-timing-function: cubic-bezier(0.5, 0, 0.75, 0.2), ease-in; }
+.ground-text { font-family: var(--serif); font-weight: 400; font-size: calc(clamp(30px, 2.7vw, 42px) * var(--fz)); line-height: 1.06; letter-spacing: -0.012em; max-width: 21ch; }
+.slide-ground .mood-note { min-height: 0; margin-top: 12px; }
+.slide-ground .grounding-dots { margin: 18px 0 4px; }
+.grounding-dots li { transition: background 0.5s, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.grounding-dots li.now { transform: scale(1.35); }
+/* Jeder neue Schritt kommt von rechts – Zeile für Zeile, wie die Punkte, die sich oben zur nächsten Ziffer ordnen. */
+.ground-step > * { animation: ground-in 0.72s cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+.ground-step > :nth-child(2) { animation-delay: 70ms; }
+.ground-step > :nth-child(3) { animation-delay: 140ms; }
+@keyframes ground-in { from { opacity: 0; transform: translateX(32px); } }
+.slide-ground[aria-hidden='true'] .ground-step > * { animation: none; }
+/* Ohne WebGL: die Ziffer als Schrift an der Stelle der Kugel. */
+.ground-numeral { position: absolute !important; left: 0; right: 0; top: 0; height: 64%; display: grid; place-items: center; font-family: var(--serif); font-size: calc(220px * var(--fz)); line-height: 1; color: var(--clay-ink); pointer-events: none; animation: ground-in 0.72s cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .slide > *, .slide[aria-hidden='true'] > * { transition: opacity 0.2s; transform: none; }
+  .ground-step > *, .ground-numeral { animation: none; }
+}
+:root[data-motion] .slide > *, :root[data-motion] .slide[aria-hidden='true'] > * { transition: opacity 0.2s; transform: none; }
+:root[data-motion] .ground-step > *, :root[data-motion] .ground-numeral { animation: none; }
 .eyebrow { font-size: calc(12px * var(--fz)); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; }
 .checkin h2 { font-family: var(--serif); font-weight: 400; font-size: calc(clamp(34px, 3.3vw, 52px) * var(--fz)); line-height: 1.02; letter-spacing: -0.015em; max-width: 13ch; }
 .checkin h2 em, .display em, .auth-card h1 em { font-style: italic; color: var(--clay); }
@@ -324,7 +363,6 @@ ul, ol { list-style: none; }
 .help a.line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); text-decoration: none; font-size: calc(13px * var(--fz)); }
 .help a.line b { font-family: var(--serif); font-weight: 400; font-size: calc(24px * var(--fz)); color: var(--clay-ink); }
 .help a.line.chat b { font-family: var(--sans); font-size: calc(13px * var(--fz)); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
-.grounding-link { margin-top: 12px; }
 .grounding .grounding-count { font-family: var(--serif); font-size: calc(88px * var(--fz)); line-height: 0.9; color: var(--clay-ink); }
 .grounding .grounding-text { font-family: var(--serif); font-size: calc(30px * var(--fz)); line-height: 1.15; max-width: 22ch; }
 .grounding-dots { display: flex; gap: 8px; }
@@ -583,6 +621,7 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   .stage-top .hide-btn { display: inline-flex; }
   .checkin { order: 2; }
   .breath-label { top: 186px; order: 3; }
+  .ground-numeral { top: 64px; height: 300px; }
   .feed, .page { padding: 24px 16px calc(100px + env(safe-area-inset-bottom)); }
   .feed-head h1, .page-title { font-size: calc(34px * var(--fz)); }
   .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }

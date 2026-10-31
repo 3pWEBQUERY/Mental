@@ -35,14 +35,28 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
 
-  // 5-4-3-2-1 aus dem Raum
-  await page.getByRole('button', { name: /5-4-3-2-1/ }).first().click()
-  const g = page.getByRole('dialog', { name: '5-4-3-2-1' })
+  // 5-4-3-2-1 im Raum: Der Umschalter macht aus der Kugel die Ziffern, der Text gleitet als Folie herein.
+  const sw = page.getByRole('radiogroup', { name: 'Übung' })
+  await sw.getByRole('radio', { name: '5-4-3-2-1' }).click()
+  await expect(sw.getByRole('radio', { name: '5-4-3-2-1' })).toHaveAttribute('aria-checked', 'true')
+  // Die Atem-Folie ist jetzt verborgen und nicht bedienbar.
+  await expect(page.locator('section.stage').getByRole('button', { name: '1 Minute atmen' })).toBeHidden()
   for (const step of ['fünf Dinge, die du sehen', 'vier Dinge, die du spüren', 'drei Dinge, die du hören', 'zwei Dinge, die du riechen', 'eine Sache, die du schmecken']) {
     await expect(page.getByText(`Nenne ${step}`)).toBeVisible()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   }
-  await expect(page.getByText(/Du bist hier/)).toBeVisible()
+  await expect(page.getByText('Du bist hier.')).toBeVisible()
+  await page.getByRole('button', { name: 'Fertig', exact: true }).click()
+  await expect(sw.getByRole('radio', { name: 'Atmen' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.locator('section.stage').getByRole('button', { name: '1 Minute atmen' })).toBeVisible()
+
+  // Aus «Sofort Hilfe» heraus läuft die Übung ebenfalls im Raum – kein zusätzlicher Dialog.
+  await page.locator('nav.rail').getByRole('button', { name: 'Sofort Hilfe' }).click()
+  await page.getByRole('dialog', { name: 'Sofort Hilfe' }).getByRole('button', { name: /5-4-3-2-1/ }).click()
+  await expect(page.getByText('Nenne fünf Dinge, die du sehen kannst.')).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '5-4-3-2-1' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Zurück zum Atmen' }).click()
+  await expect(page.locator('section.stage').getByRole('button', { name: '1 Minute atmen' })).toBeVisible()
 })
 
 test('Brief an mein späteres Ich erscheint nach «Schwer»', async ({ page }) => {
