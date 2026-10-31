@@ -33,7 +33,8 @@ export const supportKindEnum = pgEnum('support_kind', ['hear', 'same', 'strong']
 export const circlePrefEnum = pgEnum('circle_pref', ['follow', 'mute'])
 /** quarantine: hochgeladen, unbearbeitet · review: bereinigt, wartet auf Freigabe durch die Moderation · ready: sichtbar */
 export const mediaStatusEnum = pgEnum('media_status', ['quarantine', 'review', 'ready', 'rejected'])
-export const notificationKindEnum = pgEnum('notification_kind', ['reply', 'support', 'moderation'])
+/** system: Betriebshinweise an Admins/Moderation (z. B. Worker antwortet nicht). */
+export const notificationKindEnum = pgEnum('notification_kind', ['reply', 'support', 'moderation', 'system'])
 export const targetTypeEnum = pgEnum('target_type', ['post', 'reply', 'user'])
 export const reportReasonEnum = pgEnum('report_reason', [
   'worry',
@@ -441,6 +442,12 @@ export const postHides = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.postId] }), index('post_hides_post_idx').on(t.postId)],
 )
+
+/** Offene Störungen des Monitors – damit pro Störung nur einmal alarmiert wird. */
+export const monitorIncidents = pgTable('monitor_incidents', {
+  key: text('key').primaryKey(),
+  since: ts('since').notNull().defaultNow(),
+})
 
 /** Lebenszeichen der Worker-Instanzen – für /api/health/worker und externe Überwachung. */
 export const workerHeartbeats = pgTable('worker_heartbeats', {
