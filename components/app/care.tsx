@@ -3,6 +3,7 @@
 import { m } from '@/messages'
 import { Dialog } from '../dialog'
 import { PhoneScript } from '../ui'
+import { useModerationAway } from './use-moderation-away'
 
 /** Ruhiger Hinweis bei Krisensprache. Blockiert das Teilen nie. */
 export function CareNote() {
@@ -18,6 +19,7 @@ export function CareNote() {
 /** Vollbild-Hinweis nach dem Teilen eines als «acute» eingestuften Gedankens. */
 export function AcuteDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const a = m.acute
+  const away = useModerationAway()
   return (
     <Dialog open={open} onClose={onClose} className="acute" label={`${a.titleLead} ${a.titleEm}`}>
       <div className="inner">
@@ -42,6 +44,7 @@ export function AcuteDialog({ open, onClose }: { open: boolean; onClose: () => v
         <PhoneScript />
         <p className="fine">{a.note}</p>
         <p className="fine">{a.pending}</p>
+        {away && <p className="notice night-note">{m.night.acute}</p>}
         <div>
           <button type="button" className="btn ghost" onClick={onClose}>
             {a.stay}

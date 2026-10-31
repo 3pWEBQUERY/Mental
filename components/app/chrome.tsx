@@ -23,6 +23,7 @@ import { ServiceWorkerRegister } from './sw-register'
 import { attempt } from '@/lib/client/attempt'
 import { AppealInline } from './appeal'
 import { Onboarding } from './onboarding'
+import { useModerationAway } from './use-moderation-away'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -40,6 +41,7 @@ export function AppChrome({
   presence: Record<string, number | null>
 }) {
   const viewer = useViewer()
+  const away = useModerationAway()
   const router = useRouter()
   const [unread, setUnread] = useState(initialUnread)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -106,6 +108,7 @@ export function AppChrome({
       <Onboarding />
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} title={m.help.title}>
+        {away && <p className="notice night-note">{m.night.help}</p>}
         <div className="help">
           <HelpList resources={viewer.help} eyebrow={false} />
         </div>

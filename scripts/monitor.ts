@@ -12,6 +12,7 @@ import { db, pool } from '../db'
 import { isPushEndpoint } from '../lib/push-endpoint'
 import { monitorIncidents, notifications, pushSubscriptions, users, workerHeartbeats } from '../db/schema'
 import { safeMessage } from '../lib/log-safe'
+import { moderationAway, nightStaffed } from '../lib/moderation-hours'
 
 const STALE_S = 180
 const BACKLOG_MAX = 50
@@ -87,7 +88,11 @@ async function tell(message: string, url = '/lichtung') {
 }
 
 async function main() {
+  // Nachts ohne Bereitschaft: akute Hinweise nicht prüfen (niemand kann reagieren). Um 7 Uhr meldet der erste Lauf,
+  // was noch wartet – und eine schon offene Meldung bleibt offen, statt fälschlich «Entwarnung» zu geben.
+  const away = moderationAway(nightStaffed())
   for (const c of await checks()) {
+    if (away && c.key === 'acute-waiting') continue
     const [open] = await db.select().from(monitorIncidents).where(eq(monitorIncidents.key, c.key))
     if (c.down && !open) {
       console.warn(`[monitor] Störung: ${c.key}`)

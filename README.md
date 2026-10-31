@@ -67,7 +67,7 @@ Variablen beider Services: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `BUCKET`/`
 
 ### Verschlüsselung besonders schützenswerter Daten
 
-Notfallplan, Briefe an sich selbst und Check-in-Notizen werden mit AES-256-GCM verschlüsselt gespeichert, sobald `DATA_ENCRYPTION_KEY` gesetzt ist (32 Byte Base64: `openssl rand -base64 32`). Der Schlüssel gehört in **web und worker**, nie in die Datenbank – und muss zusätzlich offline gesichert werden (Passwort-Manager des Teams): **Ohne ihn sind diese Texte nicht mehr lesbar**, auch nicht aus Backups. Nach dem ersten Setzen einmal `npm run data:encrypt` ausführen (Railway-Shell des web-Service); es verschlüsselt alte Klartext-Werte und ist beliebig wiederholbar. Ohne Schlüssel läuft alles wie bisher im Klartext. Das Tagebuch ist unabhängig davon Ende-zu-Ende verschlüsselt (Schlüssel nur bei der Person).
+Notfallplan, Briefe an sich selbst und Check-in-Notizen werden mit AES-256-GCM verschlüsselt gespeichert, sobald `DATA_ENCRYPTION_KEY` gesetzt ist (32 Byte Base64: `openssl rand -base64 32`). Der Schlüssel gehört in **web und worker**, nie in die Datenbank – und muss zusätzlich offline gesichert werden (Passwort-Manager des Teams): **Ohne ihn sind diese Texte nicht mehr lesbar**, auch nicht aus Backups. Den Schlüssel nur am web-Service eintragen, der worker übernimmt ihn per Referenz (`DATA_ENCRYPTION_KEY=${{web.DATA_ENCRYPTION_KEY}}`). Der Pre-Deploy des web-Service führt danach `scripts/encrypt-at-rest.ts` aus und verschlüsselt alte Klartext-Werte; das ist beliebig wiederholbar und ohne Schlüssel wirkungslos. Ohne Schlüssel läuft alles wie bisher im Klartext. Das Tagebuch ist unabhängig davon Ende-zu-Ende verschlüsselt (Schlüssel nur bei der Person).
 
 ### Backups und Wiederherstellung
 
@@ -83,6 +83,10 @@ Benachrichtigungen 30 Tage · erledigte Meldungen nach 12 Monaten ohne Notiz und
 ### «Zuhören, wenn es still bleibt» (Job `nudge-listeners`, alle 30 Minuten)
 
 Wer das in den Einstellungen einschaltet, bekommt in der Glocke (nie als Push, nie mit dem Text) einen Hinweis auf einen Gedanken, der seit 6 Stunden ohne Antwort ist. Pro Gedanke höchstens drei Personen und nur einmal, pro Person höchstens ein Hinweis am Tag. Blockierungen in beide Richtungen, ausgeblendete Gedanken und stummgeschaltete Kreise werden beachtet.
+
+### Moderationszeiten
+
+Ohne Nachtbereitschaft ist das Team von 22 bis 7 Uhr (Schweizer Zeit) nicht erreichbar. In dieser Zeit gibt es keine Krisen-Pushes an das Team, die Glocke bekommt den Hinweis trotzdem. Um 7 Uhr meldet der Monitor alles, was noch wartet. Für die Betroffenen sagen «Sofort Hilfe» und der Krisen-Hinweis ehrlich, dass gerade niemand online ist, und verweisen auf 143 und 144. Gibt es eine Bereitschaft: `NIGHT_MODERATION=1` an web, worker und monitor setzen (`lib/moderation-hours.ts`).
 
 ### Transparenz
 

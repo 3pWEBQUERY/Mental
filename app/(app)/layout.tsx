@@ -6,6 +6,7 @@ import { ViewerProvider, type ClientViewer } from '@/components/viewer'
 import { db } from '@/db'
 import { checkins, circlePrefs, circles as circlesTable } from '@/db/schema'
 import { requireViewer } from '@/lib/server/session'
+import { nightStaffed } from '@/lib/moderation-hours'
 import { getCircles, getCrisisTerms, getHelpResources } from '@/lib/server/terms'
 import { presenceCounts, unreadState } from './actions'
 
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     discreet: s.discreet ?? false,
     onboard: s.onboard ?? false,
     listener: s.listener ?? false,
+    nightModeration: nightStaffed(),
     breathSound: s.breathSound ?? false,
     collapseWarnings: s.collapseWarnings ?? true,
     hidePresence: s.hidePresence ?? false,

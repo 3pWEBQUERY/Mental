@@ -22,6 +22,8 @@ export type ClientViewer = {
   /** Neues Konto: Einführung zeigen. */
   onboard: boolean
   listener: boolean
+  /** Nachtbereitschaft der Moderation (NIGHT_MODERATION) – sonst ist das Team 22–7 Uhr nicht da. */
+  nightModeration: boolean
   breathSound: boolean
   collapseWarnings: boolean
   hidePresence: boolean
