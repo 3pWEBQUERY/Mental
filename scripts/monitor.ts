@@ -14,6 +14,8 @@ import { monitorIncidents, notifications, pushSubscriptions, users, workerHeartb
 
 const STALE_S = 180
 const BACKLOG_MAX = 50
+/** Frist für akute Krisen-Hinweise (Minuten) – danach erinnert der Monitor das Team. */
+const ACUTE_SLA_MIN = 30
 /** Gleicher Kanal wie lib/server/notify.ts – weckt offene Glocken (LISTEN/NOTIFY). */
 const NOTIFY_CHANNEL = 'lichtung_notify'
 
@@ -30,7 +32,20 @@ async function checks(): Promise<Check[]> {
     )
     .then((r) => r.rows[0]?.n ?? 0)
     .catch(() => 0)
+  // Akute Krisen-Hinweise, die seit über 30 Minuten niemand angesehen hat.
+  const acuteWaiting = await db
+    .execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM reports WHERE status = 'open' AND priority = 0 AND created_at < now() - interval '${sql.raw(String(ACUTE_SLA_MIN))} minutes'`,
+    )
+    .then((r) => r.rows[0]?.n ?? 0)
+    .catch(() => 0)
   return [
+    {
+      key: 'acute-waiting',
+      down: acuteWaiting > 0,
+      alert: `${acuteWaiting === 1 ? 'Ein akuter Krisen-Hinweis wartet' : `${acuteWaiting} akute Krisen-Hinweise warten`} seit über ${ACUTE_SLA_MIN} Minuten. Bitte jetzt die Warteschlange öffnen – oder jemanden aus dem Team erreichen.`,
+      recovered: 'Entwarnung: Alle akuten Krisen-Hinweise sind angesehen.',
+    },
     {
       key: 'worker-heartbeat',
       down: ageS === null || ageS > STALE_S,
@@ -46,7 +61,7 @@ async function checks(): Promise<Check[]> {
   ]
 }
 
-async function tell(message: string) {
+async function tell(message: string, url = '/lichtung') {
   const staff = await db.select({ id: users.id }).from(users).where(inArray(users.role, ['admin', 'mod']))
   if (!staff.length) return
   await db.insert(notifications).values(staff.map((u) => ({ userId: u.id, kind: 'system' as const, postId: null, payload: { message } })))
@@ -60,7 +75,7 @@ async function tell(message: string) {
     .select()
     .from(pushSubscriptions)
     .where(inArray(pushSubscriptions.userId, staff.map((u) => u.id)))
-  const payload = JSON.stringify({ title: 'Lichtung · Betrieb', body: message.split('.')[0], url: '/lichtung' })
+  const payload = JSON.stringify({ title: 'Lichtung · Betrieb', body: message.split('.')[0], url })
   for (const s of subs) {
     if (!isPushEndpoint(s.endpoint)) continue
     await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 60 * 60, urgency: 'high' }).catch(async (e) => {
@@ -76,7 +91,7 @@ async function main() {
     if (c.down && !open) {
       console.warn(`[monitor] Störung: ${c.key}`)
       await db.insert(monitorIncidents).values({ key: c.key }).onConflictDoNothing()
-      await tell(c.alert)
+      await tell(c.alert, c.key === 'acute-waiting' ? '/admin' : undefined)
     } else if (!c.down && open) {
       console.log(`[monitor] behoben: ${c.key}`)
       await db.delete(monitorIncidents).where(eq(monitorIncidents.key, c.key))

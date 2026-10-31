@@ -361,6 +361,8 @@ export type NotificationPayload = {
   kinds?: Partial<Record<'hear' | 'same' | 'strong', number>>
   excerpt?: string
   message?: string
+  /** Moderationsmassnahme, gegen die Einspruch möglich ist (ausblenden, verwarnen, stummschalten). */
+  appealable?: boolean
 }
 
 export const notifications = pgTable(
@@ -468,6 +470,23 @@ export const moderationActions = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('modactions_target_idx').on(t.targetType, t.targetId), index('modactions_created_idx').on(t.createdAt.desc())],
+)
+
+/**
+ * Fall-Übernahme in der Warteschlange: Wer einen Fall öffnet, «übernimmt» ihn für 20 Minuten – andere sehen das und
+ * bearbeiten nicht doppelt. Kein Zwang: Nach Ablauf darf jemand anderes übernehmen.
+ */
+export const caseClaims = pgTable(
+  'case_claims',
+  {
+    targetType: targetTypeEnum('target_type').notNull(),
+    targetId: uuid('target_id').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    claimedAt: ts('claimed_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.targetType, t.targetId] })],
 )
 
 export const helpResources = pgTable('help_resources', {

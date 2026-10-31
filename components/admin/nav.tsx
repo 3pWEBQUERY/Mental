@@ -13,6 +13,7 @@ const ITEMS: { href: string; label: string; level: Level }[] = [
   { href: '/admin/begriffe', label: m.admin.nav.terms, level: 'admin' },
   { href: '/admin/schritte', label: m.admin.nav.steps, level: 'admin' },
   { href: '/admin/audit', label: m.admin.nav.audit, level: 'mod' },
+  { href: '/admin/statistik', label: m.admin.nav.stats, level: 'mod' },
 ]
 const RANK = { peer: 1, mod: 2, admin: 3 } as const
 

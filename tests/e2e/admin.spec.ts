@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
-import { register } from './helpers'
+import { Pool } from 'pg'
+import { register, share } from './helpers'
 
 test('Moderation ohne Passkey-Sitzung: keine Daten, nur der Hinweis', async ({ page }) => {
   const { username } = await register(page)
@@ -37,4 +38,118 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
   await page.reload()
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
   await expect(page.getByText(/nur an, wenn du mit einem Passkey angemeldet bist/)).toBeVisible()
+})
+
+/** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
+async function moderator(browser: import('@playwright/test').Browser) {
+  const ctx = await browser.newContext()
+  const page = await ctx.newPage()
+  const cdp = await ctx.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
+  })
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
+  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
+  await page.waitForURL('**/lichtung')
+  return page
+}
+
+test('Moderation: Krisen-Alarm, weichgezeichnet, Übernahme, Fürsorge, Einspruch, Kontoseite, Statistik', async ({ browser }) => {
+  test.slow()
+  const mod = await moderator(browser)
+  const user = await (await browser.newContext()).newPage()
+  await register(user)
+
+  // Akuter Treffer → Alarm in der Glocke der Moderation.
+  const crisis = `Ich will nicht mehr leben ${Date.now()}`
+  await user.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  await user.locator('#composer-text').fill(crisis)
+  await user.getByRole('button', { name: 'Teilen', exact: true }).click()
+  await user.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
+  await mod.reload()
+  await mod.getByRole('button', { name: /Benachrichtigungen/ }).click()
+  await expect(mod.getByRole('dialog')).toContainText('akuter Krisen-Hinweis')
+  await mod.keyboard.press('Escape')
+
+  // Warteschlange: weichgezeichnet bis zum Aufdecken, Fall übernehmen, «Gesehen · Fürsorge senden».
+  await mod.goto('/admin')
+  const item = mod.locator('.queue-item', { hasText: crisis })
+  await expect(item.locator('.sensitive-veil')).toContainText(crisis)
+  await item.getByRole('button', { name: /Belastender Inhalt/ }).click()
+  await expect(item.locator('blockquote')).toContainText(crisis)
+  await item.getByRole('button', { name: 'Übernehmen' }).click()
+  await expect(mod.getByText('Von dir übernommen').first()).toBeVisible()
+  await mod.locator('.queue-item', { hasText: crisis }).getByRole('button', { name: 'Gesehen · Fürsorge senden' }).click()
+  await expect(mod.locator('.queue-item', { hasText: crisis })).toHaveCount(0)
+
+  await user.reload()
+  await user.getByRole('button', { name: /Benachrichtigungen/ }).click()
+  await expect(user.getByRole('dialog')).toContainText('denkt an dich')
+  await expect(user.getByRole('dialog')).toContainText('143')
+  await user.keyboard.press('Escape')
+
+  // Stummschalten → die Person erhebt Einspruch → Moderation sieht ihn, hebt auf der Kontoseite auf, nimmt an.
+  const other = `Ein ganz gewöhnlicher Gedanke ${Date.now()}`
+  await share(user, other)
+  await expect(user.locator('article', { hasText: other })).toBeVisible()
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const { rows } = await pool.query(`SELECT id FROM posts WHERE body = $1`, [other])
+    await pool.query(`INSERT INTO reports (id, target_type, target_id, reason, priority, reporter_id) VALUES (gen_random_uuid(), 'post', $1, 'hurtful', 2, NULL)`, [rows[0].id])
+  } finally {
+    await pool.end()
+  }
+  await mod.goto('/admin')
+  await mod.locator('.queue-item', { hasText: other }).getByRole('button', { name: '24 h stumm' }).click()
+  await expect(mod.locator('.queue-item', { hasText: other })).toHaveCount(0)
+
+  await user.reload()
+  await user.getByRole('button', { name: /Benachrichtigungen/ }).click()
+  const dlg = user.getByRole('dialog')
+  await dlg.getByRole('button', { name: 'Einspruch erheben' }).first().click()
+  await dlg.getByLabel('Was sollte die Moderation wissen?').fill('Das war nicht abwertend gemeint, nur ehrlich.')
+  await dlg.getByRole('button', { name: 'Einspruch senden' }).click()
+  await expect(dlg.getByText('Dein Einspruch liegt bei der Moderation')).toBeVisible()
+  await user.keyboard.press('Escape')
+
+  await mod.goto('/admin')
+  const appeal = mod.locator('.queue-item', { hasText: 'nicht abwertend gemeint' })
+  await expect(appeal).toBeVisible()
+  await appeal.getByRole('link', { name: /Mitglied/ }).click()
+  await expect(mod.getByRole('heading', { name: /Mitglied/ })).toBeVisible()
+  await expect(mod.locator('.facts')).toContainText('stumm')
+  await expect(mod.locator('table')).toContainText('mute24')
+  await mod.getByRole('button', { name: 'Stummschaltung aufheben' }).click()
+  await expect(mod.locator('.facts')).toContainText('aktiv')
+  await mod.goto('/admin')
+  await mod.locator('.queue-item', { hasText: 'nicht abwertend gemeint' }).getByRole('button', { name: 'Annehmen' }).click()
+  await expect(mod.locator('.queue-item', { hasText: 'nicht abwertend gemeint' })).toHaveCount(0)
+
+  await user.reload()
+  await user.getByRole('button', { name: /Benachrichtigungen/ }).click()
+  await expect(user.getByRole('dialog')).toContainText('Einspruch wurde angenommen')
+  await expect(user.getByRole('dialog')).toContainText('wieder schreiben')
+
+  // Statistik lädt (nur Zahlen).
+  await mod.goto('/admin/statistik')
+  await expect(mod.getByRole('heading', { name: 'Statistik' })).toBeVisible()
+})
+
+test('Anzeigename: keine Telefonnummer, kein vorgetäuschtes Team', async ({ page }) => {
+  await register(page)
+  await page.goto('/einstellungen')
+  const name = page.getByLabel('Anzeigename')
+  await name.fill('Mira 079 123 45 67')
+  await page.getByRole('button', { name: 'Speichern' }).first().click()
+  await expect(page.getByText(/keine Telefonnummer, E-Mail/)).toBeVisible()
+  await name.fill('Lichtung Team')
+  await page.getByRole('button', { name: 'Speichern' }).first().click()
+  await expect(page.getByText(/für das Team reserviert/)).toBeVisible()
 })

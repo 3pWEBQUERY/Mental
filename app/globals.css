@@ -579,8 +579,20 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .prio { padding: 3px 10px; border-radius: 999px; font-size: calc(12px * var(--fz)); border: 1px solid var(--line); color: var(--ink-2); }
 .prio.p0 { background: var(--clay-ink); border-color: var(--clay-ink); color: var(--on-accent); }
 .prio.p1 { border-color: var(--clay); color: var(--clay-ink); }
+.prio.overdue { border-color: var(--clay-ink); color: var(--clay-ink); font-weight: 600; }
+/* Belastende Inhalte erst weichgezeichnet – Moderierende entscheiden, wann sie hinsehen. */
+.sensitive { display: grid; gap: 10px; justify-items: start; }
+.sensitive-veil { filter: blur(9px); opacity: 0.55; user-select: none; pointer-events: none; max-height: 7.5em; overflow: hidden; }
 .queue-item blockquote { font-family: var(--serif); font-size: calc(22px * var(--fz)); line-height: 1.25; white-space: pre-line; overflow-wrap: anywhere; }
 .queue-item .inline-form .input { flex-basis: 100%; }
+/* Kontoseite in der Moderation: kurze Fakten nebeneinander. */
+.facts { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+.facts dt { font-size: calc(12px * var(--fz)); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.facts dd { font-size: calc(16px * var(--fz)); }
+.section-title { font-family: var(--serif); font-weight: 400; font-size: calc(26px * var(--fz)); margin-top: 12px; }
+.claim { font-size: calc(13px * var(--fz)); color: var(--ink-2); }
+.claim.mine { color: var(--sage); }
+.queue-item .member-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .queue-item .reasons-list { font-size: calc(13px * var(--fz)); color: var(--ink-2); }
 .tab-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--clay-ink); color: var(--on-accent); font-size: calc(11px * var(--fz)); font-weight: 500; }
 .image-review-body { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 20px; align-items: start; }

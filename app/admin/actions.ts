@@ -5,6 +5,7 @@ import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
+  caseClaims,
   circles,
   crisisTerms,
   helpResources,
@@ -19,11 +20,11 @@ import {
 } from '@/db/schema'
 import { processMedia, rejectMedia } from '@/lib/media'
 import { syncReplyCount } from '@/lib/reply-count'
-import { assertModerator, canModerate } from '@/lib/server/admin'
+import { assertModerator, canModerate, memberFromToken } from '@/lib/server/admin'
 import { notifyModeration } from '@/lib/server/notify'
 import { m } from '@/messages'
 
-const ACTIONS = ['approve', 'hide', 'cw', 'warn', 'mute24', 'mute7', 'ban', 'dismiss'] as const
+const ACTIONS = ['approve', 'care', 'hide', 'cw', 'warn', 'mute24', 'mute7', 'ban', 'dismiss'] as const
 type Action = (typeof ACTIONS)[number]
 /** Peer-Moderator:innen: nur ausblenden und Inhaltshinweis, keine Sperren. */
 const PEER_ACTIONS: Action[] = ['hide', 'cw']
@@ -65,6 +66,8 @@ export async function moderate(form: FormData) {
 
   switch (action) {
     case 'approve':
+    // «Gesehen · Fürsorge senden»: wie Freigeben, dazu eine ruhige Nachricht mit den Hilfe-Nummern an die Person.
+    case 'care':
       await setStatus('visible')
       break
     case 'hide':
@@ -113,11 +116,86 @@ export async function moderate(form: FormData) {
     )
 
   await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType, targetId, action, reason: reason || null })
+  // Erledigt – die Übernahme gibt den Fall frei.
+  await db.delete(caseClaims).where(and(eq(caseClaims.targetType, targetType), eq(caseClaims.targetId, targetId)))
   if (target.userId && ['mute24', 'mute7', 'ban'].includes(action)) {
     await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: target.userId, action, reason: reason || null })
   }
   const message = MESSAGES[action]?.(reason)
-  if (message && target.userId) await notifyModeration(target.userId, targetType === 'post' ? targetId : target.postId, message)
+  if (message && target.userId)
+    await notifyModeration(target.userId, targetType === 'post' ? targetId : target.postId, message, ['hide', 'warn', 'mute24', 'mute7'].includes(action))
+  refresh()
+}
+
+/* ----------------------------------------------------------- Übernahme */
+
+/** Wie lange eine Übernahme gilt – danach darf jemand anderes den Fall nehmen. */
+const CLAIM_MS = 20 * 60_000
+
+/** Fall übernehmen: nur wenn frei, abgelaufen oder schon der eigene (dann verlängert). */
+export async function claimCase(form: FormData) {
+  const parsed = z.object({ targetType: z.enum(['post', 'reply']), targetId: z.uuid() }).safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const mod = await assertModerator('peer')
+  const { targetType, targetId } = parsed.data
+  await db
+    .insert(caseClaims)
+    .values({ targetType, targetId, userId: mod.userId })
+    .onConflictDoUpdate({
+      target: [caseClaims.targetType, caseClaims.targetId],
+      set: { userId: mod.userId, claimedAt: new Date() },
+      setWhere: sql`${caseClaims.userId} = ${mod.userId} OR ${caseClaims.claimedAt} < ${new Date(Date.now() - CLAIM_MS)}`,
+    })
+  refresh()
+}
+
+/* --------------------------------------------------- Einspruch & Konto */
+
+/** Einspruch entscheiden: Die Person bekommt die Antwort in die Glocke; die Massnahme selbst ändert man auf der Kontoseite. */
+export async function resolveAppeal(form: FormData) {
+  const parsed = z
+    .object({ reportId: z.uuid(), decision: z.enum(['accept', 'reject']), reason: z.string().max(500).optional() })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const { reportId, decision } = parsed.data
+  const reason = parsed.data.reason?.trim() ?? ''
+  const mod = await assertModerator('mod')
+  const [r] = await db
+    .update(reports)
+    .set({ status: decision === 'accept' ? 'resolved' : 'dismissed', resolvedAt: new Date() })
+    .where(and(eq(reports.id, reportId), eq(reports.targetType, 'user'), eq(reports.status, 'open')))
+    .returning({ userId: reports.targetId })
+  if (!r) return refresh()
+  await db.insert(moderationActions).values({
+    moderatorId: mod.userId,
+    targetType: 'user',
+    targetId: r.userId,
+    action: decision === 'accept' ? 'appeal_accept' : 'appeal_reject',
+    reason: reason || null,
+  })
+  await notifyModeration(r.userId, null, decision === 'accept' ? m.appeal.accepted(reason) : m.appeal.rejected(reason))
+  refresh()
+}
+
+/** Stummschaltung (mod) oder Sperre (admin) aufheben – bisher ging das nur direkt in der Datenbank. */
+export async function restoreAccount(form: FormData) {
+  const parsed = z
+    .object({ token: z.string().max(400), action: z.enum(['unmute', 'unban']), reason: z.string().max(500).optional() })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const userId = memberFromToken(parsed.data.token)
+  if (!userId) throw new Error('invalid')
+  const { action } = parsed.data
+  const reason = parsed.data.reason?.trim() ?? ''
+  const mod = await assertModerator(action === 'unban' ? 'admin' : 'mod')
+  const [changed] = await db
+    .update(users)
+    .set({ status: 'active', mutedUntil: null })
+    .where(and(eq(users.id, userId), eq(users.status, action === 'unban' ? 'banned' : 'muted')))
+    .returning({ id: users.id })
+  if (!changed) return refresh()
+  await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: userId, action, reason: reason || null })
+  await notifyModeration(userId, null, action === 'unban' ? m.admin.account.unbanned : m.admin.account.unmuted)
   refresh()
 }
 

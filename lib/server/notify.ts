@@ -51,8 +51,8 @@ export async function notifySupport(ownerId: string, postId: string, kind: Suppo
   await ping(ownerId)
 }
 
-export async function notifyModeration(userId: string, postId: string | null, message: string) {
-  await db.insert(notifications).values({ userId, kind: 'moderation', postId, payload: { message } })
+export async function notifyModeration(userId: string, postId: string | null, message: string, appealable = false) {
+  await db.insert(notifications).values({ userId, kind: 'moderation', postId, payload: appealable ? { message, appealable } : { message } })
   await ping(userId)
 }
 

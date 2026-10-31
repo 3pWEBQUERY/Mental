@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { WORDS } from '@/lib/auth/wordlist'
 import { clientIp, ipBucket } from '@/lib/client-ip'
 import { isPushEndpoint } from '@/lib/push-endpoint'
+import { displayNameProblem } from '@/lib/display-name'
 import { glyphPath, rng } from '@/lib/glyph'
 import { sniffImage } from '@/lib/image-sniff'
 import { inQuietHours } from '@/lib/quiet-hours'
@@ -106,5 +107,17 @@ describe('isPushEndpoint', () => {
     expect(isPushEndpoint('https://fcm.googleapis.com:8443/x')).toBe(false)
     expect(isPushEndpoint('https://user:pw@fcm.googleapis.com/x')).toBe(false)
     expect(isPushEndpoint('kein url')).toBe(false)
+  })
+})
+
+describe('displayNameProblem', () => {
+  it('lässt gewöhnliche Namen zu', () => {
+    for (const n of ['Mira', 'Nachtfalter', 'Jonas K.', 'Leise Wolke', 'Teamplayer']) expect(displayNameProblem(n)).toBeNull()
+  })
+  it('lehnt persönliche Angaben ab', () => {
+    for (const n of ['Mira 079 123 45 67', 'mira@example.ch', 'Insta @mira.k', 'www.mira.ch', '0 7 9 1 2 3 4']) expect(displayNameProblem(n)).toBe('personal')
+  })
+  it('lehnt vorgetäuschte Autorität ab', () => {
+    for (const n of ['Moderation', 'Lichtung Team', 'Admin Sara', 'Offizieller Support', 'Modératrice']) expect(displayNameProblem(n)).toBe('official')
   })
 })
