@@ -140,6 +140,9 @@ test('Melden mit «Ich mache mir Sorgen» zeigt, wie man selbst reagieren kann',
 })
 
 test('Blockieren unter Namen trifft das Konto – anonyme Gedanken bleiben unverknüpft', async ({ browser }) => {
+  // Zwei Konten, zwei Seiten mit laufender Raum-Kugel (Software-WebGL): gegen Ende eines vollen Laufs
+  // dauern Klicks hier bis zu 30 s. Einzeln ist der Test nach ~16 s fertig.
+  test.slow()
   const a = await (await browser.newContext()).newPage()
   const b = await (await browser.newContext()).newPage()
   await register(a, 'Mira')
@@ -324,8 +327,8 @@ test('Ansichten-Leiste: Three.js-Tropfen fliesst zum gewählten Reiter, URL und 
   await register(page)
   const nav = page.getByRole('navigation', { name: 'Ansicht' })
   // Mit WebGL übernimmt der Tropfen die Pille; die helle Schrift liegt als ausgeschnittene Kopie darüber.
-  await expect(nav).toHaveClass(/tabs-gl/)
-  const ink = nav.locator('.tabs-ink')
+  await expect(nav).toHaveClass(/blob-on/, { timeout: 20_000 })
+  const ink = nav.locator('.blob-ink')
   const clip = () => ink.evaluate((el) => (el as HTMLElement).style.clipPath)
   await expect.poll(clip).toMatch(/^inset\(/)
   const before = await clip()
@@ -343,9 +346,22 @@ test('«Ich»-Reiter: derselbe Tropfen, Inhalt folgt', async ({ page }) => {
   await register(page)
   await page.goto('/ich')
   const nav = page.getByRole('navigation', { name: 'Ich', exact: true })
-  await expect(nav).toHaveClass(/tabs-gl/)
+  await expect(nav).toHaveClass(/blob-on/, { timeout: 20_000 })
   await nav.getByRole('link', { name: 'Merkliste', exact: true }).click()
   await expect(nav.getByRole('link', { name: 'Merkliste', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(page).toHaveURL(/tab=merkliste/)
   await expect(nav.getByRole('link', { name: 'Verlauf', exact: true })).not.toHaveAttribute('aria-current', 'page')
+})
+
+test('Einstellungen: Auswahlgruppen mit Tropfen, Auswahl wirkt sofort', async ({ page }) => {
+  await register(page)
+  await page.goto('/einstellungen')
+  const theme = page.getByRole('radiogroup', { name: 'Farbschema' })
+  await expect(theme).toHaveClass(/blob-on/, { timeout: 20_000 })
+  await theme.getByRole('radio', { name: 'Dunkel' }).click()
+  await expect(theme.getByRole('radio', { name: 'Dunkel' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  // Tastatur bleibt wie bei nativen Radios: Pfeil wählt die nächste Option.
+  await page.keyboard.press('ArrowRight')
+  await expect(theme.getByRole('radio', { name: 'System' })).toHaveAttribute('aria-checked', 'true')
 })

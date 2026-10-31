@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, type KeyboardEvent, type ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
+import { useBlob } from './use-blob'
 
 /**
  * Einzelauswahl als echte Radiogruppe: Screenreader hören «Optionsfeld, 2 von 5, ausgewählt»,
@@ -13,6 +14,7 @@ export function RadioGroup<T extends string | number>({
   label,
   className,
   itemClassName,
+  fluid = false,
 }: {
   value: T | null
   options: { value: T; label: ReactNode }[]
@@ -20,8 +22,10 @@ export function RadioGroup<T extends string | number>({
   label: string
   className?: string
   itemClassName?: string
+  /** Gewählte Option als fliessender Three.js-Tropfen (wie die Reiter-Leisten). */
+  fluid?: boolean
 }) {
-  const ref = useRef<HTMLDivElement>(null)
+  const { host: ref, on, layers } = useBlob<HTMLDivElement>(value === null ? null : String(value), fluid)
   const current = options.findIndex((o) => o.value === value)
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -35,10 +39,15 @@ export function RadioGroup<T extends string | number>({
   }
 
   return (
-    <div ref={ref} className={className} role="radiogroup" aria-label={label} onKeyDown={onKey}>
+    <div ref={ref} className={`${className ?? ''}${on ? ' blob-on' : ''}`} role="radiogroup" aria-label={label} onKeyDown={onKey}>
+      {layers(
+        options.map((o) => ({ key: String(o.value), label: o.label })),
+        itemClassName,
+      )}
       {options.map((o, i) => (
         <button
           key={String(o.value)}
+          data-blob={String(o.value)}
           type="button"
           role="radio"
           className={itemClassName}

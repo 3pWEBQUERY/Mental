@@ -191,15 +191,16 @@ ul, ol { list-style: none; }
 .tabs { display: flex; gap: 2px; background: var(--paper-2); padding: 4px; border-radius: 999px; flex-wrap: wrap; }
 .tab { padding: 7px 14px; border-radius: 999px; font-size: calc(13px * var(--fz)); color: var(--ink-2); transition: background 0.2s, color 0.2s; text-decoration: none; }
 .tab[aria-selected='true'], .tab[aria-current='page'] { background: var(--ink); color: var(--paper); }
-/* Reiter-Leisten mit Three.js-Tropfen (TabBar): Die Pille zeichnet das Canvas, die helle Schrift liegt als ausgeschnittene Kopie darüber. */
-.tabs:has(.tabs-canvas) { position: relative; }
-.tabs-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
-.tabs-gl .tabs-canvas { display: block; }
-.tabs-gl .tab { position: relative; }
-.tabs-gl .tab[aria-current='page'] { background: transparent; color: var(--ink-2); }
-/* Gleiche Anordnung wie die Leiste, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path aus tab-blob). */
-.tabs-ink { position: absolute; inset: 0; display: flex; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 1; }
-.tabs-ink .tab { color: var(--paper); }
+/* Three.js-Tropfen (use-blob: Reiter-Leisten, Auswahlgruppen): Das Canvas zeichnet die Pille, die helle Schrift
+   liegt als ausgeschnittene Kopie darüber. Ohne WebGL fehlt .blob-on – dann gilt die CSS-Pille oben. */
+.tabs, .segment { position: relative; }
+.blob-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+.blob-on .blob-canvas { display: block; }
+.blob-on > :is(a, button) { position: relative; }
+.blob-on.blob-on > :is([aria-current='page'], [aria-checked='true']) { background: transparent; color: var(--ink-2); }
+/* Gleiche Anordnung wie die Leiste, nur hell – sichtbar ausschliesslich innerhalb des Tropfens (clip-path). */
+.blob-ink { position: absolute; inset: 0; display: flex; gap: inherit; padding: inherit; flex-wrap: inherit; pointer-events: none; clip-path: inset(50%); z-index: 1; }
+.blob-ink > span { color: var(--paper); }
 .prompt { --inset: 5px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: var(--r); padding: var(--inset) var(--inset) var(--inset) 22px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--card); margin-bottom: 12px; transition: border-color 0.2s; }
 .prompt:hover { border-color: var(--ink); }
 .prompt span { font-family: var(--serif); font-size: calc(25px * var(--fz)); line-height: 1.15; }
@@ -302,6 +303,8 @@ ul, ol { list-style: none; }
 .step .btn { background: var(--paper); color: var(--ink); border-color: var(--paper); padding: 9px 16px; font-size: calc(13px * var(--fz)); border-radius: calc(var(--r-l) - var(--inset)); }
 .step .btn.ghost { background: transparent; color: var(--paper); border-color: var(--step-line); }
 .step-inline { display: none; margin: 0 0 22px; }
+/* Platzhalter, solange der kleine Schritt lädt – gleiche Höhe, damit Hilfe-Nummern nicht springen. */
+.step-wait { min-height: 178px; opacity: 0.08; }
 .step.done p { text-decoration: line-through; text-decoration-color: var(--clay); text-decoration-thickness: 2px; }
 /* Haarlinie: auf Retina 1 Gerätepixel, auf normalen Bildschirmen die dünnste mögliche Linie. */
 .help { border: 0.5px solid var(--clay); border-radius: var(--r-l); padding: 18px; }
@@ -436,8 +439,9 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .kv:first-child { border-top: 0; }
 .kv small { color: var(--ink-3); display: block; font-size: calc(12px * var(--fz)); }
 .segment { display: inline-flex; width: fit-content; gap: 2px; background: var(--paper-2); padding: 4px; border-radius: 999px; flex-wrap: wrap; }
-.segment button { padding: 7px 14px; border-radius: 999px; font-size: calc(13px * var(--fz)); color: var(--ink-2); }
+.segment button, .segment .blob-ink > span { padding: 7px 14px; border-radius: 999px; font-size: calc(13px * var(--fz)); color: var(--ink-2); }
 .segment button[aria-checked='true'] { background: var(--ink); color: var(--paper); }
+.segment .blob-ink > span { color: var(--paper); }
 
 /* Auth & öffentliche Seiten */
 .public { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
