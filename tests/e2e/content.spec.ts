@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share } from './helpers'
+import { register, share, closeExtraContexts } from './helpers'
+
+test.afterEach(closeExtraContexts)
 
 test('Teilen, Zuspruch, Antworten, Benachrichtigung, «Das hat mir gutgetan»', async ({ browser }) => {
   const a = await (await browser.newContext()).newPage()
