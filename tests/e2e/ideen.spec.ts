@@ -42,10 +42,10 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   // Die Atem-Folie ist jetzt verborgen und nicht bedienbar.
   await expect(page.locator('section.stage').getByRole('button', { name: '1 Minute atmen' })).toBeHidden()
   for (const step of ['fünf Dinge, die du sehen', 'vier Dinge, die du spüren', 'drei Dinge, die du hören', 'zwei Dinge, die du riechen', 'eine Sache, die du schmecken']) {
-    await expect(page.getByText(`Nenne ${step}`)).toBeVisible()
+    await expect(page.locator('.ground-text')).toContainText(`Nenne ${step}`)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   }
-  await expect(page.getByText('Du bist hier.')).toBeVisible()
+  await expect(page.locator('.ground-text')).toHaveText('Du bist hier.')
   await page.getByRole('button', { name: 'Fertig', exact: true }).click()
   await expect(sw.getByRole('radio', { name: 'Atmen' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.locator('section.stage').getByRole('button', { name: '1 Minute atmen' })).toBeVisible()
@@ -53,7 +53,7 @@ test('Hilfe: Telefon-Sätze, Notfallplan und 5-4-3-2-1', async ({ page }) => {
   // Aus «Sofort Hilfe» heraus läuft die Übung ebenfalls im Raum – kein zusätzlicher Dialog.
   await page.locator('nav.rail').getByRole('button', { name: 'Sofort Hilfe' }).click()
   await page.getByRole('dialog', { name: 'Sofort Hilfe' }).getByRole('button', { name: /5-4-3-2-1/ }).click()
-  await expect(page.getByText('Nenne fünf Dinge, die du sehen kannst.')).toBeVisible()
+  await expect(page.locator('.ground-text')).toHaveText('Nenne fünf Dinge, die du sehen kannst.')
   await expect(page.getByRole('dialog', { name: '5-4-3-2-1' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Zurück zum Atmen' }).click()
   await expect(page.locator('section.stage').getByRole('button', { name: '1 Minute atmen' })).toBeVisible()
@@ -126,4 +126,30 @@ test('Gedanke loslassen und Diskret-Modus', async ({ page }) => {
   await expect(page.locator('html')).not.toHaveAttribute('data-veiled', '1')
   await page.goto('/lichtung')
   await expect(page).toHaveTitle('Notizen')
+})
+
+test('Stimmung per Pfeiltasten: ein Check-in statt vier, Fokus bleibt bei 5-4-3-2-1 erhalten', async ({ page }) => {
+  const { username } = await register(page)
+  const mood = page.getByRole('radiogroup', { name: 'Stimmung' })
+  await mood.getByRole('radio', { name: 'Schwer' }).focus()
+  await page.keyboard.press('Space')
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight')
+  await expect(mood.getByRole('radio', { name: 'Leichter' })).toHaveAttribute('aria-checked', 'true')
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const count = async () =>
+      (await pool.query(`SELECT count(*)::int AS n FROM checkins c JOIN users u ON u.id = c.user_id WHERE u.username = $1`, [username])).rows[0].n
+    // Gespeichert wird nach der kurzen Pause – genau einmal, mit der zuletzt gewählten Stimmung.
+    await expect.poll(count, { timeout: 5000 }).toBe(1)
+    await page.waitForTimeout(1200)
+    expect(await count()).toBe(1)
+  } finally {
+    await pool.end()
+  }
+
+  // «Zurück zum Atmen» liegt danach in einer inerten Folie – der Fokus wandert zum Umschalter, nicht an den Seitenanfang.
+  const sw = page.getByRole('radiogroup', { name: 'Übung' })
+  await sw.getByRole('radio', { name: '5-4-3-2-1' }).click()
+  await page.getByRole('button', { name: 'Zurück zum Atmen' }).click()
+  await expect(sw.getByRole('radio', { name: 'Atmen' })).toBeFocused()
 })

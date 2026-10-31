@@ -26,6 +26,7 @@ import {
 } from '@/db/schema'
 import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
 import { alertAcute } from '@/lib/acute-alert'
+import { openText, sealText } from '@/lib/at-rest'
 import { hardDeletePost } from '@/lib/post-delete'
 import { syncReplyCount } from '@/lib/reply-count'
 import { detectCrisis } from '@/lib/crisis'
@@ -39,10 +40,15 @@ import { getViewer, type Viewer } from '@/lib/server/session'
 import { getCrisisTerms } from '@/lib/server/terms'
 import { zurichDay } from '@/lib/time'
 import { m } from '@/messages'
+import { safeMessage } from '@/lib/log-safe'
 
 type Fail = { ok: false; error: string }
 type Ok<T> = { ok: true } & T
 const fail = (error: string): Fail => ({ ok: false, error })
+/** IDs aus dem Browser prüfen, bevor sie in eine Abfrage gehen – sonst wird aus Unsinn ein Serverfehler (500). */
+const isId = (v: unknown): v is string => z.uuid().safeParse(v).success
+/** Grosszügige Grenzen gegen Skripte; im normalen Gebrauch erreicht sie niemand. */
+const limited = async (key: string, max: number, windowMs: number) => !(await hit(key, max, windowMs)).ok
 const DAY = 24 * 60 * 60 * 1000
 
 async function writer(): Promise<Viewer | Fail> {
@@ -108,6 +114,8 @@ const postSchema = z.object({
   visibility: z.enum(['anonymous', 'pseudonym']),
   contentWarning: z.boolean(),
   mediaId: z.uuid().nullish(),
+  /** Bildbeschreibung für Screenreader (freiwillig). */
+  mediaAlt: z.string().trim().max(300).nullish(),
   /** «Gedanke loslassen»: nach so vielen Tagen automatisch löschen (0 = nie). */
   letGoDays: z.union([z.literal(0), z.literal(1), z.literal(7), z.literal(30)]).default(0),
 })
@@ -153,18 +161,18 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
 
   if (level === 'acute') {
     await db.insert(reports).values({ targetType: 'post', targetId: postId, reason: 'auto_acute', priority: 0 })
-    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }
   if (d.mediaId) {
     const attached = await db
       .update(postMedia)
-      .set({ postId })
+      .set({ postId, alt: d.mediaAlt || null })
       .where(and(eq(postMedia.id, d.mediaId), eq(postMedia.userId, v.userId), isNull(postMedia.postId)))
       .returning({ id: postMedia.id })
     // Der Gedanke ist gespeichert; scheitert nur der Auftrag, holt der Worker das Bild per Zeitplan nach.
-    if (attached.length) await enqueue(QUEUES.processImage, { mediaId: d.mediaId }).catch((e) => console.error('[process-image] enqueue', e))
+    if (attached.length) await enqueue(QUEUES.processImage, { mediaId: d.mediaId }).catch((e) => console.error('[process-image] enqueue', safeMessage(e)))
   }
-  await enqueue(QUEUES.moderate, { targetType: 'post', targetId: postId }).catch((e) => console.error('[moderate]', e))
+  await enqueue(QUEUES.moderate, { targetType: 'post', targetId: postId }).catch((e) => console.error('[moderate]', safeMessage(e)))
   await touchPresence(v.userId, circle.id)
 
   const post = await getPostById(v.userId, postId)
@@ -203,9 +211,9 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     .where(eq(posts.id, d.id))
   if (level === 'acute') {
     await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
-    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }
-  await enqueue(QUEUES.moderate, { targetType: 'post', targetId: d.id }).catch((e) => console.error('[moderate] enqueue', e))
+  await enqueue(QUEUES.moderate, { targetType: 'post', targetId: d.id }).catch((e) => console.error('[moderate] enqueue', safeMessage(e)))
   return { ok: true, post: (await getPostById(v.userId, d.id))! }
 }
 
@@ -220,6 +228,7 @@ export async function deletePost(id: string): Promise<Ok<object> | Fail> {
 export async function setClosed(id: string, closed: boolean): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
+  if (!isId(id) || typeof closed !== 'boolean') return fail(m.common.error)
   await db.update(posts).set({ closed }).where(and(eq(posts.id, id), eq(posts.userId, v.userId)))
   return { ok: true }
 }
@@ -230,7 +239,9 @@ export async function toggleSupport(postId: string, kind: string): Promise<Ok<{ 
   const v = await writer()
   if (isFail(v)) return v
   const k = z.enum(SUPPORT_KINDS).safeParse(kind)
-  if (!k.success) return fail(m.common.error)
+  if (!k.success || !isId(postId)) return fail(m.common.error)
+  // An/aus/an erzeugt jedes Mal eine Meldung bei der Autorin – darum begrenzt.
+  if (await limited(`support:${v.userId}`, 60, 10 * 60_000)) return fail(m.common.rateLimited)
   const p = await visiblePost(v.userId, postId)
   if (!p || p.userId === v.userId) return fail(m.common.error)
   const removed = await db
@@ -250,7 +261,7 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
   const v = await writer()
   if (isFail(v)) return v
   const text = z.string().trim().min(1).max(LIMITS.replyMax).safeParse(body)
-  if (!text.success) return fail(m.common.error)
+  if (!text.success || !isId(postId)) return fail(m.common.error)
   const p = await visiblePost(v.userId, postId)
   if (!p) return fail(m.common.error)
   if (p.closed) return fail(m.replies.closed)
@@ -291,9 +302,9 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
   if (status === 'visible' && !isAuthor) await syncReplyCount(postId)
   if (level === 'acute') {
     await db.insert(reports).values({ targetType: 'reply', targetId: r!.id, reason: 'auto_acute', priority: 0 })
-    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', (e as Error).message))
+    await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }
-  await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', e))
+  await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', safeMessage(e)))
   if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
   return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId), acute: level === 'acute' }
@@ -312,6 +323,7 @@ async function ownReplyTarget(viewerId: string, replyId: string) {
 export async function markHelpful(replyId: string, helpful: boolean): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
+  if (!isId(replyId) || typeof helpful !== 'boolean') return fail(m.common.error)
   if (!(await ownReplyTarget(v.userId, replyId))) return fail(m.common.error)
   await db.update(replies).set({ helpful }).where(eq(replies.id, replyId))
   return { ok: true }
@@ -320,6 +332,7 @@ export async function markHelpful(replyId: string, helpful: boolean): Promise<Ok
 export async function hideReply(replyId: string, hidden: boolean): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
+  if (!isId(replyId) || typeof hidden !== 'boolean') return fail(m.common.error)
   if (!(await ownReplyTarget(v.userId, replyId))) return fail(m.common.error)
   await db.update(replies).set({ hiddenByAuthor: hidden }).where(eq(replies.id, replyId))
   return { ok: true }
@@ -356,6 +369,7 @@ export async function deleteReply(replyId: string): Promise<Ok<object> | Fail> {
 export async function toggleBookmark(postId: string): Promise<Ok<{ bookmarked: boolean }> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
+  if (!isId(postId)) return fail(m.common.error)
   const removed = await db
     .delete(bookmarks)
     .where(and(eq(bookmarks.userId, v.userId), eq(bookmarks.postId, postId)))
@@ -437,6 +451,7 @@ export async function blockAuthor(input: { type: 'post' | 'reply'; id: string })
   if (!v) return fail(m.common.sessionEnded)
   const parsed = z.object({ type: z.enum(['post', 'reply']), id: z.uuid() }).safeParse(input)
   if (!parsed.success) return fail(m.common.error)
+  if (await limited(`block:${v.userId}`, 30, 60 * 60_000)) return fail(m.common.rateLimited)
   const { type, id } = parsed.data
   const [t] =
     type === 'post'
@@ -470,9 +485,9 @@ export async function saveCheckin(input: { mood: number; note?: string }): Promi
     .where(and(eq(checkins.userId, v.userId), gte(checkins.createdAt, hourStart)))
     .limit(1)
   if (current) {
-    await db.update(checkins).set({ mood: mood.data, note: note ?? current.note }).where(eq(checkins.id, current.id))
+    await db.update(checkins).set({ mood: mood.data, note: sealText(v.userId, note) ?? current.note }).where(eq(checkins.id, current.id))
   } else {
-    await db.insert(checkins).values({ userId: v.userId, mood: mood.data, note })
+    await db.insert(checkins).values({ userId: v.userId, mood: mood.data, note: sealText(v.userId, note) })
   }
   const heavy = mood.data === MOOD_HEAVY
   return { ok: true, proHint: heavy ? await shouldShowProHint(v) : false, letter: heavy ? await takeLetter(v.userId) : null }
@@ -495,7 +510,7 @@ async function takeLetter(userId: string) {
       ),
     )
     .returning({ body: letters.body, createdAt: letters.createdAt })
-  return l ? { body: l.body, createdAt: l.createdAt.toISOString() } : null
+  return l ? { body: openText(userId, l.body), createdAt: l.createdAt.toISOString() } : null
 }
 
 /** Drei Tage in Folge «Schwer»: einmalig ein behutsamer Hinweis, nicht öfter als alle 7 Tage. */
@@ -519,6 +534,8 @@ async function shouldShowProHint(v: Viewer) {
 export async function logBreath(seconds: number) {
   const v = await getViewer()
   if (!v) return
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return
+  if (await limited(`breath:${v.userId}`, 40, 24 * 60 * 60_000)) return
   const s = Math.max(1, Math.min(600, Math.round(seconds)))
   await db.insert(breathLog).values({ userId: v.userId, seconds: s })
 }
@@ -565,7 +582,11 @@ async function pickStep(userId: string): Promise<StepView> {
 export async function stepAction(stepId: string, action: 'done' | 'skip'): Promise<StepView> {
   const v = await getViewer()
   if (!v) return null
-  if (!z.uuid().safeParse(stepId).success || !['done', 'skip'].includes(action)) return pickStep(v.userId)
+  if (!isId(stepId) || !['done', 'skip'].includes(action)) return pickStep(v.userId)
+  if (await limited(`step:${v.userId}`, 60, 24 * 60 * 60_000)) return pickStep(v.userId)
+  // Nur vorhandene Schritte – eine erfundene ID gäbe sonst einen Fremdschlüssel-Fehler (500).
+  const [exists] = await db.select({ id: steps.id }).from(steps).where(eq(steps.id, stepId)).limit(1)
+  if (!exists) return pickStep(v.userId)
   await db.insert(stepLog).values({ userId: v.userId, stepId, action })
   return pickStep(v.userId)
 }

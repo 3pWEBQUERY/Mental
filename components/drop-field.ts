@@ -51,7 +51,7 @@ const spring = (x: number, to: number, k: number, z: number): Spring => ({ x, v:
 
 export function createDropField(
   canvas: HTMLCanvasElement,
-  { color, onFrame, onIdle }: { color: string; onFrame?: (boxes: Box[], moving: string[]) => void; onIdle?: () => void },
+  { color, onFrame, onIdle, onLost }: { color: string; onFrame?: (boxes: Box[], moving: string[]) => void; onIdle?: () => void; onLost?: () => void },
 ) {
   let renderer: THREE.WebGLRenderer
   try {
@@ -59,6 +59,8 @@ export function createDropField(
   } catch {
     return null
   }
+  // Kontext vom Browser verworfen: Feld aufgeben, die CSS-Füllung zeigt den Zustand weiter.
+  canvas.addEventListener('webglcontextlost', () => onLost?.(), { once: true })
   THREE.ColorManagement.enabled = false
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace
   renderer.setClearColor(0x000000, 0)

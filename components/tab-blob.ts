@@ -45,13 +45,15 @@ function cssColor(token: string, fallback: string) {
  * `onFrame` bekommt die gezeichnete Form (CSS-Pixel) – damit die Schrift darüber hell wird, genau wo der Tropfen ist.
  * `radius` in CSS-Pixeln für eckigere Auswahlen (Kreisliste); ohne Angabe eine Pille.
  */
-export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | null) => void, radius = -1) {
+export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | null) => void, radius = -1, onLost?: () => void) {
   let renderer: THREE.WebGLRenderer
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power', premultipliedAlpha: false })
   } catch {
     return null
   }
+  // Wirft der Browser den Kontext weg (zu viele offene, Treiber), übernimmt wieder die CSS-Pille.
+  canvas.addEventListener('webglcontextlost', () => onLost?.(), { once: true })
   // Farben unverändert in den Shader – wie die übrigen Szenen.
   THREE.ColorManagement.enabled = false
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace

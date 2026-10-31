@@ -65,6 +65,8 @@ export function LoginForm() {
           </label>
           <input
             id="username"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'form-error' : undefined}
             name="username"
             className="input"
             value={username}
@@ -81,6 +83,8 @@ export function LoginForm() {
           </label>
           <input
             id="password"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'form-error' : undefined}
             name="password"
             className="input"
             type="password"
@@ -91,7 +95,7 @@ export function LoginForm() {
           />
         </div>
         {error && (
-          <p className="error" role="alert">
+          <p className="error" role="alert" id="form-error">
             {error}
           </p>
         )}

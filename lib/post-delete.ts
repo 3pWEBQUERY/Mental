@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '../db'
 import { notifications, postMedia, posts, replies, reports, support } from '../db/schema'
+import { journalDeletion } from './deletion-journal'
 import { mediaKeys } from './media'
 import { bucketConfigured, deleteObject } from './s3'
 
@@ -39,6 +40,7 @@ export async function hardDeletePost(id: string, ownerId?: string): Promise<bool
       )
     return true
   })
+  if (done) await journalDeletion('post', id)
   if (done && bucketConfigured()) {
     for (const r of media) for (const k of mediaKeys(r.id)) await deleteObject(k).catch(() => {})
   }

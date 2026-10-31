@@ -95,7 +95,7 @@ export function RecoverForm() {
           <p className="help-text">{m.auth.passwordHint}</p>
         </div>
         {error && (
-          <p className="error" role="alert">
+          <p className="error" role="alert" id="form-error">
             {error}
           </p>
         )}

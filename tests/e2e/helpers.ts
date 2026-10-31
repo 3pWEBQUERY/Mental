@@ -44,8 +44,19 @@ export async function login(page: Page, username: string, password = PASSWORD) {
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click()
 }
 
+/**
+ * Teilen-Dialog öffnen. Direkt nach einem Seitenwechsel kann der Klick vor der Hydrierung landen und verpufft –
+ * dann erneut, bis das Textfeld da ist.
+ */
+export async function openComposer(page: Page) {
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+    await expect(page.locator('#composer-text')).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 30_000 })
+}
+
 export async function share(page: Page, text: string, opts: { anonymous?: boolean } = {}) {
-  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  await openComposer(page)
   await page.locator('#composer-text').fill(text)
   // Die Checkbox ist visuell versteckt – geklickt wird der sichtbare Schalter.
   const toggle = page.getByLabel(/Ganz anonym teilen/)

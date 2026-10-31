@@ -56,18 +56,42 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   useEffect(() => on('pulse', () => api.current?.pulse()), [])
   useEffect(() => on('breathe', () => startBreath()))
 
-  async function pick(i: number) {
+  // Gespeichert wird erst nach einer kurzen Pause: Mit den Pfeiltasten wandert man durch die Stimmungen
+  // (so verlangt es das Muster «Optionsfeld») – das soll nicht vier Check-ins anlegen und keinen Hinweis oder
+  // Brief mitten im Wählen auslösen. Wer gleich weitergeht, verliert nichts: Beim Verlassen wird sofort gespeichert.
+  const pendingMood = useRef<{ mood: number; timer: number } | null>(null)
+  async function commitMood() {
+    const p = pendingMood.current
+    if (!p) return
+    pendingMood.current = null
+    window.clearTimeout(p.timer)
+    const res = await attempt(() => saveCheckin({ mood: p.mood }))
+    if (res?.proHint) setProHint(true)
+    if (res?.letter) setLetter(res.letter)
+  }
+  const commitRef = useRef(commitMood)
+  commitRef.current = commitMood
+  useEffect(() => {
+    const flush = () => void commitRef.current()
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [])
+
+  function pick(i: number) {
     setMood(i)
     api.current?.setMood(i)
     api.current?.pulse()
     emit('checkin-mood', i)
-    const res = await attempt(() => saveCheckin({ mood: i }))
-    if (res?.proHint) setProHint(true)
-    if (res?.letter) setLetter(res.letter)
+    if (pendingMood.current) window.clearTimeout(pendingMood.current.timer)
+    pendingMood.current = { mood: i, timer: window.setTimeout(() => void commitRef.current(), 900) }
   }
 
   async function saveNote() {
     if (mood === null || !note.trim()) return
+    await commitMood()
     const res = await attempt(() => saveCheckin({ mood, note }))
     if (res) {
       toast(m.stage.noteSaved)
@@ -124,9 +148,23 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   const gdone = gstep >= g.steps.length
   const gcur = g.steps[gstep]
 
-  function switchMode(next: Mode) {
+  // Fokus nach einem Folienwechsel: Der Knopf, der ihn auslöste, liegt danach in einer inerten Folie
+  // (oder wird ersetzt) – ohne Hilfe stünde der Fokus auf dem Seitenanfang.
+  const focusNext = useRef<'switch' | 'done' | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const target = focusNext.current
+    if (!target) return
+    focusNext.current = null
+    const root = sectionRef.current
+    if (target === 'switch') root?.querySelector<HTMLElement>('.stage-switch [aria-checked="true"]')?.focus()
+    else root?.querySelector<HTMLElement>('.slide-ground .stage-actions .btn')?.focus()
+  }, [mode, gstep])
+
+  function switchMode(next: Mode, fromInside = false) {
     if (next === mode) return
     if (breathing) stopBreath()
+    if (fromInside) focusNext.current = 'switch'
     setMode(next)
     if (next === 'ground') {
       setGstep(0)
@@ -136,6 +174,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
 
   function nextStep() {
     const n = gstep + 1
+    if (n >= g.steps.length) focusNext.current = 'done'
     setGstep(n)
     // Nach der Eins wird die Ziffer wieder zur Kugel – «Du bist hier».
     api.current?.ground(n < g.steps.length ? g.steps[n]!.n : null, 1)
@@ -161,6 +200,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   const s = m.stage
   return (
     <section
+      ref={sectionRef}
       className={`stage${breathing ? ' breathing' : ''}`}
       aria-label={s.label}
       data-mode={mode}
@@ -170,6 +210,8 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
       // Wischen zwischen den Folien (vor allem auf dem Handy): nach links zu 5-4-3-2-1, nach rechts zum Atmen.
       onPointerDown={(e) => {
         if (breathing || (e.target as HTMLElement).closest('button, a, textarea, input')) return
+        // Nicht am Bildschirmrand beginnen – dort liegt die Zurück-Geste des Systems.
+        if (e.clientX < 24 || e.clientX > window.innerWidth - 24) return
         swipe.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
       }}
       onPointerUp={(e) => {
@@ -208,8 +250,8 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
         </button>
       </div>
       {/* Angesagt wird nur die Phase (Einatmen/Halten/Ausatmen) – nicht jede Sekunde. */}
-      <div className="breath-label">
-        <b aria-live="polite">{s[phase]}</b>
+      <div className="breath-label" aria-hidden={!breathing}>
+        <b aria-live="polite">{breathing ? s[phase] : ''}</b>
         <span aria-hidden="true">{left === null ? s.breathStart : s.breathMeta(left)}</span>
       </div>
       <div className="checkin">
@@ -313,11 +355,13 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
             {/* Neu pro Schritt: Der Inhalt gleitet von rechts herein, im Takt der Punkte oben. */}
             <div className="ground-step" key={gstep}>
               <div className="eyebrow">{gdone ? g.title : g.progress(gstep + 1, g.steps.length)}</div>
-              <h2 className="ground-text" aria-live="polite">
-                {gdone ? g.doneLead : gcur!.text}
-              </h2>
+              <h2 className="ground-text">{gdone ? g.doneLead : gcur!.text}</h2>
               <p className="mood-note">{gdone ? g.doneNote : gcur!.hint}</p>
             </div>
+            {/* Bleibt stehen (nicht pro Schritt neu eingefügt) – so sagen Screenreader jeden Schritt zuverlässig an. */}
+            <p className="sr-only" aria-live="polite">
+              {mode === 'ground' ? (gdone ? `${g.doneLead} ${g.doneNote}` : `${g.progress(gstep + 1, g.steps.length)}: ${gcur!.text}`) : ''}
+            </p>
             <ol className="grounding-dots" aria-label={g.progress(Math.min(gstep + 1, g.steps.length), g.steps.length)}>
               {g.steps.map((st, i) => (
                 <li key={st.n} className={i < gstep ? 'on' : i === gstep ? 'on now' : undefined} />
@@ -325,7 +369,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
             </ol>
             <div className="stage-actions">
               {gdone ? (
-                <button type="button" className="btn" onClick={() => switchMode('breath')}>
+                <button type="button" className="btn" onClick={() => switchMode('breath', true)}>
                   {g.close}
                 </button>
               ) : (
@@ -333,7 +377,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
                   <button type="button" className="btn" onClick={nextStep}>
                     {g.next}
                   </button>
-                  <button type="button" className="btn ghost" onClick={() => switchMode('breath')}>
+                  <button type="button" className="btn ghost" onClick={() => switchMode('breath', true)}>
                     {g.back}
                   </button>
                 </>

@@ -38,7 +38,7 @@ export function PostImage({ media }: { media: PublicMedia }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/api/media/${media.id}`}
-        alt={m.feed.image}
+        alt={media.alt || m.feed.image}
         width={media.width ?? undefined}
         height={media.height ?? undefined}
         loading="lazy"

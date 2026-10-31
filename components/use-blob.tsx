@@ -63,6 +63,8 @@ export function useBlob<T extends HTMLElement>(active: string | null, { enabled 
     let started = false
     let ro: ResizeObserver | null = null
     let mo: MutationObserver | null = null
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    const recolorOs = () => blob.current?.recolor()
     // Erst bei Annäherung (Maus, Fokus, Finger) aufbauen: Bis dahin sieht die CSS-Pille genau gleich aus, und
     // die Seite hält keine WebGL-Kontexte für Auswahlen, die niemand anfasst (Handys, geschlossene Dialoge).
     const start = () => {
@@ -87,6 +89,10 @@ export function useBlob<T extends HTMLElement>(active: string | null, { enabled 
             clipInk()
           },
           radius,
+          () => {
+            blob.current = null
+            setOn(false)
+          },
         )
         if (!b) return
         blob.current = b
@@ -112,6 +118,8 @@ export function useBlob<T extends HTMLElement>(active: string | null, { enabled 
           attributes: true,
           attributeFilter: ['data-theme'],
         })
+        // Farbschema «System»: Das Betriebssystem wechselt abends auf Dunkel – dann auch hier.
+        mq.addEventListener('change', recolorOs)
         setOn(true)
       })
     // Schon unter dem Zeiger (z. B. nach einem Klick, der die Seite neu aufbaut).
@@ -123,6 +131,7 @@ export function useBlob<T extends HTMLElement>(active: string | null, { enabled 
       el.removeEventListener('focusin', start)
       ro?.disconnect()
       mo?.disconnect()
+      mq.removeEventListener('change', recolorOs)
       blob.current?.dispose()
       blob.current = null
     }

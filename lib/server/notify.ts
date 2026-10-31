@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { notifications, users, type NotificationPayload } from '@/db/schema'
 import type { SupportKind } from '../constants'
 import { enqueue, QUEUES } from '../jobs'
+import { safeMessage } from '../log-safe'
 
 export const NOTIFY_CHANNEL = 'lichtung_notify'
 
@@ -18,7 +19,7 @@ export async function notifyReply(ownerId: string, postId: string, postBody: str
   await db.insert(notifications).values({ userId: ownerId, kind: 'reply', postId, payload: { excerpt: excerpt(postBody) } })
   await ping(ownerId)
   // Push nur für «neue Antwort» und nur nach Zustimmung – der Worker prüft Ruhezeiten.
-  await enqueue(QUEUES.push, { userId: ownerId, postId }).catch((e) => console.error('[push] enqueue', e))
+  await enqueue(QUEUES.push, { userId: ownerId, postId }).catch((e) => console.error('[push] enqueue', safeMessage(e)))
 }
 
 /** Zuspruch wird gebündelt: höchstens eine Meldung pro Gedanke und Stunde. */

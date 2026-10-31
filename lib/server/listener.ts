@@ -1,6 +1,7 @@
 import 'server-only'
 import { Client } from 'pg'
 import { NOTIFY_CHANNEL } from './notify'
+import { safeMessage } from '../log-safe'
 
 type Listener = () => void
 type Hub = { subs: Map<string, Set<Listener>>; client: Client | null; connecting: boolean; attempt: number }
@@ -44,7 +45,7 @@ async function connect(h: Hub) {
     await client.connect()
     await client.query(`LISTEN ${NOTIFY_CHANNEL}`)
   } catch (e) {
-    return lost((e as Error).message)
+    return lost(safeMessage(e))
   }
   const reconnected = h.attempt > 0
   h.client = client

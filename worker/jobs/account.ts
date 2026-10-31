@@ -2,6 +2,11 @@ import { and, eq, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { strToU8, zipSync, type Zippable } from 'fflate'
 import { db } from '../../db'
 import {
+  moderationActions,
+  notifications,
+  passkeys,
+  pushSubscriptions,
+  reports,
   blocks,
   bookmarks,
   breathLog,
@@ -24,6 +29,9 @@ import {
 } from '../../db/schema'
 import { bucketConfigured, deleteObject, getObjectBytes, putObject } from '../../lib/s3'
 import { syncReplyCount } from '../../lib/reply-count'
+import { safeMessage } from '../../lib/log-safe'
+import { openJson, openText } from '../../lib/at-rest'
+import { journalDeletion } from '../../lib/deletion-journal'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -58,6 +66,44 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       db.select({ body: letters.body, createdAt: letters.createdAt, shownAt: letters.shownAt }).from(letters).where(eq(letters.userId, userId)),
     ])
 
+    // Was bisher fehlte (DSG Art. 25): eigene Meldungen, Benachrichtigungen, Geräte, Massnahmen gegen die Person,
+    // Bilder in Prüfung. Nie Token, Schlüssel oder wer moderiert hat.
+    const ownPostIds = db.select({ id: posts.id }).from(posts).where(eq(posts.userId, userId))
+    const ownReplyIds = db.select({ id: replies.id }).from(replies).where(eq(replies.userId, userId))
+    const [myReports, myNotifications, mySessions, myPasskeys, mySubs, actionsAgainst, allMedia] = await Promise.all([
+      db
+        .select({ targetType: reports.targetType, reason: reports.reason, note: reports.note, status: reports.status, createdAt: reports.createdAt })
+        .from(reports)
+        .where(eq(reports.reporterId, userId)),
+      db
+        .select({ kind: notifications.kind, payload: notifications.payload, createdAt: notifications.createdAt, readAt: notifications.readAt })
+        .from(notifications)
+        .where(eq(notifications.userId, userId)),
+      db
+        .select({ device: sessions.deviceLabel, method: sessions.authMethod, createdAt: sessions.createdAt, lastSeenAt: sessions.lastSeenAt, expiresAt: sessions.expiresAt })
+        .from(sessions)
+        .where(eq(sessions.userId, userId)),
+      db
+        .select({ label: passkeys.label, deviceType: passkeys.deviceType, backedUp: passkeys.backedUp, createdAt: passkeys.createdAt, lastUsedAt: passkeys.lastUsedAt })
+        .from(passkeys)
+        .where(eq(passkeys.userId, userId)),
+      db
+        .select({ endpoint: pushSubscriptions.endpoint, quietFrom: pushSubscriptions.quietFrom, quietTo: pushSubscriptions.quietTo, createdAt: pushSubscriptions.createdAt })
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.userId, userId)),
+      db
+        .select({ targetType: moderationActions.targetType, action: moderationActions.action, reason: moderationActions.reason, createdAt: moderationActions.createdAt })
+        .from(moderationActions)
+        .where(
+          or(
+            and(eq(moderationActions.targetType, 'user'), eq(moderationActions.targetId, userId)),
+            and(eq(moderationActions.targetType, 'post'), inArray(moderationActions.targetId, ownPostIds)),
+            and(eq(moderationActions.targetType, 'reply'), inArray(moderationActions.targetId, ownReplyIds)),
+          ),
+        ),
+      db.select({ id: postMedia.id, status: postMedia.status, alt: postMedia.alt, createdAt: postMedia.createdAt }).from(postMedia).where(eq(postMedia.userId, userId)),
+    ])
+
     const { journalSalt, journalCheck, ...settings } = profile?.settings ?? {}
     const data = {
       exportedAt: new Date().toISOString(),
@@ -68,13 +114,21 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       zuspruchGesendet: given,
       merkliste: marks,
       kreise: prefs,
-      checkins: myCheckins,
+      checkins: myCheckins.map((c) => ({ ...c, note: openText(userId, c.note) })),
       atemuebungen: breaths,
       kleineSchritte: stepsDone,
       blockiert: blocked.length,
       tagebuch: { salt: journalSalt ?? null, pruefwert: journalCheck ?? null, eintraege: journal },
-      notfallplan: plan[0] ?? null,
-      briefe: myLetters,
+      notfallplan: plan[0] ? { ...plan[0], plan: openJson(userId, plan[0].plan) } : null,
+      briefe: myLetters.map((l) => ({ ...l, body: openText(userId, l.body) })),
+      meldungen: myReports,
+      benachrichtigungen: myNotifications,
+      sitzungen: mySessions,
+      passkeys: myPasskeys,
+      // Nur der Push-Dienst, nicht die vollständige Adresse (sie ist ein Geräte-Geheimnis).
+      pushGeraete: mySubs.map((p) => ({ dienst: new URL(p.endpoint).hostname, ruhezeit: { von: p.quietFrom, bis: p.quietTo }, createdAt: p.createdAt })),
+      massnahmen: actionsAgainst,
+      bilder: allMedia,
     }
     const files: Zippable = { 'lichtung.json': strToU8(JSON.stringify(data, null, 2)) }
     for (const m of media) {
@@ -87,7 +141,7 @@ export async function exportAccount({ exportId }: { exportId: string }) {
     await putObject(key, zip, 'application/zip')
     await db.update(exports).set({ status: 'ready', bucketKey: key, expiresAt: new Date(Date.now() + DAY) }).where(eq(exports.id, exportId))
   } catch (e) {
-    console.error('[export]', (e as Error).message)
+    console.error('[export]', safeMessage(e))
     await db.update(exports).set({ status: 'failed' }).where(eq(exports.id, exportId))
   }
 }
@@ -97,7 +151,7 @@ export async function exportAccount({ exportId }: { exportId: string }) {
  * Antworten auf Gedanken anderer bleiben als «Antwort gelöscht» stehen, damit Threads verständlich bleiben.
  * Der Benutzername bleibt 90 Tage reserviert.
  */
-export async function purgeAccount({ userId, reason = 'deleted' }: { userId: string; reason?: 'deleted' | 'inactive' }) {
+export async function purgeAccount({ userId, reason = 'deleted' }: { userId: string; reason?: 'deleted' | 'inactive' | 'replay' }) {
   const [u] = await db.select().from(users).where(eq(users.id, userId))
   if (!u) return
   // Beantragte Löschung: auch wenn das Konto inzwischen gesperrt wurde – die Löschung hat Vorrang.
@@ -132,6 +186,7 @@ export async function purgeAccount({ userId, reason = 'deleted' }: { userId: str
       .onConflictDoUpdate({ target: reservedUsernames.username, set: { until: new Date(Date.now() + 90 * DAY) } })
     await tx.delete(users).where(eq(users.id, userId))
   })
+  if (reason !== 'replay') await journalDeletion('account', userId)
   console.log(`[purge] Konto gelöscht (${reason})`)
 }
 
@@ -142,7 +197,7 @@ export async function purgeDueAccounts() {
     .where(and(inArray(users.status, ['deleting', 'banned']), isNotNull(users.deleteAfter), lt(users.deleteAfter, new Date())))
   for (const { id } of due) {
     // Ein fehlerhaftes Konto darf die übrigen Löschungen nicht jeden Tag blockieren.
-    await purgeAccount({ userId: id }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, (e as Error).message))
+    await purgeAccount({ userId: id }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e)))
   }
 }
 
@@ -164,6 +219,6 @@ export async function purgeInactiveAccounts() {
       ),
     )
   for (const { id } of stale) {
-    await purgeAccount({ userId: id, reason: 'inactive' }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, (e as Error).message))
+    await purgeAccount({ userId: id, reason: 'inactive' }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e)))
   }
 }

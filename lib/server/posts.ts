@@ -140,6 +140,7 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
         width: postMedia.width,
         height: postMedia.height,
         blurhash: postMedia.blurhash,
+        alt: postMedia.alt,
       })
       .from(postMedia)
       .where(inArray(postMedia.postId, ids)),
@@ -162,7 +163,7 @@ export async function hydrate(rows: PostRow[], viewerId: string): Promise<Public
     const media = mediaRows.find((mr) => mr.postId === p.id)
     const publicMedia: PublicMedia | null =
       media && (media.status === 'ready' || mine)
-        ? { id: media.id, status: media.status, width: media.width, height: media.height, blurhash: media.blurhash }
+        ? { id: media.id, status: media.status, width: media.width, height: media.height, blurhash: media.blurhash, alt: media.alt }
         : null
     return toPublicPost(p, {
       viewerId,
@@ -185,7 +186,11 @@ function decode(raw: string | null | undefined): Cursor {
   if (!raw) return { n: 0 }
   try {
     const c = JSON.parse(Buffer.from(raw, 'base64url').toString()) as Cursor
-    return { ...c, n: Number(c.n) || 0, u: Array.isArray(c.u) ? c.u.slice(-20) : [] }
+    // Der Cursor kommt aus dem Browser: nur gültige Zeitstempel und IDs übernehmen (sonst Serverfehler).
+    const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+    const t = typeof c.t === 'string' && !Number.isNaN(Date.parse(c.t)) ? c.t : undefined
+    const i = uuid(c.i) ? c.i : undefined
+    return { t: t && i ? t : undefined, i: t && i ? i : undefined, k: c.k === true, n: Number(c.n) || 0, u: Array.isArray(c.u) ? c.u.filter(uuid).slice(-20) : [] }
   } catch {
     return { n: 0 }
   }

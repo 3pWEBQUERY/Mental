@@ -219,6 +219,8 @@ export const postMedia = pgTable(
     width: integer('width'),
     height: integer('height'),
     blurhash: text('blurhash'),
+    /** Bildbeschreibung für Screenreader – freiwillig, von der Person beim Teilen. */
+    alt: text('alt'),
     status: mediaStatusEnum('status').notNull().default('quarantine'),
     createdAt: createdAt(),
   },

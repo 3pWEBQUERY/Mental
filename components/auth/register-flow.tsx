@@ -3,13 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import {
-  checkPassword,
-  checkUsername,
-  prepareRecoveryKey,
-  register,
-  setInitialDisplayName,
-} from '@/app/(auth)/actions'
+import { checkPassword, checkUsername, prepareRecoveryKey, register, setInitialDisplayName } from '@/app/(auth)/actions'
 import { forgetPrivate } from '@/lib/client/private-storage'
 import { solvePow } from '@/lib/client/pow'
 import { suggestUsername } from '@/lib/username'
@@ -57,6 +51,7 @@ export function RegisterFlow() {
   const [answers, setAnswers] = useState(['', ''])
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
+  const [pending, setPending] = useState('')
   const [busy, setBusy] = useState(false)
   const pow = useRef<Promise<string | null> | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -112,8 +107,11 @@ export function RegisterFlow() {
     const ok = confirmIdx.every((idx, i) => answers[i]!.trim().toLowerCase() === key.words[idx])
     if (!ok) return setError(r.keyWrong)
     setBusy(true)
-    setError(r.botCheck)
+    setError('')
+    // Kein Fehler, sondern ein Zwischenstand – als Status, nicht als Alarm.
+    setPending(r.botCheck)
     const payload = await (pow.current ?? solvePow())
+    setPending('')
     if (!payload) {
       setBusy(false)
       return setError(r.botFailed)
@@ -134,15 +132,22 @@ export function RegisterFlow() {
     setBusy(true)
     const res = await setInitialDisplayName(displayName)
     setBusy(false)
-    if (!res.ok) return setError(m.common.error)
+    // Die genaue Meldung zeigen (z. B. «keine Telefonnummer im Anzeigenamen»), nicht nur «Fehler».
+    if (!res.ok) return setError(res.error)
     router.replace('/lichtung')
   }
 
   const errorEl = error ? (
-    <p className="error" role="alert">
+    <p className="error" role="alert" id="form-error">
       {error}
     </p>
+  ) : pending ? (
+    <p className="fine" role="status">
+      {pending}
+    </p>
   ) : null
+  // Fehler mit dem Feld verknüpfen: Screenreader lesen ihn beim Feld vor, das Feld gilt als ungültig.
+  const invalid = error ? ({ 'aria-invalid': true, 'aria-describedby': 'form-error' } as const) : {}
 
   return (
     <div className="auth-card">
@@ -174,12 +179,7 @@ export function RegisterFlow() {
                 {m.common.back}
               </button>
             )}
-            <button
-              type="button"
-              className="btn"
-              disabled={welcome === 2 && !rules}
-              onClick={() => (welcome < 2 ? setWelcome(welcome + 1) : go(1))}
-            >
+            <button type="button" className="btn" disabled={welcome === 2 && !rules} onClick={() => (welcome < 2 ? setWelcome(welcome + 1) : go(1))}>
               {m.common.next}
             </button>
           </div>
@@ -227,6 +227,7 @@ export function RegisterFlow() {
             <div className="input-row">
               <input
                 id="username"
+                {...invalid}
                 className="input"
                 value={username}
                 onChange={(e) => {
@@ -277,6 +278,7 @@ export function RegisterFlow() {
             </label>
             <input
               id="pw"
+              {...invalid}
               className="input"
               type="password"
               value={password}
@@ -292,6 +294,7 @@ export function RegisterFlow() {
             </label>
             <input
               id="pw2"
+              {...invalid}
               className="input"
               type="password"
               value={password2}
@@ -359,6 +362,7 @@ export function RegisterFlow() {
               </label>
               <input
                 id={`w${i}`}
+                {...invalid}
                 className="input serif"
                 value={answers[i]}
                 onChange={(e) => setAnswers((a) => a.map((v, j) => (j === i ? e.target.value : v)))}
@@ -417,6 +421,7 @@ export function RegisterFlow() {
             </label>
             <input
               id="dn"
+              {...invalid}
               className="input serif"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}

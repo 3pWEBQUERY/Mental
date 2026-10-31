@@ -29,7 +29,12 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#EFECE4',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#EFECE4' },
+    { media: '(prefers-color-scheme: dark)', color: '#171715' },
+  ],
+  // Die Bildschirmtastatur verkleinert den Inhalt (dvh), statt ihn zu überdecken – «Teilen» bleibt sichtbar.
+  interactiveWidget: 'resizes-content',
   width: 'device-width',
   initialScale: 1,
   // Bis an den Rand (iPhone); die untere Leiste hält per env(safe-area-inset-bottom) Abstand zum Home-Indikator.

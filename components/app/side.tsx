@@ -15,7 +15,7 @@ export function Side({ circles, step }: { circles: ReactNode; step: ReactNode })
   return (
     <aside className="side" aria-label="Seitenleiste">
       <section>
-        <h3>{m.circles.title}</h3>
+        <h2 className="section-label">{m.circles.title}</h2>
         {circles}
       </section>
       {step}

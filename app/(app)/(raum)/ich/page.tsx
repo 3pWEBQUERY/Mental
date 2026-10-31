@@ -12,6 +12,7 @@ import { breathLog, checkins, posts, replies, stepLog } from '@/db/schema'
 import { getBookmarkedPosts, getMyPosts } from '@/lib/server/posts'
 import { requireViewer, type Viewer } from '@/lib/server/session'
 import { formatDate, zurichDay } from '@/lib/time'
+import { openText } from '@/lib/at-rest'
 import { m } from '@/messages'
 import { getSafetyPlan, journalState, myLetters } from './actions'
 
@@ -139,7 +140,7 @@ async function History({ v }: { v: Viewer }) {
                 <small>
                   {formatDate(n.createdAt, { weekday: 'long', day: 'numeric', month: 'long' })} · {m.moods.labels[n.mood]}
                 </small>
-                <p>{n.note}</p>
+                <p>{openText(v.userId, n.note)}</p>
               </li>
             ))}
           </ul>

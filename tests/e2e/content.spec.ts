@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share, closeExtraContexts } from './helpers'
+import { openComposer, register, share, closeExtraContexts } from './helpers'
 
 test.afterEach(closeExtraContexts)
 
@@ -271,7 +271,7 @@ test('«Meine Kreise»: gefolgte Kreise als Filter', async ({ page }) => {
   const inAngst = `Angst-Gedanke ${t}`
   const elsewhere = `Trauer-Gedanke ${t}`
   for (const [text, circle] of [[inAngst, 'Angst'], [elsewhere, 'Trauer']] as const) {
-    await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+    await openComposer(page)
     await page.locator('#composer-text').fill(text)
     await page.getByRole('dialog').getByRole('radio', { name: circle, exact: true }).click()
     await page.getByRole('button', { name: 'Teilen', exact: true }).click()
