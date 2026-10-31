@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Box, TabBlob } from './tab-blob'
 
-type Item = { key: string; label: string; href: string }
+type Item = { key: string; label: ReactNode; href: string }
 
 function reducedMotion() {
   return Boolean(document.documentElement.dataset.motion) || matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -15,7 +15,20 @@ function reducedMotion() {
  * Wechsel zum neuen Reiter fliesst – auch in die nächste Zeile, wenn die Leiste umbricht.
  * Ohne WebGL oder bei reduzierter Bewegung bleibt die CSS-Pille.
  */
-export function TabBar({ items, active, label, style }: { items: Item[]; active: string; label: string; style?: CSSProperties }) {
+export function TabBar({
+  items,
+  active,
+  label,
+  style,
+  keepScroll = true,
+}: {
+  items: Item[]
+  active: string
+  label: string
+  style?: CSSProperties
+  /** Ansichten derselben Seite behalten die Scrollposition; eigene Seiten (Admin) beginnen oben. */
+  keepScroll?: boolean
+}) {
   const nav = useRef<HTMLElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const ink = useRef<HTMLDivElement>(null)
@@ -38,7 +51,11 @@ export function TabBar({ items, active, label, style }: { items: Item[]; active:
   function clipInk() {
     const el = ink.current
     const box = lastBox.current
-    if (!el || !box) return
+    if (!el) return
+    if (!box) {
+      el.style.clipPath = 'inset(50%)'
+      return
+    }
     const r = (box.bottom - box.top) / 2
     el.style.clipPath = `inset(${box.top}px ${el.clientWidth - box.right}px ${el.clientHeight - box.bottom}px ${box.left}px round ${r}px)`
   }
@@ -65,6 +82,7 @@ export function TabBar({ items, active, label, style }: { items: Item[]; active:
         // Nur beim Aufbau springen. Später (Scrollbalken, Schriftgrösse, Zeilenumbruch) nur neu zielen –
         // sonst würde eine Grössenänderung mitten im Wechsel die Bewegung abschneiden.
         if (box) b.moveTo(box, first)
+        else b.hide()
         first = false
       }
       fit()
@@ -89,6 +107,7 @@ export function TabBar({ items, active, label, style }: { items: Item[]; active:
     currentRef.current = current
     const box = boxOf(current)
     if (box) blob.current?.moveTo(box)
+    else blob.current?.hide()
   }, [current])
 
   return (
@@ -110,10 +129,10 @@ export function TabBar({ items, active, label, style }: { items: Item[]; active:
           className="tab"
           href={t.href}
           aria-current={current === t.key ? 'page' : undefined}
-          scroll={false}
+          scroll={!keepScroll}
           onClick={(e) => {
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-            // Sofort fliessen lassen – der Feed lädt währenddessen nach.
+            // Sofort fliessen lassen – der Inhalt lädt währenddessen nach.
             setCurrent(t.key)
           }}
         >

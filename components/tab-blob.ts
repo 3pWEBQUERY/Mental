@@ -40,7 +40,7 @@ function cssColor(token: string, fallback: string) {
 }
 
 /** `onFrame` bekommt die gezeichnete Form (CSS-Pixel) – damit die Schrift darüber hell wird, genau wo der Tropfen ist. */
-export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box) => void) {
+export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | null) => void) {
   let renderer: THREE.WebGLRenderer
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power', premultipliedAlpha: false })
@@ -76,8 +76,15 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box) =>
   let last = 0
   // Vordere Kante straff, hintere weich: daraus entsteht das Fliessen.
   let stiff = { l: 300, r: 300 }
+  // Kein Reiter aktiv (z. B. eine Unterseite im Admin): nichts zeichnen, beim nächsten Ziel ohne Anlauf erscheinen.
+  let hidden = true
 
   function draw() {
+    if (hidden) {
+      renderer.clear()
+      onFrame?.(null)
+      return
+    }
     // Je mehr der Tropfen gedehnt ist, desto flacher wird er – wie Flüssigkeit.
     const width = s.r.x - s.l.x
     const rest = Math.max(1, s.r.to - s.l.to)
@@ -139,6 +146,8 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box) =>
     },
     /** Neues Ziel. `instant` setzt ohne Bewegung (erster Aufbau, Grössenänderung, reduzierte Bewegung). */
     moveTo(box: Box, instant = false) {
+      if (hidden) instant = true
+      hidden = false
       const right = box.left > s.l.to
       stiff = right ? { l: 140, r: 420 } : { l: 420, r: 140 }
       s.l.to = box.left
@@ -152,6 +161,12 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box) =>
         }
         draw()
       } else kick()
+    },
+    hide() {
+      hidden = true
+      cancelAnimationFrame(raf)
+      raf = 0
+      draw()
     },
     recolor() {
       uniforms.uColor.value = cssColor('--ink', '#1c1c1a')

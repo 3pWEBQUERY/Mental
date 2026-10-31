@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { TabBar } from '@/components/tab-bar'
 import { m } from '@/messages'
 
 type Level = 'peer' | 'mod' | 'admin'
@@ -19,17 +19,25 @@ const RANK = { peer: 1, mod: 2, admin: 3 } as const
 export function AdminNav({ level, imagesWaiting }: { level: Level; imagesWaiting: number }) {
   const path = usePathname()
   return (
-    <nav className="tabs" aria-label={m.admin.title} style={{ width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap', marginBottom: 28 }}>
-      {ITEMS.filter((i) => RANK[level] >= RANK[i.level]).map((i) => (
-        <Link key={i.href} href={i.href} className="tab" aria-current={path === i.href ? 'page' : undefined}>
-          {i.label}
-          {i.href === '/admin/bilder' && imagesWaiting > 0 && (
-            <span className="tab-count" aria-label={m.admin.images.waiting(imagesWaiting)}>
-              {imagesWaiting}
-            </span>
-          )}
-        </Link>
-      ))}
-    </nav>
+    <TabBar
+      label={m.admin.title}
+      active={path}
+      keepScroll={false}
+      style={{ width: 'fit-content', maxWidth: '100%', flexWrap: 'wrap', marginBottom: 28 }}
+      items={ITEMS.filter((i) => RANK[level] >= RANK[i.level]).map((i) => ({
+        key: i.href,
+        href: i.href,
+        label: (
+          <>
+            {i.label}
+            {i.href === '/admin/bilder' && imagesWaiting > 0 && (
+              <span className="tab-count" aria-label={m.admin.images.waiting(imagesWaiting)}>
+                {imagesWaiting}
+              </span>
+            )}
+          </>
+        ),
+      }))}
+    />
   )
 }
