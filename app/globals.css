@@ -130,9 +130,7 @@ ul, ol { list-style: none; }
 
 /* ---------- Rail ---------- */
 .rail { position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; padding: 22px 0; gap: 6px; z-index: 5; background: var(--paper); }
-.mark { width: 34px; height: 34px; margin-bottom: 28px; display: block; }
-.mark circle:first-child { stroke: var(--ink); }
-.mark circle:last-child { fill: var(--clay); }
+.mark { width: auto; height: 40px; margin-bottom: 28px; display: block; }
 .rail a, .rail button { width: 48px; height: 48px; border-radius: var(--r-m); display: grid; place-items: center; color: var(--ink-2); position: relative; transition: background 0.2s, color 0.2s; }
 .rail a:hover, .rail button:hover { background: var(--paper-2); color: var(--ink); }
 .rail [aria-current='page'], .rail [aria-current='true'] { background: var(--ink); color: var(--paper); }
@@ -509,7 +507,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .public { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
 .public-top { display: flex; justify-content: space-between; align-items: center; padding: 22px clamp(16px, 4vw, 48px); gap: 12px; }
 .public-top .brand { display: flex; align-items: center; gap: 12px; }
-.public-top .brand .mark { margin: 0; width: 30px; height: 30px; }
+.public-top .brand .mark { margin: 0; width: auto; height: 36px; }
 .public-top nav { display: flex; gap: 8px; align-items: center; }
 .theme-toggle { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1px solid var(--ink); display: grid; place-items: center; color: var(--ink); transition: background 0.2s; }
 .theme-toggle:hover { background: var(--paper-2); }

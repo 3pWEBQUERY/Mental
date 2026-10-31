@@ -6,13 +6,13 @@ import { m, type Messages } from '@/messages'
 import { ThemeToggle } from './theme-toggle'
 import { LangSwitch } from './lang-switch'
 
+/**
+ * Logo: die Flamme mit dem Funken (public/jiaia-logo.svg – Original in docs/brand). Als Bild statt inline, damit
+ * es einmal geladen und gecacht wird. alt="" – daneben steht der Name bzw. der Link hat sein eigenes aria-label.
+ */
 export function Mark({ className = 'mark' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 34 34" aria-hidden="true">
-      <circle cx="17" cy="17" r="15.5" fill="none" strokeWidth="1.4" />
-      <circle cx="17" cy="17" r="6" />
-    </svg>
-  )
+  // eslint-disable-next-line @next/next/no-img-element -- statisches SVG, keine Bildoptimierung nötig
+  return <img src="/jiaia-logo.svg" alt="" className={className} width={374} height={614} decoding="async" />
 }
 
 export function Glyph({ seed, mood, small }: { seed: number; mood: number; small?: boolean }) {
