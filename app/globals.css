@@ -127,6 +127,25 @@ ul, ol { list-style: none; }
 .app:has(> .stage) { grid-template-columns: 76px minmax(360px, 40%) minmax(0, 1fr) 300px; }
 .app:has(> .stage):not(:has(> .side)) { grid-template-columns: 76px minmax(360px, 40%) minmax(0, 1fr); }
 .app > .page { max-width: 980px; }
+/* Einstellungen: breiter, damit die Auswahl pro Kreis (Normal · Folgen · Stummschalten) auf einer Zeile Platz hat. */
+.app > .page.settings-page { max-width: 1140px; }
+.settings-page .section { grid-template-columns: 180px minmax(0, 1fr); }
+.settings-page .section .sub { container-type: inline-size; }
+/* Kreis-Zeilen: die Auswahl bricht nie in sich um. Reicht der Platz nicht (schmales Handy, grosse Schrift),
+   rutscht sie als Ganzes unter den Namen – und ragt nie über den Bereich hinaus. */
+.kv.circle-pref { flex-wrap: wrap; row-gap: 8px; }
+.kv.circle-pref > span { min-width: 0; }
+.kv.circle-pref .segment { flex-wrap: nowrap; max-width: 100%; margin-left: auto; }
+.kv.circle-pref .segment button { white-space: nowrap; }
+/* Schmal (Handy): einheitlich – Name oben, Auswahl darunter über die ganze Breite, gleich breite Felder. */
+@container (max-width: 520px) {
+  .kv.circle-pref { flex-direction: column; align-items: stretch; }
+  .kv.circle-pref .segment { width: 100%; margin-left: 0; }
+  .kv.circle-pref .segment button { flex: 1 1 0; }
+}
+@container (max-width: 340px) {
+  .kv.circle-pref .segment button, .kv.circle-pref .segment .blob-copy { padding-inline: 8px; }
+}
 
 /* ---------- Rail ---------- */
 .rail { position: sticky; top: 0; height: 100vh; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; padding: 22px 0; gap: 6px; z-index: 5; background: var(--paper); }
@@ -631,7 +650,7 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   .landing-hero { grid-template-columns: 1fr; min-height: 0; }
   .landing-art { max-width: 320px; order: -1; }
   .principles { grid-template-columns: 1fr 1fr; }
-  .section { grid-template-columns: 1fr; gap: 12px; }
+  .section, .settings-page .section { grid-template-columns: 1fr; gap: 12px; }
 }
 @media (max-width: 860px) {
   .app, .app:has(> .stage), .app:has(> .stage):not(:has(> .side)) { grid-template-columns: 1fr; }
