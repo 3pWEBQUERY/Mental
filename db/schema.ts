@@ -126,6 +126,8 @@ export type Settings = {
   journalSalt?: string
   journalCheck?: { iv: string; ciphertext: string; salt: string }
   proHelpHintAt?: string
+  /** Zuletzt gezeigter kleiner Schritt – der nächste ist ein anderer. */
+  lastStep?: string
   /** Sprache der App für dieses Konto – gilt auf jedem Gerät nach der Anmeldung (Cookie lichtung_lang). */
   locale?: 'de' | 'fr'
   /** Neues Konto: kurze Einführung beim ersten Besuch (wird danach entfernt). */

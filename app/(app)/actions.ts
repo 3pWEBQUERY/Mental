@@ -1,5 +1,6 @@
 'use server'
 
+import { randomInt } from 'node:crypto'
 import { localStepText } from '@/lib/localize'
 import { and, count, desc, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -574,9 +575,18 @@ async function pickStep(userId: string): Promise<StepView> {
     const s = list.find((x) => x.id === doneToday.stepId)
     if (s) return { id: s.id, text: localStepText(s.text, s.i18n), done: true }
   }
-  const skips = todays.filter((l) => l.action === 'skip').length
-  const dayNo = Math.floor(Date.parse(`${today}T00:00:00Z`) / DAY)
-  const s = list[(dayNo + skips) % list.length]!
+  // Bei jedem Laden ein anderer Schritt: zufällig, nie derselbe wie zuletzt gezeigt und keiner, der heute schon
+  // übersprungen wurde. Gibt es zu wenige, wird die Ausschlussliste schrittweise kleiner.
+  const [p] = await db.select({ last: sql<string | null>`${profiles.settings}->>'lastStep'` }).from(profiles).where(eq(profiles.userId, userId))
+  const last = p?.last ?? null
+  const skipped = new Set(todays.filter((l) => l.action === 'skip').map((l) => l.stepId))
+  const pool = [list.filter((x) => x.id !== last && !skipped.has(x.id)), list.filter((x) => x.id !== last), list].find((c) => c.length)!
+  const s = pool[randomInt(pool.length)]!
+  if (s.id !== last)
+    await db
+      .update(profiles)
+      .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ lastStep: s.id })}::jsonb` })
+      .where(eq(profiles.userId, userId))
   return { id: s.id, text: localStepText(s.text, s.i18n), done: false }
 }
 
