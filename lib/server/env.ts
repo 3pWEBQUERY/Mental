@@ -29,6 +29,10 @@ export const env = {
   get usernameChecksPer10Min() {
     return Number(process.env.USERNAME_CHECKS_PER_10_MIN ?? 40)
   },
+  /** Max. 30 Passwort-Prüfungen (Have I Been Pwned) pro IP-Hash in 10 Minuten (für lokale Tests erhöhbar). */
+  get passwordChecksPer10Min() {
+    return Number(process.env.PASSWORD_CHECKS_PER_10_MIN ?? 30)
+  },
   /** Max. 3 neue Konten pro IP-Hash und Tag (für lokale Tests erhöhbar). */
   get registrationsPerIpPerDay() {
     return Number(process.env.REGISTRATIONS_PER_IP_PER_DAY ?? 3)
