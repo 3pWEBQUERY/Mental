@@ -159,8 +159,8 @@ async function countFailure(username: string, ip: string) {
 }
 
 export async function login(input: { username: string; password: string }): Promise<Result<{ notice: string | null }>> {
-  const username = normalizeUsername(String(input.username ?? ''))
-  const password = String(input.password ?? '')
+  const username = normalizeUsername(String(input?.username ?? ''))
+  const password = String(input?.password ?? '')
   const ip = await ipHash()
   if (!(await hit(`login-ip:${ip}`, 30, LOCK_MS)).ok) return fail(m.common.rateLimited)
   if (await isLocked(username, ip)) return fail(m.auth.locked)

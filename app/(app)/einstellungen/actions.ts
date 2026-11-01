@@ -59,7 +59,7 @@ const settingsSchema = z
     collapseWarnings: z.boolean(),
     discreet: z.boolean(),
     listener: z.boolean(),
-    locale: z.enum(['de', 'fr']),
+    locale: z.enum(['de', 'fr', 'it']),
   })
   .partial()
 
@@ -87,6 +87,8 @@ export async function finishOnboarding(): Promise<R> {
 
 export async function changePassword(input: { current: string; next: string }): Promise<R> {
   const v = await viewer()
+  // Auch über /api/v1 aufrufbar: fehlende oder falsche Felder sind ein normaler Fehler, kein Serverfehler.
+  if (typeof input?.current !== 'string' || typeof input?.next !== 'string') return fail(m.common.error)
   if (!(await checkPassword(v.userId, input.current))) return fail(m.auth.invalid)
   if (input.next.length < 10 || input.next.length > 256) return fail(m.register.passwordShort)
   if (await isPwned(input.next)) return fail(m.register.passwordPwned)

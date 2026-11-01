@@ -3,7 +3,9 @@ import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, replies, stepLog } from '@/db/schema'
 import { openText } from '@/lib/at-rest'
+import { localizeCircle } from '@/lib/localize'
 import { nightStaffed } from '@/lib/moderation-hours'
+import { currentLocale } from '@/messages'
 import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, type FeedView } from './posts'
 import { getViewer } from './session'
 import { getCircles, getCrisisTerms, getHelpResources } from './terms'
@@ -17,11 +19,13 @@ import { getCircles, getCrisisTerms, getHelpResources } from './terms'
 export async function me() {
   const v = await getViewer()
   if (!v) return null
+  // Sprache aus «X-Locale» der App (lib/server/request-locale.ts) – Kreise und Hilfe-Nummern wie im Web übersetzt.
+  const locale = currentLocale()
   const [last, circles, crisisTerms, help, follows] = await Promise.all([
     db.select({ mood: checkins.mood }).from(checkins).where(eq(checkins.userId, v.userId)).orderBy(desc(checkins.createdAt)).limit(1),
     getCircles(),
     getCrisisTerms(),
-    getHelpResources(),
+    getHelpResources(locale),
     db
       .select({ slug: circlesTable.slug, state: circlePrefs.state })
       .from(circlePrefs)
@@ -47,8 +51,9 @@ export async function me() {
       discreet: s.discreet ?? false,
       listener: s.listener ?? false,
       onboard: s.onboard ?? false,
+      locale: s.locale ?? null,
     },
-    circles: circles.map(({ slug, name, description, rules, color }) => ({ slug, name, description, rules, color })),
+    circles: circles.map((c) => localizeCircle(c, locale)).map(({ slug, name, description, rules, color }) => ({ slug, name, description, rules, color })),
     circlePrefs: Object.fromEntries(follows.map((f) => [f.slug, f.state])),
     crisisTerms,
     help,
@@ -56,7 +61,7 @@ export async function me() {
   }
 }
 
-/** Feed wie /lichtung – `circle` ist ein Kreis-Slug, «meine» (gefolgte Kreise) oder leer. */
+/** Feed wie /start – `circle` ist ein Kreis-Slug, «meine» (gefolgte Kreise) oder leer. */
 export async function feed(view: string, circle: string | null, cursor: string | null) {
   const v = await getViewer()
   if (!v) return null

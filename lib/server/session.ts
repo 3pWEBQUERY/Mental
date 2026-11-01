@@ -76,6 +76,7 @@ export async function createSession(userId: string, authMethod: AuthMethod) {
   const api = apiContext.get()
   if (api) {
     api.token = raw
+    await adoptAppLocale(userId, api.locale)
     return
   }
   ;(await cookies()).set(SESSION_COOKIE, raw, {
@@ -106,6 +107,15 @@ async function syncLocale(userId: string) {
       .update(profiles)
       .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ locale: device })}::jsonb` })
       .where(eq(profiles.userId, userId))
+}
+
+/** App: Hat das Konto noch keine Sprache, übernimmt es die der App (die App liest sie danach aus `me`). */
+async function adoptAppLocale(userId: string, locale: string | undefined) {
+  if (!isLocale(locale)) return
+  await db
+    .update(profiles)
+    .set({ settings: sql`jsonb_set(${profiles.settings}, '{locale}', to_jsonb(${locale}::text), true)` })
+    .where(and(eq(profiles.userId, userId), sql`NOT (${profiles.settings} ? 'locale')`))
 }
 
 /** Liest die Sitzung einmal pro Request. Gleitend 30 Tage gültig. */
