@@ -76,6 +76,7 @@ export async function createSession(userId: string, authMethod: AuthMethod) {
   const api = apiContext.get()
   if (api) {
     api.token = raw
+    api.viewer = undefined
     await adoptAppLocale(userId, api.locale)
     return
   }
@@ -118,8 +119,19 @@ async function adoptAppLocale(userId: string, locale: string | undefined) {
     .where(and(eq(profiles.userId, userId), sql`NOT (${profiles.settings} ? 'locale')`))
 }
 
-/** Liest die Sitzung einmal pro Request. Gleitend 30 Tage gültig. */
-export const getViewer = cache(async (): Promise<Viewer | null> => {
+/**
+ * Liest die Sitzung einmal pro Request. Gleitend 30 Tage gültig. In App-Anfragen (/api/v1) merkt sich der
+ * Anfrage-Speicher das Ergebnis – sonst liefe die Abfrage (samt Verlängerung) für die 401-Prüfung und die Action doppelt.
+ */
+export async function getViewer(): Promise<Viewer | null> {
+  const api = apiContext.get()
+  if (api && api.viewer !== undefined) return api.viewer as Viewer | null
+  const v = await loadViewer()
+  if (api) api.viewer = v
+  return v
+}
+
+const loadViewer = cache(async (): Promise<Viewer | null> => {
   // Alles mit Sitzung gehört zum Request – auch die Zeitvergleiche danach.
   await connection()
   const raw = await sessionToken()
@@ -194,6 +206,8 @@ export async function requireViewer(): Promise<Viewer> {
 }
 
 export async function destroySession() {
+  const api = apiContext.get()
+  if (api) api.viewer = undefined
   const raw = await sessionToken()
   if (raw) await db.delete(sessions).where(eq(sessions.tokenHash, sha256(raw)))
   if (!apiContext.get()) (await cookies()).delete(SESSION_COOKIE)

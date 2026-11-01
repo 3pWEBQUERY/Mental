@@ -42,7 +42,7 @@ export async function me() {
     createdAt: v.createdAt.toISOString(),
     lastMood: last[0]?.mood ?? null,
     settings: {
-      theme: s.theme ?? 'system',
+      theme: s.theme ?? 'light',
       fontSize: s.fontSize ?? 'normal',
       motion: s.motion ?? 'on',
       breathSound: s.breathSound ?? false,
