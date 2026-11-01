@@ -3,9 +3,9 @@ import * as app from '@/app/(app)/actions'
 import * as me from '@/app/(app)/(raum)/ich/actions'
 import * as settings from '@/app/(app)/einstellungen/actions'
 import * as auth from '@/app/(auth)/actions'
-import { apiContext } from '@/lib/server/api-context'
+import { apiContext, appLocale, bearerToken } from '@/lib/server/api-context'
 import * as mobile from '@/lib/server/mobile'
-import { destroySession } from '@/lib/server/session'
+import { destroySession, getViewer } from '@/lib/server/session'
 import { safeMessage } from '@/lib/log-safe'
 
 /**
@@ -96,6 +96,9 @@ const CALLS: Record<string, Call> = {
 
 const MAX_BODY = 64 * 1024
 
+/** Aufrufe, die ohne Sitzung gehen – hier darf ein altes Token mitkommen, ohne dass es 401 gibt. */
+const SESSIONLESS = new Set(['checkUsername', 'checkPassword', 'prepareRecoveryKey', 'register', 'setInitialDisplayName', 'login', 'recover', 'logout'])
+
 export async function POST(request: Request, { params }: { params: Promise<{ name: string }> }) {
   await connection()
   const { name } = await params
@@ -116,10 +119,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ nam
     return Response.json({ error: 'bad request' }, { status: 400 })
   }
   try {
-    const { result, token } = await apiContext.run(() => call(...(args as never[])))
+    const hasBearer = bearerToken(request.headers) !== null
+    const { result, token } = await apiContext.run(async () => {
+      // Abgelaufene oder anderswo beendete Sitzung: einheitlich 401, damit die App sofort abmeldet und keine
+      // zwischengespeicherten Inhalte weiter zeigt (die Actions selbst liefern sonst nur null oder []).
+      if (hasBearer && !SESSIONLESS.has(name) && !(await getViewer())) throw new Error('unauthorized')
+      return call(...(args as never[]))
+    }, appLocale(request.headers))
     return Response.json(token ? { result: result ?? null, token } : { result: result ?? null }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {
-    // Einstellungen werfen ohne Sitzung «unauthorized» – für die App heisst das: neu anmelden.
+    // Ohne gültige Sitzung «unauthorized» – für die App heisst das: neu anmelden.
     if (e instanceof Error && e.message === 'unauthorized') return Response.json({ error: 'unauthorized' }, { status: 401 })
     console.error(`[api/v1/${name}]`, safeMessage(e))
     return Response.json({ error: 'server' }, { status: 500 })

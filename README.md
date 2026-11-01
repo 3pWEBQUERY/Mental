@@ -115,6 +115,8 @@ Ohne Nachtbereitschaft ist das Team von 22 bis 7 Uhr (Schweizer Zeit) nicht erre
 Die iOS-App (Repository `mental-ios`) spricht mit denselben Server Actions wie die Web-App: `POST /api/v1/<name>` mit `{ "args": [...] }` ruft die gleichnamige Action auf – mit denselben Prüfungen, Grenzen, Texten und Benachrichtigungen. Erlaubt sind nur die Aufrufe in der Liste in `app/api/v1/[name]/route.ts`; dazu kommen lesende Abfragen aus `lib/server/mobile.ts` (`me`, `feed`, `post`, `history` …), die im Web in Server Components stecken.
 
 - **Sitzung:** `Authorization: Bearer <token>`. Nach `login`, `register` und `recover` steht das neue Token in der Antwort (`{ result, token }`). Es ist dieselbe Tabelle `sessions` wie im Web – die App erscheint unter «Aktive Sitzungen» als «iPhone · App» und lässt sich dort beenden.
+- **Abgelaufene Sitzung:** Kommt ein Bearer-Token mit, gehört aber zu keiner gültigen Sitzung mehr (abgelaufen, im Web beendet, Konto gelöscht), antwortet jeder Aufruf mit Sitzung mit `401` – die App meldet dann sofort ab.
+- **Sprache:** Die App schickt `X-Locale: de|fr|it`. Texte, Fehlermeldungen, Kreise und Hilfe-Nummern kommen in dieser Sprache; hat das Konto noch keine Sprache, übernimmt es die der App bei der Anmeldung. `me.settings.locale` liefert die Sprache des Kontos.
 - **Kein CSRF:** Auf `/api/v1` zählen Cookies nie, und es werden nur Anfragen mit `Content-Type: application/json` angenommen (`lib/server/api-context.ts`).
 - **Bilder** laden wie im Web über `/api/uploads` (signierte PUT-URL) und `/api/media/<id>`; beide akzeptieren das Bearer-Token.
 - **Tagebuch:** gleiches Format wie `lib/client/journal-crypto.ts` – Einträge sind in Web und App lesbar, der Server sieht nur Chiffretext.

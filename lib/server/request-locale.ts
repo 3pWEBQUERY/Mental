@@ -1,5 +1,6 @@
 import { workUnitAsyncStorage } from 'next/dist/server/app-render/work-unit-async-storage.external'
 import { isLocale, LOCALE_COOKIE, type Locale } from '@/messages'
+import { apiContext } from './api-context'
 
 type CookieReader = { get: (name: string) => { value: string } | undefined }
 
@@ -10,6 +11,9 @@ type CookieReader = { get: (name: string) => { value: string } | undefined }
  * Next-intern: Ein E2E-Test (i18n.spec.ts) prüft nach jedem Upgrade, dass Französisch ankommt.
  */
 export function requestLocale(): Locale | undefined {
+  // Apps (/api/v1) schicken keine Cookies, sondern die Sprache im Kopf «X-Locale».
+  const api = apiContext.get()
+  if (api) return api.locale
   try {
     const store = workUnitAsyncStorage.getStore() as { cookies?: unknown } | undefined
     const cookies = store?.cookies as CookieReader | undefined

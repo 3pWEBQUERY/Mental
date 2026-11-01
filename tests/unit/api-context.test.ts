@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apiContext, bearerToken } from '@/lib/server/api-context'
+import { apiContext, appLocale, bearerToken } from '@/lib/server/api-context'
 
 describe('App-Schnittstelle (/api/v1)', () => {
   it('liest nur gültige Bearer-Token', () => {
@@ -25,5 +25,13 @@ describe('App-Schnittstelle (/api/v1)', () => {
     expect(a).toEqual({ result: 1, token: 'erstes' })
     expect(b).toEqual({ result: 2, token: null })
     expect(apiContext.get()).toBeUndefined()
+  })
+
+  it('liest die Sprache der App nur aus «X-Locale» mit bekannten Sprachen', async () => {
+    expect(appLocale(new Headers({ 'x-locale': 'fr' }))).toBe('fr')
+    expect(appLocale(new Headers({ 'x-locale': ' IT ' }))).toBe('it')
+    expect(appLocale(new Headers({ 'x-locale': 'en' }))).toBeUndefined()
+    expect(appLocale(new Headers({ 'accept-language': 'fr-CH' }))).toBeUndefined()
+    expect(await apiContext.run(async () => apiContext.get()!.locale, 'it')).toEqual({ result: 'it', token: null })
   })
 })
