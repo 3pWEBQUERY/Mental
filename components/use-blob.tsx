@@ -16,7 +16,10 @@ function reducedMotion() {
  * die Beschriftung noch einmal in derselben Anordnung (Elemente mit Klasse `blob-copy`), sie wird hell
  * genau dort sichtbar, wo der Tropfen liegt.
  */
-export function useBlob<T extends HTMLElement>(active: string | null, { enabled = true, radius }: { enabled?: boolean; radius?: number } = {}) {
+export function useBlob<T extends HTMLElement>(
+  active: string | null,
+  { enabled = true, radius, colorVar }: { enabled?: boolean; radius?: number; colorVar?: string } = {},
+) {
   const host = useRef<T>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const ink = useRef<HTMLDivElement>(null)
@@ -93,6 +96,7 @@ export function useBlob<T extends HTMLElement>(active: string | null, { enabled 
             blob.current = null
             setOn(false)
           },
+          colorVar,
         )
         if (!b) return
         blob.current = b

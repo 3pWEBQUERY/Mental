@@ -61,4 +61,35 @@ export const Icon = {
       <path d="M6 6l3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5" />
     </svg>
   ),
+  /* Mobile Navigation (Leisten unten): etwas kräftiger, damit sie auf Glas gut lesbar sind. */
+  sunrise: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 16a5 5 0 0 1 10 0" />
+      <path d="M3 16h2M19 16h2M5.6 9.6l1.4 1.4M18.4 9.6 17 11M12 6.5V8.5M4 19.5h16" />
+    </svg>
+  ),
+  ring: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="7.5" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  leaf: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 19c0-8 5-13.5 14-14 .4 9-5 14-12.5 14Z" />
+      <path d="M5 19c3-4 6-6.5 9.5-8.5" />
+    </svg>
+  ),
+  gear: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M18 6l-1.6 1.6M7.6 16.4 6 18M18 18l-1.6-1.6M7.6 7.6 6 6" />
+      <circle cx="12" cy="12" r="6.3" />
+    </svg>
+  ),
+  wind: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h7" />
+    </svg>
+  ),
 }
