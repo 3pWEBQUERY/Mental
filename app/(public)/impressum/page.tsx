@@ -13,6 +13,9 @@ export default function ImprintPage() {
         <p className="fine" lang="fr">
           Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
         </p>
+        <p className="fine" lang="it">
+          Questo testo giuridico esiste per ora solo in tedesco. Una versione italiana seguirà dopo una verifica giuridica.
+        </p>
 
         <h2>Verantwortlich für Jiaia</h2>
         <address className="imprint">

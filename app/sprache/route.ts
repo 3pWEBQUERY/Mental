@@ -8,7 +8,7 @@ import { env } from '@/lib/server/env'
 import { isLocale, LOCALE_COOKIE } from '@/messages'
 
 /** Die beiden Hilfeseiten sind vorgerendert und einsprachig – beim Wechsel auf die jeweils andere springen. */
-const HELP_PAGE = { de: '/hilfe', fr: '/aide' } as const
+const HELP_PAGE = { de: '/hilfe', fr: '/aide', it: '/aiuto' } as const
 
 /**
  * Sprache wechseln: /sprache?l=fr&zurueck=/einstellungen. Setzt das Cookie für dieses Gerät, merkt es sich
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   let target = back.startsWith('/') && !back.startsWith('//') && !back.startsWith('/sprache') ? back : '/'
   if (!isLocale(l)) return NextResponse.redirect(new URL(target, env.appUrl))
 
-  if (target === HELP_PAGE.de || target === HELP_PAGE.fr) target = HELP_PAGE[l]
+  if (Object.values(HELP_PAGE).includes(target as never)) target = HELP_PAGE[l]
   ;(await cookies()).set(LOCALE_COOKIE, l, { path: '/', sameSite: 'lax', maxAge: 365 * 24 * 60 * 60, secure: env.isProd })
   const v = await getViewer()
   if (v)

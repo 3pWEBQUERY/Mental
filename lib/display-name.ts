@@ -5,7 +5,7 @@ import { detectPii } from './pii'
  * @Profil, Adresse, Link) und keine Autorität vortäuschen («Moderation», «Jiaia-Team» …) – in einem
  * pseudonymen Raum wäre beides ein naheliegender Missbrauch.
  */
-const OFFICIAL = /\b(jiaia|lichtung|moderat\w*|admin\w*|team|support|offiziell\w*|official|staff|mod)\b/i
+const OFFICIAL = /\b(jiaia|lichtung|moderaz\w*|ufficial\w*|squadra|moderat\w*|admin\w*|team|support|offiziell\w*|official|staff|mod)\b/i
 
 export type DisplayNameProblem = 'personal' | 'official'
 

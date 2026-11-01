@@ -249,8 +249,8 @@ export const de = {
   },
   help: {
     title: 'Sofort Hilfe',
-    otherLanguage: 'En français',
-    otherLanguageHref: '/aide',
+    /** Die vorgerenderte Hilfeseite dieser Sprache. */
+    href: '/hilfe',
     eyebrow: 'Sofort Hilfe',
     intro: 'Wenn es gerade zu viel ist, musst du nicht warten, bis jemand hier antwortet.',
     chat: 'Chat',

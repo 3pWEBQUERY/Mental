@@ -10,14 +10,14 @@ export function localizeCircle<T extends { name: string; description: string; ru
   locale: Locale = currentLocale(),
 ): Omit<T, 'i18n'> {
   const { i18n, ...rest } = c
-  const tr = locale === 'fr' ? i18n?.fr : undefined
+  const tr = locale === 'de' ? undefined : i18n?.[locale]
   return { ...rest, name: tr?.name || c.name, description: tr?.description || c.description, rules: tr?.rules || c.rules }
 }
 
 export function localCircleName(name: string, i18n: CircleI18n | null | undefined, locale: Locale = currentLocale()) {
-  return (locale === 'fr' && i18n?.fr?.name) || name
+  return (locale !== 'de' && i18n?.[locale]?.name) || name
 }
 
 export function localStepText(text: string, i18n: StepI18n | null | undefined, locale: Locale = currentLocale()) {
-  return (locale === 'fr' && i18n?.fr?.text) || text
+  return (locale !== 'de' && i18n?.[locale]?.text) || text
 }

@@ -15,7 +15,11 @@ describe('Sprache aus Accept-Language', () => {
   })
   it('fällt auf Deutsch zurück', () => {
     expect(pickLocale(null)).toBe('de')
-    expect(pickLocale('en-US,it;q=0.8')).toBe('de')
+    expect(pickLocale('en-US,es;q=0.8')).toBe('de')
+  })
+  it('erkennt Italienisch', () => {
+    expect(pickLocale('it-CH,it;q=0.9,de;q=0.8')).toBe('it')
+    expect(pickLocale('en-US,it;q=0.8')).toBe('it')
   })
 })
 

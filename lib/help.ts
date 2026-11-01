@@ -20,5 +20,12 @@ export const DEFAULT_HELP_FR: HelpResource[] = [
   { name: 'Urgences sanitaires', phone: '144', url: null, hours: '24 h sur 24', audience: 'en cas de danger immédiat' },
 ]
 
-export type HelpLanguage = 'de' | 'fr'
-export const defaultHelp = (language: HelpLanguage) => (language === 'fr' ? DEFAULT_HELP_FR : DEFAULT_HELP)
+/** Italienische Fassung für /aiuto (Tessin, italienischsprachige Bündner Täler). */
+export const DEFAULT_HELP_IT: HelpResource[] = [
+  { name: 'Telefono Amico', phone: '143', url: 'https://www.143.ch', hours: '24 ore su 24', audience: 'anonimo, per tutte e tutti' },
+  { name: 'Pro Juventute', phone: '147', url: 'https://www.147.ch', hours: '24 ore su 24', audience: 'per bambini e giovani' },
+  { name: 'Emergenza sanitaria', phone: '144', url: null, hours: '24 ore su 24', audience: 'in caso di pericolo immediato' },
+]
+
+export type HelpLanguage = 'de' | 'fr' | 'it'
+export const defaultHelp = (language: HelpLanguage) => (language === 'fr' ? DEFAULT_HELP_FR : language === 'it' ? DEFAULT_HELP_IT : DEFAULT_HELP)

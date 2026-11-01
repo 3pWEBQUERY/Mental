@@ -127,6 +127,12 @@ ul, ol { list-style: none; }
 .app:has(> .stage) { grid-template-columns: 76px minmax(360px, 40%) minmax(0, 1fr) 300px; }
 .app:has(> .stage):not(:has(> .side)) { grid-template-columns: 76px minmax(360px, 40%) minmax(0, 1fr); }
 .app > .page { max-width: 980px; }
+/* Sprachumschalter DE · FR · IT im Kopf der öffentlichen Seiten */
+.lang-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--paper-2); }
+.lang-switch a { min-width: 34px; padding: 6px 9px; border-radius: 999px; text-align: center; text-decoration: none; font-size: calc(12px * var(--fz)); letter-spacing: 0.06em; color: var(--ink-2); }
+.lang-switch a:hover { color: var(--ink); }
+.lang-switch a[aria-current='true'] { background: var(--ink); color: var(--paper); }
+@media (pointer: coarse) { .lang-switch a { min-height: 36px; display: inline-grid; place-items: center; } }
 /* Einstellungen: breiter, damit die Auswahl pro Kreis (Normal · Folgen · Stummschalten) auf einer Zeile Platz hat. */
 .app > .page.settings-page { max-width: 1140px; }
 .settings-page .section { grid-template-columns: 180px minmax(0, 1fr); }
@@ -531,7 +537,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .theme-toggle { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1px solid var(--ink); display: grid; place-items: center; color: var(--ink); transition: background 0.2s; }
 .theme-toggle:hover { background: var(--paper-2); }
 .theme-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.help-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--clay); color: var(--clay-ink); text-decoration: none; font-size: calc(14px * var(--fz)); font-weight: 500; }
+.help-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--clay); color: var(--clay-ink); text-decoration: none; font-size: calc(14px * var(--fz)); font-weight: 500; white-space: nowrap; }
 .public-main { padding: 20px clamp(16px, 4vw, 48px) 60px; }
 .public-foot { padding: 22px clamp(16px, 4vw, 48px); border-top: 1px solid var(--line); display: flex; gap: 18px; flex-wrap: wrap; font-size: calc(13px * var(--fz)); color: var(--ink-3); }
 .public-foot a { color: var(--ink-2); text-underline-offset: 3px; }
@@ -682,6 +688,20 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   dialog.dlg-large { width: calc(100% - 24px); }
   .principles { grid-template-columns: 1fr; }
   .public-top nav .hide-sm { display: none; }
+  /* Schmales Handy: Logo ohne Schriftzug, damit Hilfe, Sprache und Farbschema in den Kopf passen. */
+  .public-top .brand .wordmark { display: none; }
+}
+@media (max-width: 420px) {
+  /* Sehr schmal: Hilfe, Sprache und Farbschema etwas kompakter – alles auf einer Zeile. */
+  .public-top { gap: 8px; }
+  .public-top nav { gap: 6px; }
+  .public-top .help-pill { padding: 8px 11px; font-size: calc(13px * var(--fz)); }
+  .public-top .lang-switch a { min-width: 28px; padding-inline: 5px; }
+  .public-top .theme-toggle { width: 36px; height: 36px; }
+}
+@media (max-width: 340px) {
+  .public-top { padding-inline: 10px; }
+  .public-top .theme-toggle { width: 34px; height: 34px; }
   .acute .call a { min-width: 0; flex: 1; }
 }
 .need-mobile { display: none; }

@@ -20,9 +20,10 @@ export default async function HelpAdmin() {
           <input className="input" name="url" defaultValue={h?.url ?? ''} placeholder="https://…" aria-label="Link" />
           <input className="input" name="hours" defaultValue={h?.hours} placeholder="Zeiten" aria-label="Zeiten" required />
           <input className="input" name="audience" defaultValue={h?.audience} placeholder="Für wen" aria-label="Für wen" required />
-          <select className="input" name="language" defaultValue={h?.language ?? 'de'} aria-label="Sprache (de: /hilfe, fr: /aide)" style={{ flex: '0 0 110px', minWidth: 110 }}>
+          <select className="input" name="language" defaultValue={h?.language ?? 'de'} aria-label="Sprache (de: /hilfe, fr: /aide, it: /aiuto)" style={{ flex: '0 0 110px', minWidth: 110 }}>
             <option value="de">Deutsch</option>
             <option value="fr">Französisch</option>
+            <option value="it">Italienisch</option>
           </select>
           <input className="input" name="sort" type="number" defaultValue={h?.sort ?? rows.length * 10} aria-label="Reihenfolge" style={{ flex: '0 0 80px', minWidth: 80 }} />
           <button className="btn small">{h ? m.common.save : 'Hinzufügen'}</button>

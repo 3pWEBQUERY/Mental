@@ -80,8 +80,8 @@ export function PublicShell({
   t?: Messages
   lang?: string
 }) {
-  // Die eigene Hilfeseite ist jeweils die «andere» der anderen Sprache.
-  const helpHref = t.help.otherLanguageHref === '/aide' ? '/hilfe' : '/aide'
+  const helpHref = t.help.href
+  const current = helpHref === '/aide' ? 'fr' : helpHref === '/aiuto' ? 'it' : 'de'
   return (
     <div className="public" lang={lang}>
       <a className="skip" href="#inhalt">
@@ -101,6 +101,7 @@ export function PublicShell({
           <Link className="help-pill" href={helpHref} aria-current={active === 'help' ? 'page' : undefined}>
             {t.nav.help}
           </Link>
+          <LangSwitch current={current} label={t.settings.language} fallback={active === 'help' ? helpHref : '/'} />
           <ThemeToggle labels={{ toLight: t.settings.toLight, toDark: t.settings.toDark, toggle: t.settings.toggleTheme }} />
         </nav>
       </header>
@@ -114,8 +115,6 @@ export function PublicShell({
         <Link href="/transparenz">{t.landing.transparency}</Link>
         <Link href="/impressum">{t.landing.imprint}</Link>
         <Link href={helpHref}>{t.landing.help}</Link>
-        {/* Sprache wechseln – von den einsprachigen Hilfeseiten springt /sprache auf die jeweils andere. */}
-        <LangSwitch to={t.help.otherLanguageHref === '/aide' ? 'fr' : 'de'} label={t.help.otherLanguage} fallback={active === 'help' ? helpHref : '/'} />
       </footer>
     </div>
   )
