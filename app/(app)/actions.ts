@@ -570,16 +570,12 @@ async function pickStep(userId: string): Promise<StepView> {
     .where(and(eq(stepLog.userId, userId), gt(stepLog.createdAt, since)))
     .orderBy(desc(stepLog.createdAt))
   const todays = log.filter((l) => zurichDay(l.createdAt) === today)
-  const doneToday = todays.find((l) => l.action === 'done')
-  if (doneToday) {
-    const s = list.find((x) => x.id === doneToday.stepId)
-    if (s) return { id: s.id, text: localStepText(s.text, s.i18n), done: true }
-  }
-  // Bei jedem Laden ein anderer Schritt: zufällig, nie derselbe wie zuletzt gezeigt und keiner, der heute schon
-  // übersprungen wurde. Gibt es zu wenige, wird die Ausschlussliste schrittweise kleiner.
+  // Bei jedem Laden – und gleich nach «Gemacht» oder «Ein anderer» – ein anderer Schritt: zufällig, nie derselbe
+  // wie zuletzt gezeigt und keiner, der heute schon gemacht oder übersprungen wurde. Gibt es zu wenige, wird die
+  // Ausschlussliste schrittweise kleiner.
   const [p] = await db.select({ last: sql<string | null>`${profiles.settings}->>'lastStep'` }).from(profiles).where(eq(profiles.userId, userId))
   const last = p?.last ?? null
-  const skipped = new Set(todays.filter((l) => l.action === 'skip').map((l) => l.stepId))
+  const skipped = new Set(todays.map((l) => l.stepId))
   const pool = [list.filter((x) => x.id !== last && !skipped.has(x.id)), list.filter((x) => x.id !== last), list].find((c) => c.length)!
   const s = pool[randomInt(pool.length)]!
   if (s.id !== last)
