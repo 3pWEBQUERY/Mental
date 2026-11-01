@@ -97,7 +97,8 @@ const CALLS: Record<string, Call> = {
 const MAX_BODY = 64 * 1024
 
 /** Aufrufe, die ohne Sitzung gehen – hier darf ein altes Token mitkommen, ohne dass es 401 gibt. */
-const SESSIONLESS = new Set(['checkUsername', 'checkPassword', 'prepareRecoveryKey', 'register', 'setInitialDisplayName', 'login', 'recover', 'logout'])
+// `setInitialDisplayName` braucht die eben angelegte Sitzung – mit totem Token also 401 wie alles andere.
+const SESSIONLESS = new Set(['checkUsername', 'checkPassword', 'prepareRecoveryKey', 'register', 'login', 'recover', 'logout'])
 
 export async function POST(request: Request, { params }: { params: Promise<{ name: string }> }) {
   await connection()
@@ -106,6 +107,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ nam
   if (!call) return Response.json({ error: 'unknown' }, { status: 404 })
   // Nur JSON: Ein Formular einer fremden Seite kann diesen Content-Type nicht ohne CORS-Vorabprüfung senden.
   if (!request.headers.get('content-type')?.startsWith('application/json')) return Response.json({ error: 'json' }, { status: 415 })
+  // Zu gross? Schon am Kopf ablehnen, bevor der Body gelesen wird.
+  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY) return Response.json({ error: 'too large' }, { status: 413 })
   const text = await request.text()
   if (text.length > MAX_BODY) return Response.json({ error: 'too large' }, { status: 413 })
   let args: unknown[] = []
@@ -130,6 +133,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ nam
   } catch (e) {
     // Ohne gültige Sitzung «unauthorized» – für die App heisst das: neu anmelden.
     if (e instanceof Error && e.message === 'unauthorized') return Response.json({ error: 'unauthorized' }, { status: 401 })
+    // Falsche Argument-Typen (z. B. Zahl statt Text) sind ein Fehler der Anfrage, nicht des Servers.
+    if (e instanceof TypeError) return Response.json({ error: 'bad request' }, { status: 400 })
     console.error(`[api/v1/${name}]`, safeMessage(e))
     return Response.json({ error: 'server' }, { status: 500 })
   }

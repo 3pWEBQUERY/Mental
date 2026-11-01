@@ -9,7 +9,11 @@ export async function GET() {
   const appID = process.env.APPLE_APP_ID?.trim()
   if (!appID || !/^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$/.test(appID)) return new Response('Not found', { status: 404 })
   return Response.json(
-    { applinks: { details: [{ appIDs: [appID], components: [{ '/': '/start/gedanke/*' }, { '/': '/lichtung/gedanke/*' }] }] } },
+    {
+      applinks: { details: [{ appIDs: [appID], components: [{ '/': '/start/gedanke/*' }, { '/': '/lichtung/gedanke/*' }] }] },
+      // Passwort-Vorschläge: Was im Browser für jiaia.app gespeichert ist, schlägt iOS auch in der App vor.
+      webcredentials: { apps: [appID] },
+    },
     { headers: { 'Cache-Control': 'public, max-age=3600' } },
   )
 }

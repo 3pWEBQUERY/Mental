@@ -48,6 +48,9 @@ async function usernameTaken(username: string) {
 }
 
 export async function checkPassword(password: string): Promise<Result> {
+  if (typeof password !== 'string') return fail(m.common.error, 'password')
+  // Jede Prüfung fragt Have I Been Pwned – ohne Grenze liesse sich der Server als Abfrage-Proxy missbrauchen.
+  if (!(await hit(`pwcheck:${await ipHash()}`, env.passwordChecksPer10Min, 10 * MIN)).ok) return fail(m.common.rateLimited, 'password')
   if (password.length < 10) return fail(m.register.passwordShort, 'password')
   if (password.length > 256) return fail(m.common.error, 'password')
   if (await isPwned(password)) return fail(m.register.passwordPwned, 'password')

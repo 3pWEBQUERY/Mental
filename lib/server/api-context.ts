@@ -7,7 +7,8 @@ import { isLocale, type Locale } from '@/messages'
  * keine fremde Webseite mit dem Cookie einer angemeldeten Person über diese Schnittstelle schreiben (CSRF).
  * Meldet sich jemand an, legt `createSession` das neue Token hier ab, statt ein Cookie zu setzen.
  */
-type ApiContext = { token: string | null; locale?: Locale }
+/** `viewer`: einmal pro Anfrage geladen (React `cache` greift in Route-Handlern nicht). */
+type ApiContext = { token: string | null; locale?: Locale; viewer?: unknown }
 
 // Ein Speicher für alle Server-Bundles: Die Sprache liest `requestLocale` aus dem Bundle von instrumentation.ts,
 // die Anfrage läuft im Bundle der Route – ohne globalThis wären das zwei getrennte Speicher.
