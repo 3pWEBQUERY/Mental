@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function SettingsPage() {
   return (
-    <main className="page" id="inhalt">
+    <main className="page settings-page" id="inhalt">
       <div className="page-head">
         <h1 className="page-title">{m.settings.title}</h1>
       </div>

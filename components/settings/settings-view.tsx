@@ -395,7 +395,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             {s.muteCirclesHint}
           </p>
           {circles.map((c) => (
-            <div key={c.slug} className="kv">
+            <div key={c.slug} className="kv circle-pref">
               <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <i className="dot" style={{ background: circleColor(c.color) }} />
                 {c.name}
