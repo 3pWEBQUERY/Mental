@@ -212,3 +212,25 @@ test('Notfallplan: nur den Plan drucken, Offline-Kopie auf /offline, beim Abmeld
   await page.goto('/offline')
   await expect(page.locator('#offline-plan')).toBeHidden()
 })
+
+test('Ein kleiner Schritt: bei jedem Neuladen ein anderer, Feed und Seitenleiste gleich, erledigt bleibt erledigt', async ({ page }) => {
+  await register(page)
+  const text = () => page.locator('.side .step p').first().textContent()
+  const seen: string[] = []
+  for (let i = 0; i < 6; i++) {
+    if (i) await page.reload()
+    await expect(page.locator('.side .step')).toBeVisible()
+    const t = (await text())!.trim()
+    // Schmale Ansicht (im Feed) zeigt denselben Schritt wie die Seitenleiste.
+    expect((await page.locator('.step-inline .step p').first().textContent())!.trim()).toBe(t)
+    if (seen.length) expect(t, `Neuladen ${i}`).not.toBe(seen[seen.length - 1])
+    seen.push(t)
+  }
+  // Erledigt: bleibt beim Neuladen stehen.
+  await page.locator('.side .step').getByRole('button', { name: 'Gemacht' }).click()
+  await expect(page.locator('.side .step.done')).toBeVisible()
+  const done = (await text())!.trim()
+  await page.reload()
+  await expect(page.locator('.side .step.done')).toBeVisible()
+  expect((await text())!.trim()).toBe(done)
+})

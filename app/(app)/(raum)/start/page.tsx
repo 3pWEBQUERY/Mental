@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import { localizeCircle } from '@/lib/localize'
 import Link from 'next/link'
 import { eq } from 'drizzle-orm'
@@ -15,6 +16,9 @@ import { getFeed, type FeedView } from '@/lib/server/posts'
 import { requireViewer } from '@/lib/server/session'
 import { m } from '@/messages'
 import { currentStep, presenceCounts, touchCircle } from '../../actions'
+
+/** Ein Schritt pro Seitenaufruf: Feed (schmal) und Seitenleiste (breit) zeigen denselben – bei jedem Neuladen einen anderen. */
+const stepForRequest = cache(() => currentStep())
 
 // Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
 export async function generateMetadata(): Promise<Metadata> {
@@ -92,7 +96,7 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
   const circle = raw ? localizeCircle(raw) : undefined
   if (circle) await touchCircle(circle.slug)
-  const [page, step] = await Promise.all([getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }), currentStep()])
+  const [page, step] = await Promise.all([getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }), stepForRequest()])
   const params = new URLSearchParams()
   if (view !== 'all') params.set('ansicht', view)
   return (
@@ -141,5 +145,5 @@ async function SidePresence() {
 
 async function SideStep() {
   await requireViewer()
-  return <StepCard initial={await currentStep()} />
+  return <StepCard initial={await stepForRequest()} />
 }
