@@ -89,7 +89,7 @@ test('Nachts ohne Bereitschaft sagt «Sofort Hilfe» ehrlich, dass das Team nich
 
 test('Aide immédiate: französische Hilfeseite ohne Anmeldung, verlinkt mit /hilfe', async ({ page }) => {
   await page.goto('/hilfe')
-  await page.getByRole('link', { name: 'En français' }).click()
+  await page.getByRole('group', { name: 'Sprache' }).getByRole('link', { name: 'Français' }).click()
   await page.waitForURL('**/aide')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Aide')
   await expect(page.locator('.public[lang="fr-CH"]')).toBeVisible()
@@ -99,7 +99,7 @@ test('Aide immédiate: französische Hilfeseite ohne Anmeldung, verlinkt mit /hi
   await expect(aide.locator('a[href="tel:147"]')).toBeVisible()
   await expect(aide.locator('a[href="tel:144"]')).toContainText('Urgences')
   await expect(aide.locator('main')).not.toContainText('Dargebotene Hand')
-  await page.getByRole('link', { name: 'Auf Deutsch' }).click()
+  await page.getByRole('group', { name: 'Langue' }).getByRole('link', { name: 'Deutsch' }).click()
   await page.waitForURL('**/hilfe')
   await expect(page.locator('.public:not([lang]) a[href="tel:143"]').first()).toContainText('Die Dargebotene Hand')
 })
@@ -109,4 +109,17 @@ test('Krisensprache auf Französisch löst denselben Hinweis aus', async ({ page
   await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
   await page.locator('#composer-text').fill("Je n'en peux plus, j'ai envie de mourir")
   await expect(page.getByRole('dialog').locator('.care')).toContainText('143')
+})
+
+test('Aiuto immediato: italienische Hilfeseite ohne Anmeldung', async ({ page }) => {
+  await page.goto('/aiuto')
+  const aiuto = page.locator('.public[lang="it-CH"]')
+  await expect(aiuto).toBeVisible()
+  await expect(aiuto.locator('a[href="tel:143"]', { hasText: 'Telefono Amico' })).toBeVisible()
+  await expect(aiuto.locator('a[href="tel:147"]')).toBeVisible()
+  await expect(aiuto.locator('a[href="tel:144"]')).toContainText('Emergenza')
+  await expect(aiuto.locator('main')).not.toContainText('Dargebotene Hand')
+  // Von der Hilfeseite aus führt der Umschalter auf die Hilfeseite der anderen Sprache.
+  await page.getByRole('group', { name: 'Lingua' }).getByRole('link', { name: 'Deutsch' }).click()
+  await page.waitForURL('**/hilfe')
 })
