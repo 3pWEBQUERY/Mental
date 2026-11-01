@@ -119,7 +119,7 @@ describe('displayNameProblem', () => {
     for (const n of ['Mira 079 123 45 67', 'mira@example.ch', 'Insta @mira.k', 'www.mira.ch', '0 7 9 1 2 3 4']) expect(displayNameProblem(n)).toBe('personal')
   })
   it('lehnt vorgetäuschte Autorität ab', () => {
-    for (const n of ['Moderation', 'Jiaia Team', 'Lichtung Team', 'Admin Sara', 'Offizieller Support', 'Modératrice']) expect(displayNameProblem(n)).toBe('official')
+    for (const n of ['Moderation', 'Jiaia Team', 'Lichtung Team', 'Moderazione', 'Team ufficiale', 'Admin Sara', 'Offizieller Support', 'Modératrice']) expect(displayNameProblem(n)).toBe('official')
   })
 })
 

@@ -354,9 +354,14 @@ export async function saveCircle(form: FormData) {
       nameFr: z.string().trim().max(40).optional(),
       descriptionFr: z.string().trim().max(400).optional(),
       rulesFr: z.string().trim().max(400).optional(),
+      nameIt: z.string().trim().max(40).optional(),
+      descriptionIt: z.string().trim().max(400).optional(),
+      rulesIt: z.string().trim().max(400).optional(),
     })
     .parse(Object.fromEntries(form))
   const fr = { name: d.nameFr || undefined, description: d.descriptionFr || undefined, rules: d.rulesFr || undefined }
+  const it = { name: d.nameIt || undefined, description: d.descriptionIt || undefined, rules: d.rulesIt || undefined }
+  const has = (t: typeof fr) => Boolean(t.name || t.description || t.rules)
   const values = {
     slug: d.slug,
     name: d.name,
@@ -365,7 +370,7 @@ export async function saveCircle(form: FormData) {
     color: d.color,
     sort: d.sort,
     isActive: d.isActive === 'on',
-    i18n: fr.name || fr.description || fr.rules ? { fr } : {},
+    i18n: { ...(has(fr) ? { fr } : {}), ...(has(it) ? { it } : {}) },
   }
   if (d.id) await db.update(circles).set(values).where(eq(circles.id, d.id))
   else await db.insert(circles).values(values)
@@ -384,7 +389,7 @@ export async function saveHelp(form: FormData) {
       hours: str(80),
       audience: str(120),
       sort: z.coerce.number().int().min(0).max(999),
-      language: z.enum(['de', 'fr']).default('de'),
+      language: z.enum(['de', 'fr', 'it']).default('de'),
       remove: z.string().optional(),
     })
     .parse(Object.fromEntries(form))
@@ -404,7 +409,7 @@ export async function saveTerm(form: FormData) {
     .object({
       term: str(80),
       level: z.enum(['concern', 'acute']),
-      language: z.enum(['de', 'fr']).default('de'),
+      language: z.enum(['de', 'fr', 'it']).default('de'),
       remove: z.string().optional(),
       id: z.uuid().optional().or(z.literal('')),
     })
@@ -429,9 +434,11 @@ export async function saveStep(form: FormData) {
       sort: z.coerce.number().int().min(0).max(999),
       isActive: z.string().optional(),
       textFr: z.string().trim().max(200).optional(),
+      textIt: z.string().trim().max(200).optional(),
     })
     .parse(Object.fromEntries(form))
-  const values = { text: d.text, circleId: d.circleId || null, sort: d.sort, isActive: d.isActive === 'on', i18n: d.textFr ? { fr: { text: d.textFr } } : {} }
+  const i18n = { ...(d.textFr ? { fr: { text: d.textFr } } : {}), ...(d.textIt ? { it: { text: d.textIt } } : {}) }
+  const values = { text: d.text, circleId: d.circleId || null, sort: d.sort, isActive: d.isActive === 'on', i18n }
   if (d.id) await db.update(steps).set(values).where(eq(steps.id, d.id))
   else await db.insert(steps).values(values)
   await audit(admin.userId, 'steps:update', admin.userId, d.text.slice(0, 60))

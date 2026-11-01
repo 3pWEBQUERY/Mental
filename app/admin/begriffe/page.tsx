@@ -21,6 +21,7 @@ export default async function TermsAdmin() {
         <select className="input" name="language" aria-label="Sprache" style={{ flex: '0 0 130px', minWidth: 130 }}>
           <option value="de">Deutsch</option>
           <option value="fr">Französisch</option>
+          <option value="it">Italienisch</option>
         </select>
         <select className="input" name="level" aria-label="Stufe" style={{ flex: '0 0 140px', minWidth: 140 }}>
           <option value="acute">akut</option>
@@ -41,7 +42,7 @@ export default async function TermsAdmin() {
           {rows.map((t) => (
             <tr key={t.id}>
               <td lang={t.language}>{t.term}</td>
-              <td>{t.language === 'fr' ? 'FR' : 'DE'}</td>
+              <td>{t.language.toUpperCase()}</td>
               <td>{t.level === 'acute' ? 'akut' : 'Sorge'}</td>
               <td>
                 <form action={saveTerm}>

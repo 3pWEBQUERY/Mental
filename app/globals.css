@@ -127,6 +127,12 @@ ul, ol { list-style: none; }
 .app:has(> .stage) { grid-template-columns: 76px minmax(360px, 40%) minmax(0, 1fr) 300px; }
 .app:has(> .stage):not(:has(> .side)) { grid-template-columns: 76px minmax(360px, 40%) minmax(0, 1fr); }
 .app > .page { max-width: 980px; }
+/* Sprachumschalter DE · FR · IT im Kopf der öffentlichen Seiten */
+.lang-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--paper-2); }
+.lang-switch a { min-width: 34px; padding: 6px 9px; border-radius: 999px; text-align: center; text-decoration: none; font-size: calc(12px * var(--fz)); letter-spacing: 0.06em; color: var(--ink-2); }
+.lang-switch a:hover { color: var(--ink); }
+.lang-switch a[aria-current='true'] { background: var(--ink); color: var(--paper); }
+@media (pointer: coarse) { .lang-switch a { min-height: 36px; display: inline-grid; place-items: center; } }
 /* Einstellungen: breiter, damit die Auswahl pro Kreis (Normal · Folgen · Stummschalten) auf einer Zeile Platz hat. */
 .app > .page.settings-page { max-width: 1140px; }
 .settings-page .section { grid-template-columns: 180px minmax(0, 1fr); }
@@ -682,6 +688,8 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   dialog.dlg-large { width: calc(100% - 24px); }
   .principles { grid-template-columns: 1fr; }
   .public-top nav .hide-sm { display: none; }
+  /* Schmales Handy: Logo ohne Schriftzug, damit Hilfe, Sprache und Farbschema in den Kopf passen. */
+  .public-top .brand .wordmark { display: none; }
   .acute .call a { min-width: 0; flex: 1; }
 }
 .need-mobile { display: none; }

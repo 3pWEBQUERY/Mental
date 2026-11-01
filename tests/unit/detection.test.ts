@@ -79,3 +79,20 @@ describe('Krisenerkennung auf Französisch', () => {
     expect(detectCrisis('Les dimanches sont les plus durs.')).toBe('none')
   })
 })
+
+describe('Krisenerkennung auf Italienisch', () => {
+  it('erkennt akute Krisensprache, mit Akzenten', () => {
+    expect(detectCrisis('A volte voglio morire.')).toBe('acute')
+    expect(detectCrisis('Non voglio più vivere così')).toBe('acute')
+    expect(detectCrisis('Ho pensieri suicidi da settimane')).toBe('acute')
+    expect(detectCrisis('Voglio farla finita')).toBe('acute')
+  })
+  it('stuft Sorge niedriger ein', () => {
+    expect(detectCrisis('Non ce la faccio più, sono un peso per tutti')).toBe('concern')
+    expect(detectCrisis('Mi sento disperata')).toBe('concern')
+  })
+  it('lässt Alltagssätze in Ruhe', () => {
+    expect(detectCrisis('Facciamola finita con questa storia del parcheggio')).toBe('none')
+    expect(detectCrisis('Le domeniche sono le più difficili.')).toBe('none')
+  })
+})

@@ -1,6 +1,6 @@
 /* Jiaia Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
-const CACHE = 'jiaia-v4'
-const OFFLINE = ['/offline', '/hilfe', '/aide']
+const CACHE = 'jiaia-v5'
+const OFFLINE = ['/offline', '/hilfe', '/aide', '/aiuto']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(OFFLINE)).then(() => self.skipWaiting()))
@@ -23,7 +23,7 @@ self.addEventListener('fetch', (event) => {
     fetch(req).catch(async () => {
       const cache = await caches.open(CACHE)
       const url = new URL(req.url)
-      const page = url.pathname === '/hilfe' || url.pathname === '/aide' ? url.pathname : '/offline'
+      const page = ['/hilfe', '/aide', '/aiuto'].includes(url.pathname) ? url.pathname : '/offline'
       return (await cache.match(page)) || Response.error()
     }),
   )

@@ -149,8 +149,9 @@ export const profiles = pgTable('profiles', {
 
 /* --------------------------------------------------------------- Kreise */
 
-export type CircleI18n = { fr?: { name?: string; description?: string; rules?: string } }
-export type StepI18n = { fr?: { text?: string } }
+type CircleText = { name?: string; description?: string; rules?: string }
+export type CircleI18n = { fr?: CircleText; it?: CircleText }
+export type StepI18n = { fr?: { text?: string }; it?: { text?: string } }
 
 export const circles = pgTable('circles', {
   id: id(),

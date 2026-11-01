@@ -252,8 +252,8 @@ export const fr: Messages = {
   },
   help: {
     title: 'Aide immédiate',
-    otherLanguage: 'Auf Deutsch',
-    otherLanguageHref: '/hilfe',
+    /** Die vorgerenderte Hilfeseite dieser Sprache. */
+    href: '/aide',
     eyebrow: 'Aide immédiate',
     intro: 'Si c’est trop en ce moment, tu n’as pas besoin d’attendre que quelqu’un réponde ici.',
     chat: 'Chat',

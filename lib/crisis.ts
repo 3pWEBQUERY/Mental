@@ -90,8 +90,51 @@ export const DEFAULT_CRISIS_TERMS_FR: CrisisTerm[] = [
   { term: 'envie de disparaitre', level: 'concern' },
 ]
 
-/** Rückfall ohne Datenbank: beide Sprachen. */
-export const ALL_DEFAULT_CRISIS_TERMS: CrisisTerm[] = [...DEFAULT_CRISIS_TERMS, ...DEFAULT_CRISIS_TERMS_FR]
+/**
+ * Italienische Startliste (Tessin). Wie die französische eng gefasst und in jeder Oberflächen-Sprache gültig.
+ * «Akut» stellt einen Gedanken bis zur Prüfung zurück – darum keine Redewendungen wie «farla finita» allein
+ * («farla finita con questa storia»), sondern «voglio farla finita». Vor dem Launch von einer Fachperson
+ * abzunehmen (docs/i18n/it-pruefung.md).
+ */
+export const DEFAULT_CRISIS_TERMS_IT: CrisisTerm[] = [
+  { term: 'voglio morire', level: 'acute' },
+  { term: 'vorrei morire', level: 'acute' },
+  { term: 'voglia di morire', level: 'acute' },
+  { term: 'non voglio piu vivere', level: 'acute' },
+  { term: 'non ho piu voglia di vivere', level: 'acute' },
+  { term: 'stanco di vivere', level: 'acute' },
+  { term: 'stanca di vivere', level: 'acute' },
+  { term: 'voglio farla finita', level: 'acute' },
+  { term: 'farla finita con la vita', level: 'acute' },
+  { term: 'togliermi la vita', level: 'acute' },
+  { term: 'suicidarmi', level: 'acute' },
+  { term: 'suicidio', level: 'acute' },
+  { term: 'pensieri suicidi', level: 'acute' },
+  { term: 'voglio uccidermi', level: 'acute' },
+  { term: 'voglio ammazzarmi', level: 'acute' },
+  { term: 'non svegliarmi piu', level: 'acute' },
+  { term: 'lettera di addio', level: 'acute' },
+  { term: 'buttarmi dal ponte', level: 'acute' },
+  { term: 'farmi del male', level: 'concern' },
+  { term: 'ferirmi', level: 'concern' },
+  { term: 'autolesionismo', level: 'concern' },
+  { term: 'niente ha piu senso', level: 'concern' },
+  { term: 'la mia vita non ha senso', level: 'concern' },
+  { term: 'senza speranza', level: 'concern' },
+  { term: 'sono disperato', level: 'concern' },
+  { term: 'sono disperata', level: 'concern' },
+  { term: 'mi sento disperato', level: 'concern' },
+  { term: 'mi sento disperata', level: 'concern' },
+  { term: 'nessuno sentirebbe la mia mancanza', level: 'concern' },
+  { term: 'meglio senza di me', level: 'concern' },
+  { term: 'sono un peso', level: 'concern' },
+  { term: 'non ce la faccio piu', level: 'concern' },
+  { term: 'voglio sparire', level: 'concern' },
+  { term: 'vorrei sparire', level: 'concern' },
+]
+
+/** Rückfall ohne Datenbank: alle Sprachen. */
+export const ALL_DEFAULT_CRISIS_TERMS: CrisisTerm[] = [...DEFAULT_CRISIS_TERMS, ...DEFAULT_CRISIS_TERMS_FR, ...DEFAULT_CRISIS_TERMS_IT]
 
 const RANK: Record<CrisisLevel, number> = { none: 0, concern: 1, acute: 2 }
 

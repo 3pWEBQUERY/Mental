@@ -14,6 +14,9 @@ export default function PrivacyPage() {
         <p className="fine" lang="fr">
           Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
         </p>
+        <p className="fine" lang="it">
+          Questo testo giuridico esiste per ora solo in tedesco. Una versione italiana seguirà dopo una verifica giuridica.
+        </p>
         <p>
           Jiaia verarbeitet Gedanken zu Gesundheit und Gefühlen. Nach dem Schweizer Datenschutzgesetz sind das
           besonders schützenswerte Daten. Darum gilt bei uns: Was wir nicht speichern, kann nicht leaken.
@@ -22,7 +25,7 @@ export default function PrivacyPage() {
         <ul className="dash">
           <li>Keine E-Mail-Adresse, keine Telefonnummer, keinen Klarnamen, kein Geburtsdatum, keinen Standort.</li>
           <li>Keine Analytics-Tools, keine Werbe-Cookies, kein Fingerprinting.</li>
-          <li>Zwei Cookies: die Sitzung (nur wenn du angemeldet bist) und die gewählte Sprache (Deutsch oder Französisch). Sonst nichts.</li>
+          <li>Zwei Cookies: die Sitzung (nur wenn du angemeldet bist) und die gewählte Sprache (Deutsch, Französisch oder Italienisch). Sonst nichts.</li>
           <li>Keine Skripte von Dritten. Schriften und Three.js liefern wir selbst aus.</li>
         </ul>
         <h2>Was wir speichern</h2>
