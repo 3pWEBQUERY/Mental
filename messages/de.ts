@@ -33,6 +33,8 @@ export const de = {
     feed: 'Jiaia',
     share: 'Gedanken teilen',
     breathe: '1 Minute atmen',
+    breatheShort: 'Atmen',
+    shareShort: 'Teilen',
     circles: 'Kreise',
     me: 'Ich',
     notifications: 'Benachrichtigungen',

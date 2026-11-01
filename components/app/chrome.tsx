@@ -23,6 +23,7 @@ import { ServiceWorkerRegister } from './sw-register'
 import { attempt } from '@/lib/client/attempt'
 import { AppealInline } from './appeal'
 import { Onboarding } from './onboarding'
+import { MobileNav } from './mobile-nav'
 import { useModerationAway } from './use-moderation-away'
 
 /**
@@ -102,6 +103,7 @@ export function AppChrome({
         />
         {children}
       </div>
+      <MobileNav unread={unread} circlesOpen={circlesOpen} onCircles={() => setCirclesOpen(true)} />
 
       <Composer />
       <Grounding />

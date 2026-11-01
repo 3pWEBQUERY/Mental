@@ -36,6 +36,8 @@ export const fr: Messages = {
     feed: 'Jiaia',
     share: 'Partager une pensée',
     breathe: '1 minute pour respirer',
+    breatheShort: 'Respirer',
+    shareShort: 'Partager',
     circles: 'Cercles',
     me: 'Moi',
     notifications: 'Notifications',

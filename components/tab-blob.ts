@@ -45,7 +45,14 @@ function cssColor(token: string, fallback: string) {
  * `onFrame` bekommt die gezeichnete Form (CSS-Pixel) – damit die Schrift darüber hell wird, genau wo der Tropfen ist.
  * `radius` in CSS-Pixeln für eckigere Auswahlen (Kreisliste); ohne Angabe eine Pille.
  */
-export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | null) => void, radius = -1, onLost?: () => void) {
+export function createTabBlob(
+  canvas: HTMLCanvasElement,
+  onFrame?: (box: Box | null) => void,
+  radius = -1,
+  onLost?: () => void,
+  /** CSS-Variable für die Farbe des Tropfens (Standard: Tinte). */
+  colorVar = '--ink',
+) {
   let renderer: THREE.WebGLRenderer
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power', premultipliedAlpha: false })
@@ -64,7 +71,7 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
   const uniforms = {
     uRes: { value: new THREE.Vector2(1, 1) },
     uBox: { value: new THREE.Vector4(0, 0, 0, 0) },
-    uColor: { value: cssColor('--ink', '#1c1c1a') },
+    uColor: { value: cssColor(colorVar, '#1c1c1a') },
     uDpr: { value: dpr },
     uRadius: { value: radius },
   }
@@ -185,7 +192,7 @@ export function createTabBlob(canvas: HTMLCanvasElement, onFrame?: (box: Box | n
       draw()
     },
     recolor() {
-      uniforms.uColor.value = cssColor('--ink', '#1c1c1a')
+      uniforms.uColor.value = cssColor(colorVar, '#1c1c1a')
       draw()
     },
     get size() {
