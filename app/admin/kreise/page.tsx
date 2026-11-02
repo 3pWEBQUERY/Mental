@@ -90,12 +90,13 @@ function CircleForm({ c, sort, posts = 0, others = [] }: { c: Circle | null; sor
             <label className="fine" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               Beim Löschen: {posts} {posts === 1 ? 'Gedanke kommt' : 'Gedanken kommen'} in
               <select className="input" name="moveTo" defaultValue={others.find((o) => o.isActive)?.id} aria-label="Gedanken verschieben nach" style={{ width: 'auto' }}>
-                {others.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                    {o.isActive ? '' : ' (inaktiv)'}
-                  </option>
-                ))}
+                {others
+                  .filter((o) => o.isActive)
+                  .map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
               </select>
             </label>
           )}

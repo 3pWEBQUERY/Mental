@@ -1,6 +1,6 @@
 'use server'
 
-import { and, count, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, count, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -22,7 +22,7 @@ import {
 import { processMedia, rejectMedia } from '@/lib/media'
 import { syncReplyCount } from '@/lib/reply-count'
 import { assertModerator, canModerate, memberFromToken, ROLE_PROPOSAL_DAYS } from '@/lib/server/admin'
-import { notifyAdmins, notifyModeration, notifySystem } from '@/lib/server/notify'
+import { notifyAdmins, notifyModeration, notifyReply, notifySystem } from '@/lib/server/notify'
 import { m, type Messages } from '@/messages'
 import { safeMessage } from '@/lib/log-safe'
 import type { AdminResult } from '@/lib/admin-result'
@@ -79,9 +79,23 @@ export async function moderate(form: FormData) {
   switch (action) {
     case 'approve':
     // «Gesehen · Fürsorge senden»: wie Freigeben, dazu eine ruhige Nachricht mit den Hilfe-Nummern an die Person.
-    case 'care':
+    case 'care': {
+      const [before] =
+        targetType === 'reply'
+          ? await db.select({ status: replies.status, isAuthor: replies.isAuthor }).from(replies).where(eq(replies.id, targetId))
+          : []
       await setStatus('visible')
+      // Eine zurückgehaltene Antwort ist jetzt sichtbar: Die Person, die den Gedanken geteilt hat, erfährt es –
+      // wie bei einer Antwort, die sofort sichtbar war.
+      if (before && before.status !== 'visible' && !before.isAuthor) {
+        const [p] = await db
+          .select({ userId: posts.userId, body: posts.body })
+          .from(posts)
+          .where(and(eq(posts.id, target.postId), isNull(posts.deletedAt)))
+        if (p) await notifyReply(p.userId, target.postId, p.body).catch((e) => console.error('[notify] Freigabe', safeMessage(e)))
+      }
       break
+    }
     case 'hide':
       await setStatus('hidden')
       break
@@ -429,7 +443,7 @@ export async function deleteCircle(form: FormData): Promise<AdminResult> {
   if (!parsed.success) return nope(INVALID)
   const { id, moveTo } = parsed.data
   const result = await db.transaction(async (tx) => {
-    const [c] = await tx.select({ name: circles.name, slug: circles.slug }).from(circles).where(eq(circles.id, id)).for('update')
+    const [c] = await tx.select({ name: circles.name, slug: circles.slug, requireCw: circles.requireCw }).from(circles).where(eq(circles.id, id)).for('update')
     if (!c) return nope('Diesen Kreis gibt es nicht mehr.')
     const [other] = await tx
       .select({ id: circles.id })
@@ -440,9 +454,13 @@ export async function deleteCircle(form: FormData): Promise<AdminResult> {
     const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(posts).where(eq(posts.circleId, id))
     if (n > 0) {
       if (!moveTo || moveTo === id) return nope(`Der Kreis hat ${n} Gedanken. Wähle, in welchen Kreis sie kommen.`)
-      const [target] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.id, moveTo))
-      if (!target) return nope('Den gewählten Kreis gibt es nicht mehr.')
-      await tx.update(posts).set({ circleId: moveTo }).where(eq(posts.circleId, id))
+      const [target] = await tx.select({ id: circles.id }).from(circles).where(and(eq(circles.id, moveTo), eq(circles.isActive, true)))
+      if (!target) return nope('Wähle einen aktiven Kreis, in den die Gedanken kommen.')
+      // Gedanken aus einem Kreis mit Pflicht-Inhaltshinweis behalten ihn im neuen Kreis.
+      await tx
+        .update(posts)
+        .set({ circleId: moveTo, ...(c.requireCw ? { contentWarning: true } : {}) })
+        .where(eq(posts.circleId, id))
     }
     await tx.delete(circles).where(eq(circles.id, id))
     return done(n > 0 ? `Kreis «${c.name}» gelöscht, ${n} Gedanken verschoben.` : `Kreis «${c.name}» gelöscht.`)

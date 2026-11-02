@@ -3,8 +3,9 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
-import { journalEntries, letters, profiles, safetyPlans, type SafetyPlan } from '@/db/schema'
+import { journalEntries, letters, profiles, safetyPlans, users, type SafetyPlan } from '@/db/schema'
 import { openJson, openText, sealJson, sealText } from '@/lib/at-rest'
+import { verifySecret } from '@/lib/server/password'
 import { hit } from '@/lib/server/rate-limit'
 import { getViewer } from '@/lib/server/session'
 import { m } from '@/messages'
@@ -32,6 +33,27 @@ export async function setupJournal(input: { salt: string; check: { iv: string; c
     .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ journalSalt: parsed.data.salt, journalCheck: parsed.data.check })}::jsonb` })
     .where(and(eq(profiles.userId, v.userId), sql`NOT (${profiles.settings} ? 'journalSalt')`))
   return true
+}
+
+/**
+ * PIN vergessen: Die Einträge sind ohne PIN unlesbar (auch für uns). Wer das Passwort kennt, kann das Tagebuch
+ * löschen und neu beginnen. Das Passwort schützt davor, dass jemand am entsperrten Gerät alles löscht.
+ */
+export async function resetJournal(password: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const v = await getViewer()
+  if (!v) return { ok: false, error: m.common.sessionEnded }
+  if (typeof password !== 'string' || !password) return { ok: false, error: m.auth.invalid }
+  if (!(await hit(`pw-check:${v.userId}`, 10, 15 * 60_000)).ok) return { ok: false, error: m.common.rateLimited }
+  const [u] = await db.select({ hash: users.passwordHash }).from(users).where(eq(users.id, v.userId))
+  if (!u || !(await verifySecret(u.hash, password))) return { ok: false, error: m.auth.invalid }
+  await db.transaction(async (tx) => {
+    await tx.delete(journalEntries).where(eq(journalEntries.userId, v.userId))
+    await tx
+      .update(profiles)
+      .set({ settings: sql`${profiles.settings} - 'journalSalt' - 'journalCheck'` })
+      .where(eq(profiles.userId, v.userId))
+  })
+  return { ok: true }
 }
 
 export async function listJournal(): Promise<JournalCipher[]> {

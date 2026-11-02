@@ -1,6 +1,7 @@
 import { LIMITS, type Need, type SupportKind } from './constants'
 import type { CircleI18n } from '../db/schema'
 import { localCircleName } from './localize'
+import { m } from '../messages'
 
 /**
  * Öffentliche Datenformen. Sie enthalten NIE user_id oder username –
@@ -106,15 +107,20 @@ export type ReplyRow = {
   deletedAt: Date | null
 }
 
-export function toPublicReply(r: ReplyRow, viewerId: string, postOwnerId: string): PublicReply {
+/**
+ * postAnonymous: Antwortet die Verfasserin eines anonymen Gedankens, heisst sie «Anonym» in der Sprache der
+ * lesenden Person – gespeichert ist es in ihrer eigenen, und das verriete ihre Sprache.
+ * Gelöschte Antworten tragen weder Namen noch Zeichen noch die Kennzeichnung «Verfasserin».
+ */
+export function toPublicReply(r: ReplyRow, viewerId: string, postOwnerId: string, postAnonymous = false): PublicReply {
   const isMine = r.userId === viewerId
   const viewerIsOwner = postOwnerId === viewerId
   const deleted = r.deletedAt !== null || r.status === 'removed'
   return {
     id: r.id,
-    authorHandle: r.authorHandle,
-    glyphSeed: r.glyphSeed,
-    isAuthor: r.isAuthor,
+    authorHandle: deleted ? '' : r.isAuthor && postAnonymous ? m.common.anonymous : r.authorHandle,
+    glyphSeed: deleted ? 0 : r.glyphSeed,
+    isAuthor: deleted ? false : r.isAuthor,
     body: deleted ? null : r.body,
     deleted,
     isMine,
@@ -141,7 +147,8 @@ export function toPublicPost(
   const now = ctx.now ?? Date.now()
   return {
     id: p.id,
-    authorHandle: p.authorHandle,
+    // Anonym: in der Sprache der lesenden Person, nie in der gespeicherten (die verriete die Sprache der Verfasserin).
+    authorHandle: p.visibility === 'anonymous' ? m.common.anonymous : p.authorHandle,
     anonymous: p.visibility === 'anonymous',
     glyphSeed: p.glyphSeed,
     mood: p.mood,
@@ -165,6 +172,6 @@ export function toPublicPost(
     media: ctx.media,
     replies: ctx.replies
       .filter((r) => !r.hiddenByAuthor || r.userId === ctx.viewerId || isMine)
-      .map((r) => toPublicReply(r, ctx.viewerId, p.userId)),
+      .map((r) => toPublicReply(r, ctx.viewerId, p.userId, p.visibility === 'anonymous')),
   }
 }

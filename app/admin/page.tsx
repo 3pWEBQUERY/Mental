@@ -163,15 +163,17 @@ export default async function QueuePage() {
                 <span className={`prio p${g.priority}`}>{m.admin.priority[g.priority]}</span>
                 {g.priority === 0 && now - g.first.getTime() > ACUTE_SLA_MS && <span className="prio overdue">{m.admin.overdue}</span>}
                 <span>{m.admin.targetType[g.type]}</span>
-                {isMod && content.userId ? (
-                  <Link className="member-link" href={`/admin/konto/${encodeURIComponent(memberToken(content.userId))}`}>
-                    {m.admin.member} {authorRef}
-                  </Link>
-                ) : (
-                  <span>
-                    {m.admin.member} {authorRef}
-                  </span>
-                )}
+                {/* Peers sehen keine Mitglieds-ID: Sie ist pro Konto gleich und verbände anonyme mit Gedanken unter Namen. */}
+                {isMod &&
+                  (content.userId ? (
+                    <Link className="member-link" href={`/admin/konto/${encodeURIComponent(memberToken(content.userId))}`}>
+                      {m.admin.member} {authorRef}
+                    </Link>
+                  ) : (
+                    <span>
+                      {m.admin.member} {authorRef}
+                    </span>
+                  ))}
                 <span>{m.admin.status[content.status]}</span>
                 <span>{relativeTime(content.createdAt)}</span>
               </div>

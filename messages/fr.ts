@@ -375,6 +375,12 @@ export const fr: Messages = {
     shareHint: 'Seul ce texte est transmis sans chiffrement.',
     deleteConfirm: 'Supprimer cette entrée ?',
     unsupported: 'Ton navigateur ne prend pas en charge le chiffrement (WebCrypto). Le journal n’est pas disponible ici.',
+    forgot: 'PIN oublié ?',
+    forgotHint: 'Sans PIN, les entrées ne peuvent plus être lues – pas même par nous. Tu peux supprimer le journal et recommencer avec un nouveau PIN.',
+    forgotPassword: 'Pour confirmer : ton mot de passe',
+    forgotReset: 'Supprimer le journal et recommencer',
+    forgotConfirm: 'Toutes les entrées du journal seront supprimées définitivement. C’est irréversible.',
+    forgotDone: 'Le journal est supprimé. Choisis un nouveau PIN.',
   },
   settings: {
     title: 'Réglages',
@@ -754,6 +760,8 @@ export const fr: Messages = {
   },
   push: {
     reply: 'Quelqu’un t’a répondu',
+    discreetTitle: 'Nouvelle notification',
+    discreetBody: 'Touche pour ouvrir.',
     acuteTitle: 'Jiaia · Modération',
     acuteBody: 'Un signalement urgent attend.',
   },

@@ -15,4 +15,21 @@ export function forgetPrivate() {
     localStorage.removeItem(REVEALED_KEY)
     localStorage.removeItem(PLAN_KEY)
   } catch {}
+  forgetPush()
+}
+
+/**
+ * Push-Abo dieses Geräts beenden: Nach dem Abmelden oder dem Notausgang kämen auf einem geteilten Gerät sonst
+ * weiter Mitteilungen für die vorige Person an. Der Server entfernt das Abo beim nächsten Versand (410).
+ * Wer sich wieder anmeldet, schaltet Mitteilungen in den Einstellungen neu ein.
+ */
+function forgetPush() {
+  try {
+    if (!('serviceWorker' in navigator)) return
+    void navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => reg?.pushManager.getSubscription())
+      .then((sub) => sub?.unsubscribe())
+      .catch(() => {})
+  } catch {}
 }
