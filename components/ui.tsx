@@ -73,39 +73,47 @@ export function PublicShell({
   active,
   t = m,
   lang,
+  hero,
 }: {
   children: ReactNode
   active?: 'login' | 'register' | 'help'
+  /** Bildfüllender Bereich ganz oben (Startseite): Der Header liegt dann ohne Hintergrund darauf. */
+  hero?: ReactNode
   /** Wörterbuch und Sprache der Seite – Standard Deutsch (das <html>-Element bleibt de-CH). */
   t?: Messages
   lang?: string
 }) {
   const helpHref = t.help.href
   const current = helpHref === '/aide' ? 'fr' : helpHref === '/aiuto' ? 'it' : 'de'
+  const header = (
+    <header className={hero ? 'public-top on-hero' : 'public-top'}>
+      <Link href="/" className="brand">
+        <Mark />
+        <span className="wordmark">{t.brand}</span>
+      </Link>
+      <nav aria-label={t.nav.label}>
+        {active !== 'login' && (
+          <Link className="btn ghost small hide-sm" href="/anmelden">
+            {t.auth.login}
+          </Link>
+        )}
+        <Link className="help-pill" href={helpHref} aria-current={active === 'help' ? 'page' : undefined}>
+          {t.nav.help}
+        </Link>
+        <LangSwitch current={current} label={t.settings.language} fallback={active === 'help' ? helpHref : '/'} />
+        <ThemeToggle labels={{ toLight: t.settings.toLight, toDark: t.settings.toDark, toggle: t.settings.toggleTheme }} />
+      </nav>
+    </header>
+  )
   return (
-    <div className="public" lang={lang}>
+    <div className={hero ? 'public with-hero' : 'public'} lang={lang}>
       <a className="skip" href="#inhalt">
         {t.nav.skip}
       </a>
-      <header className="public-top">
-        <Link href="/" className="brand">
-          <Mark />
-          <span className="wordmark">{t.brand}</span>
-        </Link>
-        <nav aria-label={t.nav.label}>
-          {active !== 'login' && (
-            <Link className="btn ghost small hide-sm" href="/anmelden">
-              {t.auth.login}
-            </Link>
-          )}
-          <Link className="help-pill" href={helpHref} aria-current={active === 'help' ? 'page' : undefined}>
-            {t.nav.help}
-          </Link>
-          <LangSwitch current={current} label={t.settings.language} fallback={active === 'help' ? helpHref : '/'} />
-          <ThemeToggle labels={{ toLight: t.settings.toLight, toDark: t.settings.toDark, toggle: t.settings.toggleTheme }} />
-        </nav>
-      </header>
+      {header}
+      {/* Der Hero gehört zum Inhalt: «Zum Inhalt» führt so direkt zur Frage und zum Anmelden. */}
       <main id="inhalt" className="public-main">
+        {hero}
         {children}
       </main>
       <footer className="public-foot">

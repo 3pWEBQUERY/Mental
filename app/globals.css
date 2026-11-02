@@ -570,12 +570,67 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .input-row .input { flex: 1; min-width: 0; }
 
 .landing { max-width: 1120px; margin: 0 auto; }
-.landing-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 32px; align-items: center; min-height: 62vh; padding-bottom: 40px; }
-.landing-hero .display { font-size: calc(clamp(46px, 6.4vw, 92px) * var(--fz)); max-width: 12ch; }
-.landing-hero .lead { color: var(--ink-2); font-size: calc(17px * var(--fz)); max-width: 44ch; margin: 22px 0 28px; }
-.landing-art { position: relative; aspect-ratio: 1; width: 100%; max-width: 480px; justify-self: center; }
-.gathering, .gathering-still { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.gathering canvas { display: block; }
+
+/* Startseite: Sternenhimmel über die ganze Breite. Bleibt in beiden Farbschemata dunkel – das Bild ist Nacht. */
+.with-hero { position: relative; }
+.with-hero .public-main { padding: 0 0 60px; }
+.with-hero .landing { padding: 56px clamp(16px, 4vw, 48px) 0; }
+.public-top.on-hero {
+  position: absolute; z-index: 3; top: 14px; left: 50%; transform: translateX(-50%);
+  width: min(1200px, calc(100% - 2 * clamp(10px, 3vw, 32px)));
+  padding: 8px 10px 8px 18px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; background: transparent;
+  /* Die Bausteine im Header (Knöpfe, Sprache, Farbschema) lesen diese Farben – hell auf Nacht. */
+  --ink: #f4efe6; --ink-2: rgba(244, 239, 230, 0.8); --paper: #0c1424; --paper-2: rgba(255, 255, 255, 0.08);
+  --line: rgba(255, 255, 255, 0.18); --clay: rgba(255, 186, 120, 0.75); --clay-ink: #ffd2a6;
+  color: var(--ink);
+}
+.public-top.on-hero .brand { color: var(--ink); }
+.public-top.on-hero .theme-toggle:hover { background: rgba(255, 255, 255, 0.1); }
+.public-top.on-hero :focus-visible { outline-color: #f4efe6; }
+
+.hero { position: relative; isolation: isolate; min-height: max(100svh, 680px); display: grid; justify-items: center; align-content: start; overflow: hidden; color: #f4efe6; background: #0b1426; }
+/* Querformat: Bild etwas höher als der Bereich, damit die Person unter dem Text steht und das Licht auf ihn zuläuft. */
+.hero-bg-wrap { position: absolute; inset: 0 0 auto; height: 100%; z-index: -2; }
+@media (min-aspect-ratio: 1/1) { .hero-bg-wrap { height: 118%; } }
+.hero-bg { object-fit: cover; object-position: 50% 0%; }
+/* Etwas mehr Nacht hinter dem Text – der Himmel ist an manchen Stellen hell. */
+.hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse 72% 50% at 50% 22%, rgba(4, 9, 20, 0.55), transparent 72%), linear-gradient(to bottom, rgba(4, 9, 20, 0.4), transparent 28%); }
+.hero-inner { width: min(1080px, 100%); padding: calc(96px + 5vh) clamp(16px, 4vw, 32px) 0; text-align: center; display: grid; justify-items: center; }
+.hero-eyebrow { font-size: calc(12px * var(--fz)); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(244, 239, 230, 0.74); margin-bottom: 18px; }
+.hero-title { font-family: var(--serif); font-weight: 400; font-size: calc(clamp(42px, 5.6vw, 96px) * var(--fz)); line-height: 1; letter-spacing: -0.02em; text-wrap: balance; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45); }
+.hero-title em { font-style: italic; }
+.hero-ask { margin-top: clamp(28px, 4.5vh, 48px); width: min(560px, 100%); display: flex; align-items: center; gap: 12px; padding: 7px 7px 7px 24px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(8, 14, 28, 0.45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: rgba(244, 239, 230, 0.8); text-decoration: none; text-align: left; font-size: calc(16px * var(--fz)); transition: border-color 0.2s, background 0.2s, color 0.2s; }
+.hero-ask:hover { border-color: rgba(255, 255, 255, 0.45); background: rgba(8, 14, 28, 0.6); color: #fff; }
+.hero-ask-text { flex: 1; min-width: 0; }
+.hero-ask-go { flex: none; width: 46px; height: 46px; border-radius: 50%; background: #f4efe6; color: #0c1424; display: grid; place-items: center; transition: transform 0.2s; }
+.hero-ask:hover .hero-ask-go { transform: translateX(2px); }
+.hero-ask-go svg, .hero-quick svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.hero-lead { margin-top: 18px; max-width: 52ch; font-size: calc(15px * var(--fz)); line-height: 1.55; color: rgba(244, 239, 230, 0.86); text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7); }
+.hero-login { margin-top: 22px; padding: 10px 24px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(8, 14, 28, 0.38); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #f4efe6; text-decoration: none; font-size: calc(14px * var(--fz)); font-weight: 500; transition: border-color 0.2s; }
+.hero-login:hover { border-color: rgba(255, 255, 255, 0.6); }
+.hero-quick { position: absolute; bottom: clamp(16px, 4vh, 44px); left: 50%; transform: translateX(-50%); display: flex; gap: 18px; }
+.hero-quick a { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: #f4efe6; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(8, 14, 28, 0.32); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.04); transition: background 0.2s, border-color 0.2s; }
+.hero-quick a:hover { background: rgba(8, 14, 28, 0.55); border-color: rgba(255, 255, 255, 0.5); }
+.hero :focus-visible { outline: 2px solid #f4efe6; outline-offset: 3px; }
+@keyframes hero-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hero-drift { from { transform: scale(1.06); } to { transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-motion]) .hero-inner > * { animation: hero-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  :root:not([data-motion]) .hero-inner > :nth-child(2) { animation-delay: 0.08s; }
+  :root:not([data-motion]) .hero-inner > :nth-child(3) { animation-delay: 0.2s; }
+  :root:not([data-motion]) .hero-inner > :nth-child(4) { animation-delay: 0.3s; }
+  :root:not([data-motion]) .hero-inner > :nth-child(5) { animation-delay: 0.38s; }
+  :root:not([data-motion]) .hero-bg { animation: hero-drift 14s ease-out both; }
+}
+@media (max-width: 640px) {
+  .public-top.on-hero { top: 10px; padding: 5px 5px 5px 12px; }
+  .hero { min-height: max(100svh, 640px); }
+  .hero-inner { padding-top: 112px; }
+  .hero-ask { padding-left: 18px; font-size: calc(15px * var(--fz)); }
+  .hero-ask-go { width: 42px; height: 42px; }
+  .hero-lead { font-size: calc(14px * var(--fz)); }
+  .hero-quick a { width: 46px; height: 46px; }
+}
 .principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); margin-top: 40px; }
 .principles li { padding: 24px 22px 24px 0; border-bottom: 1px solid var(--line); }
 .principles b { display: block; font-family: var(--serif); font-weight: 400; font-size: calc(26px * var(--fz)); line-height: 1.1; margin-bottom: 8px; }
@@ -666,8 +721,6 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   .step-inline { display: block; }
   }
 @media (max-width: 960px) {
-  .landing-hero { grid-template-columns: 1fr; min-height: 0; }
-  .landing-art { max-width: 320px; order: -1; }
   .principles { grid-template-columns: 1fr 1fr; }
   .section, .settings-page .section { grid-template-columns: 1fr; gap: 12px; }
 }

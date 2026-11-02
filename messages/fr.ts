@@ -575,7 +575,8 @@ export const fr: Messages = {
     tooMany: 'Plusieurs comptes ont déjà été créés depuis ici aujourd’hui. Réessaie demain.',
   },
   landing: {
-    heroArt: 'Des personnes sont assises autour d’un feu chaleureux ; de temps en temps, une étincelle de soutien passe de l’une à l’autre',
+    ask: 'Qu’est-ce que tu portes avec toi aujourd’hui ?',
+    quick: 'Accès rapide',
     eyebrow: 'Anonyme · calme · sans chiffres',
     title: 'Un lieu où',
     titleEm: 'personne ne juge',
