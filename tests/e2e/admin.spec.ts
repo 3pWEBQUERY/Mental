@@ -159,7 +159,7 @@ test('Moderation: Krisen-Alarm, weichgezeichnet, Übernahme, Fürsorge, Einspruc
   await appeal.getByRole('link', { name: /Mitglied/ }).click()
   await expect(mod.getByRole('heading', { name: /Mitglied/ })).toBeVisible()
   await expect(mod.locator('.facts')).toContainText('stumm')
-  await expect(mod.locator('table')).toContainText('mute24')
+  await expect(mod.locator('table')).toContainText('24 h stumm')
   await mod.getByRole('button', { name: 'Stummschaltung aufheben' }).click()
   await expect(mod.locator('.facts')).toContainText('aktiv')
   await mod.goto('/admin')
