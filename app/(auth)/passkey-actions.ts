@@ -20,7 +20,7 @@ const FRESH_MS = 10 * 60_000
  * Schlüssel erbeutet hat, kommt so nicht sofort in den Moderationsbereich – die Admins sind informiert und
  * können das Konto in der Zeit sperren.
  */
-export const STAFF_RECOVERY_WAIT_MS = 72 * 60 * 60_000
+const STAFF_RECOVERY_WAIT_MS = 72 * 60 * 60_000
 
 /**
  * Ein neuer Passkey öffnet den Moderationsbereich. Wer nur ein Passwort erbeutet hat, darf sich darum

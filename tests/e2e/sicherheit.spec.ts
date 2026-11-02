@@ -113,7 +113,7 @@ test('Admin: Moderationskonten lassen sich nicht direkt sperren', async ({ brows
   await page.getByRole('button', { name: 'Teilen', exact: true }).click()
   await expect(page.locator('article', { hasText: text })).toBeVisible()
   const [post] = await sql<{ id: string }>(`SELECT p.id FROM posts p JOIN users u ON u.id = p.user_id WHERE u.username = $1`, [username])
-  await sql(`INSERT INTO reports (target_type, target_id, reason, priority) VALUES ('post', $1, 'auto_flag', 2)`, [post!.id])
+  await sql(`INSERT INTO reports (id, target_type, target_id, reason, priority) VALUES (gen_random_uuid(), 'post', $1, 'auto_flag', 2)`, [post!.id])
   await admin.goto('/admin')
   const item = admin.locator('.queue-item', { hasText: text })
   await expect(item).toBeVisible()
@@ -133,6 +133,7 @@ test('Antwort bleibt bei Netzabbruch erhalten', async ({ browser }) => {
   await b.goto('/start')
   const card = b.locator('article', { hasText: text })
   await expect(card).toBeVisible()
+  await card.locator('.reply-toggle').click()
   const reply = 'Eine lange, liebevolle Antwort, die nicht verloren gehen darf.'
   await card.getByLabel('Antwort schreiben').fill(reply)
   await b.context().setOffline(true)
