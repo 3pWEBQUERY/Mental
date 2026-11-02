@@ -1,7 +1,9 @@
-import Image from 'next/image'
+import { getImageProps } from 'next/image'
 import Link from 'next/link'
 import { m } from '@/messages'
-import sky from './sternenhimmel.webp'
+import { HeroVideo } from './hero-video'
+import posterDesktop from './hero-poster.webp'
+import posterMobile from './hero-poster-m.webp'
 
 const Icon = {
   arrow: (
@@ -27,6 +29,26 @@ const Icon = {
 }
 
 /**
+ * Standbild = erstes Bild der Video-Schleife. Hochformat (bis 9:16) bekommt einen Ausschnitt aus der Bildmitte –
+ * sonst würde auf dem Handy ein Viertel eines Querformat-Bilds hochskaliert (unscharf). Dieselbe Grenze wählt
+ * das Video (hero-video.tsx), damit beim Übergang nichts springt. Es zählt für die Ladezeit: früh und mit Vorrang.
+ */
+function Poster() {
+  const common = { alt: '', sizes: '100vw', fill: true, loading: 'eager', fetchPriority: 'high', placeholder: 'blur' } as const
+  const { props: desktop } = getImageProps({ ...common, src: posterDesktop })
+  const {
+    props: { srcSet: mobile },
+  } = getImageProps({ ...common, src: posterMobile })
+  return (
+    <picture>
+      <source media="(max-aspect-ratio: 9/16)" srcSet={mobile} sizes="100vw" />
+      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- getImageProps liefert alt="" */}
+      <img {...desktop} className="hero-bg" />
+    </picture>
+  )
+}
+
+/**
  * Startseite: Sternenhimmel über die ganze Breite, der Header liegt ohne Hintergrund darauf (PublicShell `hero`).
  * Der Text steht oben im dunklen Himmel; das Licht aus dem Kopf der Person läuft genau darauf zu.
  * Statt eines E-Mail-Felds (Jiaia fragt nie nach einer E-Mail) die Frage aus dem Gedanken-Fenster – sie führt
@@ -37,7 +59,8 @@ export function LandingHero() {
   return (
     <section className="hero" aria-labelledby="hero-title">
       <div className="hero-bg-wrap">
-        <Image src={sky} alt="" fill priority placeholder="blur" sizes="100vw" className="hero-bg" />
+        <Poster />
+        <HeroVideo />
       </div>
       <div className="hero-inner">
         <p className="hero-eyebrow">{l.eyebrow}</p>

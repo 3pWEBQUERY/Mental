@@ -48,3 +48,36 @@ test('Datenschutz und Impressum: auf Deutsch ganz deutsch, Hinweis nur in der ge
     await expect(fr.getByText('Questo testo giuridico')).toBeHidden()
   }
 })
+
+test('Startseite: Video-Hintergrund lädt erst nach der Seite und läuft in Schleife – nicht bei «weniger Bewegung»', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await ctx.newPage()
+  await page.goto('/')
+  const video = page.locator('video.hero-video')
+  await expect(video).toHaveClass(/\bon\b/, { timeout: 20_000 })
+  const state = await video.evaluate((v: HTMLVideoElement) => ({ src: v.currentSrc, loop: v.loop, muted: v.muted, paused: v.paused }))
+  expect(state.src).toMatch(/\/hero\/v1\/desktop-(av1|h264)\.mp4$/)
+  expect(state).toMatchObject({ loop: true, muted: true, paused: false })
+  await ctx.close()
+
+  // Hochformat: Ausschnitt-Fassung.
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  const p = await phone.newPage()
+  await p.goto('/')
+  await expect(p.locator('video.hero-video')).toHaveClass(/\bon\b/, { timeout: 20_000 })
+  expect(await p.locator('video.hero-video').evaluate((v: HTMLVideoElement) => v.currentSrc)).toMatch(/\/hero\/v1\/mobile-(av1|h264)\.mp4$/)
+  await phone.close()
+
+  // Weniger Bewegung: nur das Standbild, das Video wird gar nicht geladen.
+  const calm = await browser.newContext({ reducedMotion: 'reduce' })
+  const c = await calm.newPage()
+  let requested = false
+  c.on('request', (r) => {
+    if (r.url().includes('/hero/v1/')) requested = true
+  })
+  await c.goto('/')
+  await c.waitForTimeout(3000)
+  expect(requested).toBe(false)
+  await expect(c.locator('video.hero-video')).not.toHaveClass(/\bon\b/)
+  await calm.close()
+})
