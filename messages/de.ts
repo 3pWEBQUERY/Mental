@@ -372,6 +372,12 @@ export const de = {
     shareHint: 'Nur dieser Text wird unverschlüsselt übertragen.',
     deleteConfirm: 'Diesen Eintrag löschen?',
     unsupported: 'Dein Browser unterstützt keine Verschlüsselung (WebCrypto). Das Tagebuch ist hier nicht verfügbar.',
+    forgot: 'PIN vergessen?',
+    forgotHint: 'Ohne PIN lassen sich die Einträge nicht mehr lesen – auch nicht von uns. Du kannst das Tagebuch löschen und mit einer neuen PIN neu beginnen.',
+    forgotPassword: 'Zur Bestätigung: dein Passwort',
+    forgotReset: 'Tagebuch löschen und neu beginnen',
+    forgotConfirm: 'Alle Tagebuch-Einträge werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.',
+    forgotDone: 'Das Tagebuch ist gelöscht. Wähle eine neue PIN.',
   },
   settings: {
     title: 'Einstellungen',
@@ -751,6 +757,9 @@ export const de = {
   },
   push: {
     reply: 'Jemand hat dir geantwortet',
+    /** Diskret-Modus: nichts, was auf Jiaia oder ein Gespräch schliessen lässt. */
+    discreetTitle: 'Neue Mitteilung',
+    discreetBody: 'Tippe zum Öffnen.',
     acuteTitle: 'Jiaia · Moderation',
     acuteBody: 'Ein akuter Hinweis wartet.',
   },

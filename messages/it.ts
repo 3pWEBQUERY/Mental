@@ -375,6 +375,12 @@ export const it: Messages = {
     shareHint: 'Solo questo testo viene trasmesso senza cifratura.',
     deleteConfirm: 'Eliminare questa annotazione?',
     unsupported: 'Il tuo browser non supporta la cifratura (WebCrypto). Qui il diario non è disponibile.',
+    forgot: 'PIN dimenticato?',
+    forgotHint: 'Senza PIN le voci non si possono più leggere – nemmeno da noi. Puoi eliminare il diario e ricominciare con un nuovo PIN.',
+    forgotPassword: 'Per conferma: la tua password',
+    forgotReset: 'Elimina il diario e ricomincia',
+    forgotConfirm: 'Tutte le voci del diario saranno eliminate definitivamente. Non si può annullare.',
+    forgotDone: 'Il diario è stato eliminato. Scegli un nuovo PIN.',
   },
   settings: {
     title: 'Impostazioni',
@@ -754,6 +760,8 @@ export const it: Messages = {
   },
   push: {
     reply: 'Qualcuno ti ha risposto',
+    discreetTitle: 'Nuova notifica',
+    discreetBody: 'Tocca per aprire.',
     acuteTitle: 'Jiaia · Moderazione',
     acuteBody: 'Una segnalazione acuta è in attesa.',
   },

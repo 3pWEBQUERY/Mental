@@ -6,6 +6,7 @@ import { and, count, desc, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } fr
 import { z } from 'zod'
 import { db } from '@/db'
 import {
+  moderationActions,
   blocks,
   bookmarks,
   breathLog,
@@ -26,7 +27,7 @@ import {
   support,
   users,
 } from '@/db/schema'
-import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
+import { ANON_HANDLE, LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
 import { alertAcute } from '@/lib/acute-alert'
 import { openText, sealText } from '@/lib/at-rest'
 import { hardDeletePost } from '@/lib/post-delete'
@@ -154,7 +155,8 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
       mood: d.mood,
       body: d.body,
       visibility: d.visibility,
-      authorHandle: anonymous ? m.common.anonymous : v.displayName,
+      // Fester Platzhalter statt der Oberflächensprache: angezeigt wird «Anonym» in der Sprache der Lesenden (lib/dto.ts).
+      authorHandle: anonymous ? ANON_HANDLE : v.displayName,
       glyphSeed: anonymous ? randomSeed() : v.glyphSeed,
       contentWarning: d.contentWarning || circle.requireCw,
       expiresAt: d.letGoDays ? new Date(Date.now() + d.letGoDays * DAY) : null,
@@ -213,13 +215,19 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
   if (!circle) return fail(m.common.error)
 
   const level = detectCrisis(d.body, await getCrisisTerms())
+  // Einen Inhaltshinweis der Moderation kann die Verfasserin beim Bearbeiten nicht wieder abschalten.
+  const [modCw] = await db
+    .select({ id: moderationActions.id })
+    .from(moderationActions)
+    .where(and(eq(moderationActions.targetType, 'post'), eq(moderationActions.targetId, d.id), eq(moderationActions.action, 'cw')))
+    .limit(1)
   await db
     .update(posts)
     .set({
       body: d.body,
       need: d.need,
       circleId: circle.id,
-      contentWarning: d.contentWarning || circle.requireCw,
+      contentWarning: d.contentWarning || circle.requireCw || Boolean(modCw),
       editedAt: new Date(),
       crisisLevel: level,
       ...(level === 'acute' ? { status: 'pending' as const } : {}),
@@ -324,7 +332,7 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
   await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', safeMessage(e)))
   if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
-  return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId), acute: level === 'acute' }
+  return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId, p.visibility === 'anonymous'), acute: level === 'acute' }
 }
 
 async function ownReplyTarget(viewerId: string, replyId: string) {

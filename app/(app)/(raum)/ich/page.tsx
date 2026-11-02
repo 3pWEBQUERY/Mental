@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { TabBar } from '@/components/tab-bar'
 import { Loading } from '@/components/ui'
@@ -158,8 +158,20 @@ async function Saved({ v }: { v: Viewer }) {
     .select({ id: replies.id, body: replies.body, handle: replies.authorHandle, createdAt: replies.createdAt, postBody: posts.body })
     .from(replies)
     .innerJoin(posts, eq(posts.id, replies.postId))
-    .where(and(eq(posts.userId, v.userId), eq(replies.helpful, true), isNull(replies.deletedAt), isNull(posts.deletedAt), isNotNull(replies.body)))
+    .where(
+      and(
+        eq(posts.userId, v.userId),
+        eq(replies.helpful, true),
+        // Von der Moderation ausgeblendete Antworten und solche von Konten in Löschung gehören nicht mehr hierher.
+        eq(replies.status, 'visible'),
+        isNull(replies.deletedAt),
+        isNull(posts.deletedAt),
+        isNotNull(replies.body),
+        sql`NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ${replies.userId} AND u.status = 'deleting')`,
+      ),
+    )
     .orderBy(desc(replies.createdAt))
+    .limit(100)
   return (
     <section>
       <h2 className="section-label">{m.me.savedTitle}</h2>

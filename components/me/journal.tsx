@@ -5,6 +5,7 @@ import {
   addJournalEntry,
   deleteJournalEntry,
   listJournal,
+  resetJournal,
   setupJournal,
   type JournalCipher,
 } from '@/app/(app)/(raum)/ich/actions'
@@ -28,6 +29,7 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
   const [entries, setEntries] = useState<Entry[]>([])
   const [draft, setDraft] = useState('')
   const [supported, setSupported] = useState(true)
+  const [resetPw, setResetPw] = useState('')
   const j = m.journal
 
   useEffect(() => setSupported(cryptoAvailable()), [])
@@ -37,12 +39,19 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
     if (pin.length < 6) return setError(j.pinShort)
     if (pin !== pin2) return setError(j.pinMismatch)
     setBusy(true)
+    let ok = false
+    let key: CryptoKey | null = null
     const salt = random(16)
-    const key = await deriveMaster(pin, salt)
-    const check = await encryptText(key, CHECK_TEXT)
-    const ok = await setupJournal({ salt: b64(salt), check })
+    let check: Awaited<ReturnType<typeof encryptText>> | null = null
+    try {
+      key = await deriveMaster(pin, salt)
+      check = await encryptText(key, CHECK_TEXT)
+      ok = await setupJournal({ salt: b64(salt), check })
+    } catch {
+      ok = false
+    }
     setBusy(false)
-    if (!ok) return setError(m.common.error)
+    if (!ok || !key || !check) return setError(m.common.error)
     setSetup({ salt: b64(salt), check })
     setMaster(key)
     setPin('')
@@ -75,8 +84,9 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
     e.preventDefault()
     if (!master || !draft.trim()) return
     setBusy(true)
-    const sealed = await encryptText(master, draft.trim())
-    const saved = await addJournalEntry(sealed)
+    const saved = await encryptText(master, draft.trim())
+      .then((sealed) => addJournalEntry(sealed))
+      .catch(() => null)
     setBusy(false)
     if (!saved) return toast(m.common.error)
     setEntries((cur) => [{ ...saved, text: draft.trim() }, ...cur])
@@ -153,6 +163,44 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
               {busy ? m.common.loading : j.unlock}
             </button>
           </div>
+          <details>
+            <summary className="linkish">{j.forgot}</summary>
+            <div className="stack" style={{ gap: 10, marginTop: 10 }}>
+              <p className="fine">{j.forgotHint}</p>
+              <label className="field-label" htmlFor="journal-reset-pw">
+                {j.forgotPassword}
+              </label>
+              <input
+                id="journal-reset-pw"
+                className="input"
+                type="password"
+                autoComplete="current-password"
+                value={resetPw}
+                onChange={(e) => setResetPw(e.target.value)}
+              />
+              <div>
+                <button
+                  type="button"
+                  className="btn ghost danger small"
+                  disabled={busy || !resetPw}
+                  onClick={async () => {
+                    if (!(await askConfirm(j.forgotConfirm, j.forgotReset))) return
+                    setBusy(true)
+                    const res = await attempt(() => resetJournal(resetPw))
+                    setBusy(false)
+                    if (!res) return
+                    setResetPw('')
+                    setPin('')
+                    setError('')
+                    setSetup(null)
+                    toast(j.forgotDone)
+                  }}
+                >
+                  {j.forgotReset}
+                </button>
+              </div>
+            </div>
+          </details>
         </form>
       )}
 

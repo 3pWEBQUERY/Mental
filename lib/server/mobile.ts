@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, replies, stepLog } from '@/db/schema'
 import { openText } from '@/lib/at-rest'
@@ -124,7 +124,19 @@ export async function saved() {
     .select({ id: replies.id, body: replies.body, handle: replies.authorHandle, createdAt: replies.createdAt, postBody: posts.body })
     .from(replies)
     .innerJoin(posts, eq(posts.id, replies.postId))
-    .where(and(eq(posts.userId, v.userId), eq(replies.helpful, true), isNull(replies.deletedAt), isNull(posts.deletedAt), isNotNull(replies.body)))
+    .where(
+      and(
+        eq(posts.userId, v.userId),
+        eq(replies.helpful, true),
+        // Von der Moderation ausgeblendete Antworten und solche von Konten in Löschung gehören nicht mehr hierher.
+        eq(replies.status, 'visible'),
+        isNull(replies.deletedAt),
+        isNull(posts.deletedAt),
+        isNotNull(replies.body),
+        sql`NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ${replies.userId} AND u.status = 'deleting')`,
+      ),
+    )
     .orderBy(desc(replies.createdAt))
+    .limit(100)
   return rows.map((r) => ({ id: r.id, body: r.body, authorHandle: r.handle, createdAt: r.createdAt.toISOString(), postBody: r.postBody }))
 }

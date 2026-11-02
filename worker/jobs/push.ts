@@ -3,7 +3,7 @@ import webpush from 'web-push'
 import { localesOf } from '../../lib/recipient-locale'
 import { getMessages } from '../../messages'
 import { db } from '../../db'
-import { pushSubscriptions } from '../../db/schema'
+import { profiles, pushSubscriptions } from '../../db/schema'
 import { isPushEndpoint } from '../../lib/push-endpoint'
 import { inQuietHours } from '../../lib/quiet-hours'
 import { zurichHour } from '../../lib/time'
@@ -30,9 +30,14 @@ export async function sendPush({ userId, postId, alert }: { userId: string; post
   const hour = zurichHour()
   // Neutral und in der Sprache der empfangenden Person.
   const t = getMessages((await localesOf([userId])).get(userId))
+  // Diskret-Modus: Auf dem Sperrbildschirm steht weder «Jiaia» noch, dass jemand geantwortet hat.
+  const [p] = await db.select({ settings: profiles.settings }).from(profiles).where(eq(profiles.userId, userId))
+  const discreet = Boolean(p?.settings?.discreet)
   const payload = alert
     ? JSON.stringify({ title: t.push.acuteTitle, body: t.push.acuteBody, url: '/admin', tag: 'lichtung-acute' })
-    : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
+    : discreet
+      ? JSON.stringify({ title: t.push.discreetTitle, body: t.push.discreetBody, url: `/start/gedanke/${postId}` })
+      : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
   for (const s of subs) {
     // Ältere Abos von vor der Prüfung: nur an echte Push-Dienste senden, alles andere entfernen.
     if (!isPushEndpoint(s.endpoint)) {
