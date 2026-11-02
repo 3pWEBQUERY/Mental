@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share } from './helpers'
+import { moderator, register, share } from './helpers'
 
 test('Moderation ohne Passkey-Sitzung: keine Daten, nur der Hinweis', async ({ page }) => {
   const { username } = await register(page)
@@ -94,27 +94,6 @@ test('Domainwechsel: Anmeldung mit altem Passkey versucht die frühere Domain un
   // Die alte Domain ist im Test nicht erreichbar: verständlicher Hinweis statt einer englischen Browser-Meldung.
   await expect(page.locator('#form-error')).toContainText('Passkeys von vor dem Umzug auf jiaia.app')
 })
-
-/** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
-async function moderator(browser: import('@playwright/test').Browser, role: 'mod' | 'admin' = 'mod') {
-  const ctx = await browser.newContext()
-  const page = await ctx.newPage()
-  const cdp = await ctx.newCDPSession(page)
-  await cdp.send('WebAuthn.enable')
-  await cdp.send('WebAuthn.addVirtualAuthenticator', {
-    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
-  })
-  const { username } = await register(page)
-  await page.goto('/einstellungen')
-  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
-  execSync(`npm run admin:grant -- ${username} ${role}`, { stdio: 'ignore' })
-  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
-  await page.waitForURL('**/anmelden')
-  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
-  await page.waitForURL('**/start')
-  return page
-}
 
 test('Moderation: Krisen-Alarm, weichgezeichnet, Übernahme, Fürsorge, Einspruch, Kontoseite, Statistik', async ({ browser }) => {
   test.slow()

@@ -16,6 +16,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Eingebauter Speicher-Cache plus Abgleich der Invalidierungen zwischen den Web-Replikas (siehe Datei).
+  cacheHandlers: { default: require.resolve('./cache-handlers/default.cjs') },
   partialPrefetching: true,
   poweredByHeader: false,
   reactStrictMode: true,

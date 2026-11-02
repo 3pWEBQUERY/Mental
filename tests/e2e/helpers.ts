@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 
 export const PASSWORD = 'ein ruhiger langer satz 2026'
@@ -84,4 +85,25 @@ export async function share(page: Page, text: string, opts: { anonymous?: boolea
  */
 export async function closeExtraContexts({ browser, context }: { browser: Browser; context: BrowserContext }) {
   await Promise.all(browser.contexts().filter((c) => c !== context).map((c) => c.close()))
+}
+
+/** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
+export async function moderator(browser: Browser, role: 'mod' | 'admin' = 'mod') {
+  const ctx = await browser.newContext()
+  const page = await ctx.newPage()
+  const cdp = await ctx.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
+  })
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
+  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  execSync(`npm run admin:grant -- ${username} ${role}`, { stdio: 'ignore' })
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
+  await page.waitForURL('**/start')
+  return page
 }

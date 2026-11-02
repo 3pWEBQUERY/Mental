@@ -1,6 +1,6 @@
 'use server'
 
-import { and, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, count, eq, inArray, ne, sql } from 'drizzle-orm'
 import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -25,6 +25,7 @@ import { assertModerator, canModerate, memberFromToken, ROLE_PROPOSAL_DAYS } fro
 import { notifyAdmins, notifyModeration, notifySystem } from '@/lib/server/notify'
 import { m, type Messages } from '@/messages'
 import { safeMessage } from '@/lib/log-safe'
+import type { AdminResult } from '@/lib/admin-result'
 
 const ACTIONS = ['approve', 'care', 'hide', 'cw', 'warn', 'mute24', 'mute7', 'ban', 'dismiss'] as const
 type Action = (typeof ACTIONS)[number]
@@ -339,26 +340,40 @@ async function audit(moderatorId: string, action: string, targetId: string, reas
 
 const str = (max: number) => z.string().trim().min(1).max(max)
 
-export async function saveCircle(form: FormData) {
+const done = (message: string): AdminResult => ({ ok: true, message })
+const nope = (error: string): AdminResult => ({ ok: false, error })
+const INVALID = 'Bitte die Felder prüfen – etwas fehlt oder ist zu lang.'
+const optional = (max: number) => z.string().trim().max(max).optional()
+
+/** Kreise, Hilfe-Nummern und Schritte: Jede Änderung gilt sofort – im Cache aller Replikas (cache-handlers/default.cjs) und auf dieser Seite. */
+function changed(tag?: 'circles' | 'help') {
+  if (tag) updateTag(tag)
+  refresh()
+}
+
+export async function saveCircle(form: FormData): Promise<AdminResult> {
   const admin = await assertModerator('admin')
-  const d = z
+  const parsed = z
     .object({
       id: z.uuid().optional().or(z.literal('')),
-      slug: z.string().regex(/^[a-z0-9-]{2,40}$/),
+      slug: z.string().trim().regex(/^[a-z0-9-]{2,40}$/),
       name: str(40),
       description: str(400),
       rules: str(400),
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       sort: z.coerce.number().int().min(0).max(999),
       isActive: z.string().optional(),
-      nameFr: z.string().trim().max(40).optional(),
-      descriptionFr: z.string().trim().max(400).optional(),
-      rulesFr: z.string().trim().max(400).optional(),
-      nameIt: z.string().trim().max(40).optional(),
-      descriptionIt: z.string().trim().max(400).optional(),
-      rulesIt: z.string().trim().max(400).optional(),
+      nameFr: optional(40),
+      descriptionFr: optional(400),
+      rulesFr: optional(400),
+      nameIt: optional(40),
+      descriptionIt: optional(400),
+      rulesIt: optional(400),
     })
-    .parse(Object.fromEntries(form))
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success)
+    return nope(parsed.error.issues.some((i) => i.path[0] === 'slug') ? 'Kurzname: 2–40 Zeichen, nur a–z, 0–9 und Bindestrich.' : INVALID)
+  const d = parsed.data
   const fr = { name: d.nameFr || undefined, description: d.descriptionFr || undefined, rules: d.rulesFr || undefined }
   const it = { name: d.nameIt || undefined, description: d.descriptionIt || undefined, rules: d.rulesIt || undefined }
   const has = (t: typeof fr) => Boolean(t.name || t.description || t.rules)
@@ -372,35 +387,104 @@ export async function saveCircle(form: FormData) {
     isActive: d.isActive === 'on',
     i18n: { ...(has(fr) ? { fr } : {}), ...(has(it) ? { it } : {}) },
   }
-  if (d.id) await db.update(circles).set(values).where(eq(circles.id, d.id))
-  else await db.insert(circles).values(values)
+  const [taken] = await db
+    .select({ id: circles.id })
+    .from(circles)
+    .where(d.id ? and(eq(circles.slug, d.slug), ne(circles.id, d.id)) : eq(circles.slug, d.slug))
+  if (taken) return nope(`Den Kurznamen «${d.slug}» hat schon ein anderer Kreis.`)
+  if (d.id) {
+    // Ohne aktiven Kreis kann niemand mehr etwas schreiben.
+    if (!values.isActive && !(await otherActiveCircle(d.id))) return nope('Mindestens ein Kreis muss aktiv bleiben.')
+    const [row] = await db.update(circles).set(values).where(eq(circles.id, d.id)).returning({ id: circles.id })
+    if (!row) return nope('Diesen Kreis gibt es nicht mehr.')
+  } else await db.insert(circles).values(values)
   await audit(admin.userId, d.id ? 'circle:update' : 'circle:create', admin.userId, d.slug)
-  updateTag('circles')
+  changed('circles')
+  return done(d.id ? `Kreis «${d.name}» gespeichert.` : `Kreis «${d.name}» angelegt.`)
 }
 
-export async function saveHelp(form: FormData) {
+async function otherActiveCircle(id: string) {
+  const [other] = await db
+    .select({ id: circles.id })
+    .from(circles)
+    .where(and(ne(circles.id, id), eq(circles.isActive, true)))
+    .limit(1)
+  return Boolean(other)
+}
+
+/**
+ * Kreis löschen. Gedanken bleiben erhalten: Hat der Kreis welche, wandern sie in den gewählten Kreis.
+ * Schritte des Kreises gelten danach für alle Kreise, Folgen/Stummschalten und «gerade hier» entfallen.
+ */
+export async function deleteCircle(form: FormData): Promise<AdminResult> {
   const admin = await assertModerator('admin')
-  const d = z
-    .object({
-      id: z.uuid().optional().or(z.literal('')),
-      name: str(80),
-      phone: z.string().trim().max(20).optional(),
-      url: z.url().optional().or(z.literal('')),
-      hours: str(80),
-      audience: str(120),
-      sort: z.coerce.number().int().min(0).max(999),
-      language: z.enum(['de', 'fr', 'it']).default('de'),
-      remove: z.string().optional(),
-    })
-    .parse(Object.fromEntries(form))
-  if (d.id && d.remove) await db.delete(helpResources).where(eq(helpResources.id, d.id))
-  else {
-    const values = { name: d.name, phone: d.phone || null, url: d.url || null, hours: d.hours, audience: d.audience, sort: d.sort, language: d.language }
-    if (d.id) await db.update(helpResources).set(values).where(eq(helpResources.id, d.id))
-    else await db.insert(helpResources).values(values)
+  const parsed = z.object({ id: z.uuid(), moveTo: z.uuid().optional().or(z.literal('')) }).safeParse(Object.fromEntries(form))
+  if (!parsed.success) return nope(INVALID)
+  const { id, moveTo } = parsed.data
+  const result = await db.transaction(async (tx) => {
+    const [c] = await tx.select({ name: circles.name, slug: circles.slug }).from(circles).where(eq(circles.id, id)).for('update')
+    if (!c) return nope('Diesen Kreis gibt es nicht mehr.')
+    const [other] = await tx
+      .select({ id: circles.id })
+      .from(circles)
+      .where(and(ne(circles.id, id), eq(circles.isActive, true)))
+      .limit(1)
+    if (!other) return nope('Der letzte aktive Kreis lässt sich nicht löschen.')
+    const [{ n } = { n: 0 }] = await tx.select({ n: count() }).from(posts).where(eq(posts.circleId, id))
+    if (n > 0) {
+      if (!moveTo || moveTo === id) return nope(`Der Kreis hat ${n} Gedanken. Wähle, in welchen Kreis sie kommen.`)
+      const [target] = await tx.select({ id: circles.id }).from(circles).where(eq(circles.id, moveTo))
+      if (!target) return nope('Den gewählten Kreis gibt es nicht mehr.')
+      await tx.update(posts).set({ circleId: moveTo }).where(eq(posts.circleId, id))
+    }
+    await tx.delete(circles).where(eq(circles.id, id))
+    return done(n > 0 ? `Kreis «${c.name}» gelöscht, ${n} Gedanken verschoben.` : `Kreis «${c.name}» gelöscht.`)
+  })
+  if (!result.ok) return result
+  await audit(admin.userId, 'circle:delete', admin.userId, id)
+  changed('circles')
+  return result
+}
+
+const helpSchema = z.object({
+  id: z.uuid().optional().or(z.literal('')),
+  name: str(80),
+  phone: z.string().trim().max(20).regex(/^[0-9+ ()\/-]*$/).optional(),
+  url: z.url({ protocol: /^https?$/ }).optional().or(z.literal('')),
+  hours: str(80),
+  audience: str(120),
+  sort: z.coerce.number().int().min(0).max(999),
+  language: z.enum(['de', 'fr', 'it']).default('de'),
+})
+
+export async function saveHelp(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const parsed = helpSchema.safeParse(Object.fromEntries(form))
+  if (!parsed.success) {
+    const field = parsed.error.issues[0]?.path[0]
+    return nope(field === 'url' ? 'Der Link muss mit https:// beginnen.' : field === 'phone' ? 'Nummer: nur Ziffern, Leerzeichen und + ( ) / -' : INVALID)
   }
-  await audit(admin.userId, 'help:update', admin.userId, d.name)
-  updateTag('help')
+  const d = parsed.data
+  if (!d.phone && !d.url) return nope('Bitte eine Nummer oder einen Link angeben.')
+  const values = { name: d.name, phone: d.phone || null, url: d.url || null, hours: d.hours, audience: d.audience, sort: d.sort, language: d.language }
+  if (d.id) {
+    const [row] = await db.update(helpResources).set(values).where(eq(helpResources.id, d.id)).returning({ id: helpResources.id })
+    if (!row) return nope('Diesen Eintrag gibt es nicht mehr.')
+  } else await db.insert(helpResources).values(values)
+  await audit(admin.userId, d.id ? 'help:update' : 'help:create', admin.userId, d.name)
+  changed('help')
+  return done(d.id ? `«${d.name}» gespeichert.` : `«${d.name}» hinzugefügt.`)
+}
+
+export async function deleteHelp(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const id = z.uuid().safeParse(form.get('id'))
+  if (!id.success) return nope(INVALID)
+  const [row] = await db.delete(helpResources).where(eq(helpResources.id, id.data)).returning({ name: helpResources.name })
+  if (!row) return nope('Diesen Eintrag gibt es nicht mehr.')
+  await audit(admin.userId, 'help:delete', admin.userId, row.name)
+  changed('help')
+  return done(`«${row.name}» gelöscht.`)
 }
 
 export async function saveTerm(form: FormData) {
@@ -424,22 +508,44 @@ export async function saveTerm(form: FormData) {
   updateTag('crisis-terms')
 }
 
-export async function saveStep(form: FormData) {
+export async function saveStep(form: FormData): Promise<AdminResult> {
   const admin = await assertModerator('admin')
-  const d = z
+  const parsed = z
     .object({
       id: z.uuid().optional().or(z.literal('')),
       text: str(200),
       circleId: z.uuid().optional().or(z.literal('')),
       sort: z.coerce.number().int().min(0).max(999),
       isActive: z.string().optional(),
-      textFr: z.string().trim().max(200).optional(),
-      textIt: z.string().trim().max(200).optional(),
+      textFr: optional(200),
+      textIt: optional(200),
     })
-    .parse(Object.fromEntries(form))
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) return nope(INVALID)
+  const d = parsed.data
   const i18n = { ...(d.textFr ? { fr: { text: d.textFr } } : {}), ...(d.textIt ? { it: { text: d.textIt } } : {}) }
   const values = { text: d.text, circleId: d.circleId || null, sort: d.sort, isActive: d.isActive === 'on', i18n }
-  if (d.id) await db.update(steps).set(values).where(eq(steps.id, d.id))
-  else await db.insert(steps).values(values)
-  await audit(admin.userId, 'steps:update', admin.userId, d.text.slice(0, 60))
+  if (values.circleId) {
+    const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.id, values.circleId))
+    if (!c) return nope('Den gewählten Kreis gibt es nicht mehr.')
+  }
+  if (d.id) {
+    const [row] = await db.update(steps).set(values).where(eq(steps.id, d.id)).returning({ id: steps.id })
+    if (!row) return nope('Diesen Schritt gibt es nicht mehr.')
+  } else await db.insert(steps).values(values)
+  await audit(admin.userId, d.id ? 'steps:update' : 'steps:create', admin.userId, d.text.slice(0, 60))
+  // Schritte liest die App direkt aus der Datenbank – sie gelten ab dem nächsten Laden.
+  changed()
+  return done(d.id ? 'Schritt gespeichert.' : 'Schritt hinzugefügt.')
+}
+
+export async function deleteStep(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const id = z.uuid().safeParse(form.get('id'))
+  if (!id.success) return nope(INVALID)
+  const [row] = await db.delete(steps).where(eq(steps.id, id.data)).returning({ text: steps.text })
+  if (!row) return nope('Diesen Schritt gibt es nicht mehr.')
+  await audit(admin.userId, 'steps:delete', admin.userId, row.text.slice(0, 60))
+  changed()
+  return done('Schritt gelöscht.')
 }
