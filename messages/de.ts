@@ -572,7 +572,8 @@ export const de = {
     tooMany: 'Von hier wurden heute schon mehrere Konten erstellt. Versuch es morgen wieder.',
   },
   landing: {
-    heroArt: 'Menschen sitzen um ein warmes Feuer; ab und zu wandert ein Funke Zuspruch von einer Person zur nächsten',
+    ask: 'Was trägst du heute mit dir?',
+    quick: 'Schnell erreichbar',
     eyebrow: 'Anonym · ruhig · ohne Zahlen',
     title: 'Ein Ort, an dem',
     titleEm: 'niemand bewertet',
