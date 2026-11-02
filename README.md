@@ -57,7 +57,7 @@ Projekt «Lichtung» (Railway-Projektname, unverändert), alles in **EU West (Am
 
 | Service | Einstellungen |
 | --- | --- |
-| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts && npx tsx scripts/bootstrap-admins.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
+| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts && npx tsx scripts/bootstrap-admins.ts && npx tsx scripts/encrypt-at-rest.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
 | `worker` | Start `npm run worker`, Restart immer, 1 Replika, Region `europe-west4-drams3a`. Wartet beim Start, bis alle Migrationen angewendet sind (die laufen im Pre-Deploy von `web`). |
 | `monitor` | Cron-Service, Start `npm run monitor`, Zeitplan `*/5 * * * *`, Restart nie, Region `europe-west4-drams3a`. Variablen `DATABASE_URL`, `VAPID_*`. |
 | `Postgres` | Railway-Template, Volume in `europe-west4-drams3a` |

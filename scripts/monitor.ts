@@ -16,6 +16,14 @@ import { moderationAway, nightStaffed } from '../lib/moderation-hours'
 
 const STALE_S = 180
 const BACKLOG_MAX = 50
+/** Ältester bereiter Auftrag (Minuten), ab dem das Team Bescheid bekommt. */
+const STUCK_MIN = 15
+const WORK_QUEUES = ['process-image', 'moderate-content', 'send-push', 'export-account']
+/** Eine fehlgeschlagene Abfrage gilt als «alles gut» – aber nie still. */
+const logZero = (what: string) => (e: unknown) => {
+  console.error(`[monitor] Abfrage ${what} fehlgeschlagen:`, safeMessage(e))
+  return 0
+}
 /** Frist für akute Krisen-Hinweise (Minuten) – danach erinnert der Monitor das Team. */
 const ACUTE_SLA_MIN = 30
 /** Gleicher Kanal wie lib/server/notify.ts – weckt offene Glocken (LISTEN/NOTIFY). */
@@ -33,14 +41,31 @@ async function checks(): Promise<Check[]> {
           AND name IN ('process-image', 'moderate-content', 'send-push', 'export-account')`,
     )
     .then((r) => r.rows[0]?.n ?? 0)
-    .catch(() => 0)
+    .catch(logZero('backlog'))
+  // Wie lange der älteste bereite Auftrag schon wartet – bei wenig Betrieb aussagekräftiger als die Anzahl.
+  const oldestMin = await db
+    .execute<{ m: number | null }>(
+      sql`SELECT (extract(epoch FROM now() - min(created_on)) / 60)::int AS m FROM pgboss.job
+          WHERE state IN ('created', 'retry') AND start_after <= now() AND name IN (${sql.join(WORK_QUEUES.map((q) => sql`${q}`), sql`, `)})`,
+    )
+    .then((r) => r.rows[0]?.m ?? 0)
+    .catch(logZero('oldest'))
+  // Aufträge, die alle Versuche aufgebraucht haben (letzte Stunde). Moderation holt der Worker selbst nach; ein Fehlschlag
+  // zeigt trotzdem, dass etwas klemmt (externe Prüfung, Bilder, Push, Export).
+  const failed = await db
+    .execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM pgboss.job WHERE state = 'failed' AND completed_on > now() - interval '1 hour'
+          AND name IN (${sql.join(WORK_QUEUES.map((q) => sql`${q}`), sql`, `)})`,
+    )
+    .then((r) => r.rows[0]?.n ?? 0)
+    .catch(logZero('failed'))
   // Akute Krisen-Hinweise, die seit über 30 Minuten niemand angesehen hat.
   const acuteWaiting = await db
     .execute<{ n: number }>(
       sql`SELECT count(*)::int AS n FROM reports WHERE status = 'open' AND priority = 0 AND created_at < now() - interval '${sql.raw(String(ACUTE_SLA_MIN))} minutes'`,
     )
     .then((r) => r.rows[0]?.n ?? 0)
-    .catch(() => 0)
+    .catch(logZero('acute'))
   return [
     {
       key: 'acute-waiting',
@@ -53,6 +78,18 @@ async function checks(): Promise<Check[]> {
       down: ageS === null || ageS > STALE_S,
       alert: `Der Hintergrunddienst (Worker) meldet sich seit ${ageS === null ? 'unbekannt langer Zeit' : `${Math.round(ageS / 60)} Minuten`} nicht. Bilder, Moderation und Push werden gerade nicht verarbeitet. Bitte in Railway den Service «worker» prüfen.`,
       recovered: 'Entwarnung: Der Hintergrunddienst (Worker) läuft wieder.',
+    },
+    {
+      key: 'queue-stuck',
+      down: oldestMin > STUCK_MIN,
+      alert: `Ein Auftrag (Bild, Moderation, Push oder Export) wartet seit ${oldestMin} Minuten. Der Worker hängt oder ist überlastet. Bitte in Railway die Logs des Service «worker» prüfen.`,
+      recovered: 'Entwarnung: Die Warteschlangen laufen wieder.',
+    },
+    {
+      key: 'jobs-failed',
+      down: failed > 0,
+      alert: `${failed === 1 ? 'Ein Auftrag ist' : `${failed} Aufträge sind`} in der letzten Stunde endgültig fehlgeschlagen. Bitte in Railway die Logs des Service «worker» prüfen.`,
+      recovered: 'Entwarnung: Keine fehlgeschlagenen Aufträge mehr in der letzten Stunde.',
     },
     {
       key: 'queue-backlog',

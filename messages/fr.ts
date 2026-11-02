@@ -906,6 +906,7 @@ export const fr: Messages = {
       reject: 'Rejeter',
       withdraw: 'Retirer',
       ownProposal: 'Ta proposition – une autre personne admin doit confirmer.',
+      ownAccount: 'Une proposition concernant ton propre compte – ce sont les autres admins qui décident.',
       expiredHint: 'Expirée – en confirmant, elle sera seulement rejetée.',
       openTitle: 'Propositions de rôle en attente',
       proposedNotice: 'Un changement de rôle a été proposé et attend ta confirmation (Modération → File d’attente).',

@@ -35,12 +35,17 @@ function connect() {
   if (!enabled() || client || connecting) return
   connecting = true
   const { Client } = require('pg')
-  const c = new Client({ connectionString: process.env.DATABASE_URL })
+  // keepAlive + Ping: Eine still abgebrochene Verbindung meldete sonst nie einen Fehler – Invalidierungen kämen
+  // nicht mehr an, und das Senden (broadcast) hinge. query_timeout begrenzt jede Abfrage.
+  const c = new Client({ connectionString: process.env.DATABASE_URL, keepAlive: true, query_timeout: 5_000, connectionTimeoutMillis: 10_000 })
   let gone = false
+  /** @type {ReturnType<typeof setInterval> | undefined} */
+  let ping
   /** @param {string} reason */
   const lost = (reason) => {
     if (gone) return
     gone = true
+    clearInterval(ping)
     if (client === c) client = null
     connecting = false
     c.end().catch(() => {})
@@ -65,6 +70,8 @@ function connect() {
         client = c
         connecting = false
         attempt = 0
+        ping = setInterval(() => void c.query('SELECT 1').catch((e) => lost(why(e))), 60_000)
+        ping.unref?.()
         // Während der Lücke könnte eine Invalidierung verpasst worden sein: lieber einmal neu laden.
         if (everConnected && seen.size) void local.updateTags([...seen])
         everConnected = true
@@ -85,7 +92,7 @@ async function broadcast(tags, durations) {
     }
     // Eigene Verbindung gerade weg: einmalig senden, damit die anderen es trotzdem erfahren.
     const { Client } = require('pg')
-    const once = new Client({ connectionString: process.env.DATABASE_URL })
+    const once = new Client({ connectionString: process.env.DATABASE_URL, query_timeout: 5_000, connectionTimeoutMillis: 5_000 })
     await once.connect()
     try {
       await once.query('SELECT pg_notify($1, $2)', [CHANNEL, payload])

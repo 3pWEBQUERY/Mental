@@ -10,7 +10,7 @@ import { getBoss, QUEUES, type JobData } from '../lib/jobs'
 import { exportAccount, purgeAccount, purgeDueAccounts, purgeInactiveAccounts } from './jobs/account'
 import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimits } from './jobs/cleanup'
 import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media'
-import { moderateContent } from './jobs/moderation'
+import { moderateContent, requeueUnmoderated } from './jobs/moderation'
 import { expirePosts } from './jobs/posts'
 import { applyRetention } from './jobs/retention'
 import { nudgeListeners } from './jobs/listeners'
@@ -75,6 +75,7 @@ async function main() {
     [QUEUES.purgeInactive, '29 4 * * 0', purgeInactiveAccounts],
     [QUEUES.retention, '53 4 * * *', applyRetention],
     [QUEUES.nudgeListeners, '*/30 * * * *', nudgeListeners],
+    [QUEUES.requeueModeration, '*/10 * * * *', requeueUnmoderated],
   ]
   for (const [name, schedule, fn] of cron) {
     await boss.schedule(name, schedule, null, { tz: TZ })

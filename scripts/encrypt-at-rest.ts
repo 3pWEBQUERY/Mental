@@ -9,8 +9,14 @@ import { db, pool } from '../db'
 import { checkins, letters, safetyPlans } from '../db/schema'
 import { atRestEnabled, sealJson, sealText } from '../lib/at-rest'
 
+/** Einmal mit Schlüssel durchgelaufen: Neue Werte werden danach beim Schreiben verschlüsselt, ein erneuter Durchlauf
+ * bei jedem Deploy wäre nur ein wachsender Tabellen-Scan. Für einen neuen Durchlauf die Zeile in seed_marks löschen. */
+const MARK = 'encrypt-at-rest-v1'
+
 async function main() {
   if (!atRestEnabled()) return console.log('[encrypt] kein DATA_ENCRYPTION_KEY – nichts zu tun')
+  const done = await db.execute(sql`SELECT 1 FROM seed_marks WHERE key = ${MARK}`)
+  if (done.rows.length) return console.log('[encrypt] schon erledigt – übersprungen')
   let n = 0
   for (const c of await db
     .select({ id: checkins.id, userId: checkins.userId, note: checkins.note })
@@ -27,6 +33,7 @@ async function main() {
     await db.update(safetyPlans).set({ plan: sealJson(p.userId, p.plan) }).where(eq(safetyPlans.userId, p.userId))
     n++
   }
+  await db.execute(sql`INSERT INTO seed_marks (key) VALUES (${MARK}) ON CONFLICT DO NOTHING`)
   console.log(`[encrypt] ${n} Werte verschlüsselt`)
 }
 

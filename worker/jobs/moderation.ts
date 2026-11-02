@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gt, isNull, lt } from 'drizzle-orm'
 import { db } from '../../db'
 import { crisisTerms, posts, replies, reports } from '../../db/schema'
 import { DEFAULT_CRISIS_TERMS, maxLevel } from '../../lib/crisis'
@@ -6,6 +6,7 @@ import { classify } from '../../lib/moderation'
 import { syncReplyCount } from '../../lib/reply-count'
 import { alertAcute } from '../../lib/acute-alert'
 import { safeMessage } from '../../lib/log-safe'
+import { enqueue, QUEUES } from '../../lib/jobs'
 
 async function terms() {
   const rows = await db.select({ term: crisisTerms.term, level: crisisTerms.level }).from(crisisTerms).where(eq(crisisTerms.active, true))
@@ -54,4 +55,23 @@ export async function moderateContent({ targetType, targetId }: { targetType: 'p
   if (result.flags.length && !(await openReportExists(targetType, targetId, 'auto_flag'))) {
     await db.insert(reports).values({ targetType, targetId, reason: 'auto_flag', note: result.flags.join(', '), priority: 3 })
   }
+  await db.update(table).set({ moderatedAt: new Date() }).where(eq(table.id, targetId))
+}
+
+/**
+ * Sicherheitsnetz: Ging das Einreihen der Prüfung beim Teilen schief (oder hat sie alle Versuche aufgebraucht),
+ * bliebe ein Gedanke für immer ungeprüft. Alle 10 Minuten werden solche Inhalte der letzten 3 Tage erneut eingereiht.
+ * Die Prüfung ist wiederholbar (Meldungen nur, wenn noch keine offen ist).
+ */
+export async function requeueUnmoderated() {
+  const now = Date.now()
+  const window = (t: typeof posts | typeof replies) =>
+    and(isNull(t.moderatedAt), isNull(t.deletedAt), lt(t.createdAt, new Date(now - 10 * 60_000)), gt(t.createdAt, new Date(now - 3 * 86_400_000)))
+  const [p, r] = await Promise.all([
+    db.select({ id: posts.id }).from(posts).where(window(posts)).limit(100),
+    db.select({ id: replies.id }).from(replies).where(window(replies)).limit(100),
+  ])
+  for (const x of p) await enqueue(QUEUES.moderate, { targetType: 'post', targetId: x.id })
+  for (const x of r) await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: x.id })
+  if (p.length || r.length) console.log(`[moderation] ${p.length + r.length} ungeprüfte Inhalte erneut eingereiht`)
 }
