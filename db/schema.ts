@@ -166,6 +166,8 @@ export const circles = pgTable('circles', {
   isActive: boolean('is_active').notNull().default(true),
   /** Übersetzungen (z. B. fr) – fehlt ein Feld, gilt das deutsche. */
   i18n: jsonb('i18n').$type<CircleI18n>().notNull().default({}),
+  /** Schwere Themen: Jeder Gedanke im Kreis hat einen Inhaltshinweis (verschwommen bis zum Aufdecken). */
+  requireCw: boolean('require_cw').notNull().default(false),
 })
 
 export const circlePrefs = pgTable(
@@ -542,8 +544,16 @@ export const helpResources = pgTable('help_resources', {
   audience: text('audience').notNull(),
   sort: integer('sort').notNull().default(0),
   region: text('region').notNull().default('CH'),
-  /** Sprache der Texte (Name, Zeiten, Für wen): «de» für /hilfe, «fr» für /aide. */
+  /** Sprache der Texte (Name, Zeiten, Für wen): «de» für /hilfe, «fr» für /aide, «it» für /aiuto. */
   language: text('language').notNull().default('de'),
+  /** Hilfe zu einem Thema: erscheint beim Kreis (und auf den Hilfeseiten unter «Nach Thema»). Leer = allgemein. */
+  circleId: uuid('circle_id').references(() => circles.id, { onDelete: 'cascade' }),
+})
+
+/** Einmalige Seed-Schritte (z. B. Standard-Hilfe je Kreis): einmal ausgeführt, danach pflegt das Admin-Team. */
+export const seedMarks = pgTable('seed_marks', {
+  key: text('key').primaryKey(),
+  doneAt: ts('done_at').notNull().defaultNow(),
 })
 
 export const crisisTerms = pgTable(

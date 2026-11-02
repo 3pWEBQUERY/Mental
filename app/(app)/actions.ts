@@ -136,7 +136,10 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
     .where(and(eq(posts.userId, v.userId), gt(posts.createdAt, new Date(Date.now() - DAY))))
   if (n >= (isNew ? LIMITS.postsPerDayNew : LIMITS.postsPerDay)) return fail(m.composer.limit)
 
-  const [circle] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
+  const [circle] = await db
+    .select({ id: circles.id, requireCw: circles.requireCw })
+    .from(circles)
+    .where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
   if (!circle) return fail(m.common.error)
 
   // Stufe 2, sofort und lokal: «acute» ist bis zur Prüfung nur für die Autorin sichtbar.
@@ -153,7 +156,7 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
       visibility: d.visibility,
       authorHandle: anonymous ? m.common.anonymous : v.displayName,
       glyphSeed: anonymous ? randomSeed() : v.glyphSeed,
-      contentWarning: d.contentWarning,
+      contentWarning: d.contentWarning || circle.requireCw,
       expiresAt: d.letGoDays ? new Date(Date.now() + d.letGoDays * DAY) : null,
       status: level === 'acute' ? 'pending' : 'visible',
       crisisLevel: level,
@@ -195,7 +198,7 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     .where(and(eq(posts.id, d.id), eq(posts.userId, v.userId), isNull(posts.deletedAt)))
   if (!p) return fail(m.common.error)
   if (Date.now() - p.createdAt.getTime() > LIMITS.editWindowMs) return fail(m.composer.editExpired)
-  const [circle] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, d.circle))
+  const [circle] = await db.select({ id: circles.id, requireCw: circles.requireCw }).from(circles).where(eq(circles.slug, d.circle))
   if (!circle) return fail(m.common.error)
 
   const level = detectCrisis(d.body, await getCrisisTerms())
@@ -205,7 +208,7 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
       body: d.body,
       need: d.need,
       circleId: circle.id,
-      contentWarning: d.contentWarning,
+      contentWarning: d.contentWarning || circle.requireCw,
       editedAt: new Date(),
       crisisLevel: level,
       ...(level === 'acute' ? { status: 'pending' as const } : {}),

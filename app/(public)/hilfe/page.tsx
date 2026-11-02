@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { HelpList, PhoneScript, PublicShell } from '@/components/ui'
+import { TopicHelp } from '@/components/topic-help'
 import { getHelpResources } from '@/lib/server/terms'
-import { m } from '@/messages'
+import { getMessages, m } from '@/messages'
 
 // Vollständig vorgerendert: Die Hilfe funktioniert auch, wenn Datenbank oder Login ausfallen.
 export const ensureStatic = 'navigation'
@@ -23,6 +24,7 @@ export default async function HelpPage() {
           <HelpList resources={resources} />
         </section>
         <PhoneScript />
+        <TopicHelp locale="de" t={getMessages('de')} />
         <div className="prose">
           <p className="notice" style={{ marginTop: 22 }}>
             {m.help.honest}

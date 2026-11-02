@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { HelpList, PhoneScript, PublicShell } from '@/components/ui'
+import { TopicHelp } from '@/components/topic-help'
 import { getHelpResources } from '@/lib/server/terms'
 import { getMessages } from '@/messages'
 
@@ -26,6 +27,7 @@ export default async function AiutoPage() {
           <HelpList resources={resources} t={it} />
         </section>
         <PhoneScript t={it} />
+        <TopicHelp locale="it" t={it} />
         <div className="prose">
           <p className="notice" style={{ marginTop: 22 }}>
             {it.help.honest}

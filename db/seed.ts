@@ -6,7 +6,8 @@ import { sql } from 'drizzle-orm'
 import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
 import { DEFAULT_HELP, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
 import { db, pool } from './index'
-import { circles, crisisTerms, helpResources, steps } from './schema'
+import { circles, crisisTerms, helpResources, seedMarks, steps } from './schema'
+import { CIRCLE_HELP, NEW_CIRCLES, NEW_STEPS } from './seed-kreise'
 
 const CIRCLES = [
   {
@@ -79,8 +80,19 @@ const STEPS: { text: string; fr: string; it: string; circle?: string }[] = [
   { text: 'Leg die Hand aufs Herz und zähl zehn Atemzüge.', fr: 'Pose la main sur ton cœur et compte dix respirations.', it: 'Metti la mano sul cuore e conta dieci respiri.' },
 ]
 
+/**
+ * Läuft pro Datenbank genau einmal (Tabelle seed_marks). Für Standardinhalte, die das Admin-Team danach frei
+ * ändern oder löschen darf – ein späteres Deploy legt sie nicht wieder an.
+ */
+async function once(key: string, fn: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<void>) {
+  await db.transaction(async (tx) => {
+    const [mark] = await tx.insert(seedMarks).values({ key }).onConflictDoNothing().returning({ key: seedMarks.key })
+    if (mark) await fn(tx)
+  })
+}
+
 async function main() {
-  for (const [i, { fr, it, ...c }] of CIRCLES.entries()) {
+  for (const [i, { fr, it, ...c }] of [...CIRCLES, ...NEW_CIRCLES].entries()) {
     await db
       .insert(circles)
       .values({ ...c, sort: i, i18n: { fr, it } })
@@ -155,6 +167,26 @@ async function main() {
       sql`UPDATE steps SET i18n = i18n || jsonb_build_object('it', jsonb_build_object('text', ${s.it}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'it')`,
     )
   }
+  // Kreise vom November 2026: kleine Schritte dazu, Hilfe je Kreis für alle Kreise (auch die bestehenden).
+  await once('kreise-2026-11', async (tx) => {
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    const idOf = new Map(rows.map((r) => [r.slug, r.id]))
+    const [{ max } = { max: 0 }] = (await tx.execute<{ max: number }>(sql`SELECT coalesce(max(sort), 0)::int AS max FROM steps`)).rows
+    const newSteps = NEW_STEPS.filter((s) => idOf.has(s.circle))
+    if (newSteps.length)
+      await tx.insert(steps).values(
+        newSteps.map((s, i) => ({ text: s.text, i18n: { fr: { text: s.fr }, it: { text: s.it } }, sort: max + 1 + i, circleId: idOf.get(s.circle)! })),
+      )
+    const help = Object.entries(CIRCLE_HELP).flatMap(([slug, byLang]) =>
+      idOf.has(slug)
+        ? (['de', 'fr', 'it'] as const).flatMap((language) =>
+            byLang[language].map((h, i) => ({ ...h, language, sort: 100 + i * 10, circleId: idOf.get(slug)! })),
+          )
+        : [],
+    )
+    if (help.length) await tx.insert(helpResources).values(help)
+  })
+
   // Passkeys von vor der Spalte rp_id gehören zur Domain, die jetzt gilt. Läuft dieses Deploy noch auf der alten
   // Domain, sind sie damit richtig markiert – nach dem Wechsel auf jiaia.app zählen sie nicht mehr (passkey-actions.ts).
   const rpId = process.env.WEBAUTHN_RP_ID ?? new URL(process.env.APP_URL ?? 'http://localhost:3000').hostname

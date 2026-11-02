@@ -8,7 +8,7 @@ import { nightStaffed } from '@/lib/moderation-hours'
 import { currentLocale } from '@/messages'
 import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, type FeedView } from './posts'
 import { getViewer } from './session'
-import { getCircles, getCrisisTerms, getHelpResources } from './terms'
+import { getCircleHelp, getCircles, getCrisisTerms, getHelpResources } from './terms'
 
 /**
  * Lesende Abfragen für die Apps. Im Web stecken sie in Server Components (Layout, «Ich»-Seite);
@@ -21,11 +21,12 @@ export async function me() {
   if (!v) return null
   // Sprache aus «X-Locale» der App (lib/server/request-locale.ts) – Kreise und Hilfe-Nummern wie im Web übersetzt.
   const locale = currentLocale()
-  const [last, circles, crisisTerms, help, follows] = await Promise.all([
+  const [last, circles, crisisTerms, help, circleHelp, follows] = await Promise.all([
     db.select({ mood: checkins.mood }).from(checkins).where(eq(checkins.userId, v.userId)).orderBy(desc(checkins.createdAt)).limit(1),
     getCircles(),
     getCrisisTerms(),
     getHelpResources(locale),
+    getCircleHelp(locale),
     db
       .select({ slug: circlesTable.slug, state: circlePrefs.state })
       .from(circlePrefs)
@@ -53,7 +54,10 @@ export async function me() {
       onboard: s.onboard ?? false,
       locale: s.locale ?? null,
     },
-    circles: circles.map((c) => localizeCircle(c, locale)).map(({ slug, name, description, rules, color }) => ({ slug, name, description, rules, color })),
+    // requireCw und help: neu (Nov. 2026) – ältere App-Versionen ignorieren die Felder.
+    circles: circles
+      .map((c) => localizeCircle(c, locale))
+      .map(({ slug, name, description, rules, color, requireCw }) => ({ slug, name, description, rules, color, requireCw, help: circleHelp[slug] ?? [] })),
     circlePrefs: Object.fromEntries(follows.map((f) => [f.slug, f.state])),
     crisisTerms,
     help,

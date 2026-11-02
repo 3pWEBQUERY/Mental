@@ -19,7 +19,7 @@
   - Sie kommen in der Sprache der **empfangenden** Person an. Dafür nehmen `notifySystem`, `notifyModeration` und `notifyAdmins` eine Funktion `(t) => t.…` entgegen (`lib/recipient-locale.ts`).
 - **Inhalte aus der Datenbank**
   - Kreise und kleine Schritte haben eine Spalte `i18n` (`fr`, `it`). Fehlt dort eine Übersetzung, gilt der deutsche Text.
-  - Hilfe-Nummern und Krisenbegriffe haben die Spalte `language`.
+  - Hilfe-Nummern und Krisenbegriffe haben die Spalte `language`. Hilfe-Nummern können zusätzlich einem Kreis zugeordnet sein (`circle_id`, siehe `docs/kreise-hilfe-pruefung.md`).
   - Gepflegt wird alles im Admin-Bereich. Der Seed ergänzt die französischen Standardtexte einmalig.
   - Krisenbegriffe aller Sprachen gelten immer, egal welche Sprache die Oberfläche hat.
 
