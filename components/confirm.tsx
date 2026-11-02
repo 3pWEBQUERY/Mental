@@ -16,7 +16,12 @@ export function askConfirm(message: string, confirmLabel: string): Promise<boole
 export function ConfirmHost() {
   const [req, setReq] = useState<Request | null>(null)
   useEffect(() => {
-    const onReq = (e: Event) => setReq((e as CustomEvent<Request>).detail)
+    // Kommt eine zweite Rückfrage, solange eine offen ist, gilt die erste als abgebrochen – sonst hinge sie für immer.
+    const onReq = (e: Event) =>
+      setReq((prev) => {
+        prev?.resolve(false)
+        return (e as CustomEvent<Request>).detail
+      })
     window.addEventListener('lichtung:confirm', onReq)
     return () => window.removeEventListener('lichtung:confirm', onReq)
   }, [])

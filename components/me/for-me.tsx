@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { deleteLetter, saveSafetyPlan, writeLetter, type LetterView } from '@/app/(app)/(raum)/ich/actions'
 import type { SafetyPlan } from '@/db/schema'
 import { attempt } from '@/lib/client/attempt'
@@ -16,6 +16,30 @@ export { PLAN_FIELDS }
 const EMPTY: SafetyPlan = { signs: '', self: '', distract: '', people: '', pros: '', safe: '' }
 
 /** Der Plan zum Lesen – im Hilfe-Dialog und unter «Ich». Leere Felder fallen weg. */
+/**
+ * Telefonnummern im Notfallplan zum Antippen: In einer Krise ist eine Nummer abzutippen eine Hürde.
+ * Erkannt werden Schweizer Nummern (+41 …, 0…) und die Kurznummern 112, 117, 118, 143, 144, 145, 147.
+ */
+const PHONE = /(?<![\d+])(\+\d[\d /()-]{6,18}\d|0\d[\d /()-]{6,14}\d|1(?:4[3-57]|1[278]))(?!\d)/g
+
+export function withPhoneLinks(text: string): ReactNode[] {
+  const out: ReactNode[] = []
+  let last = 0
+  for (const match of text.matchAll(PHONE)) {
+    const i = match.index ?? 0
+    if (i > last) out.push(text.slice(last, i))
+    const number = match[0]
+    out.push(
+      <a key={i} href={`tel:${number.replace(/[^\d+]/g, '')}`}>
+        {number}
+      </a>,
+    )
+    last = i + number.length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
 export function SafetyPlanView({ plan }: { plan: SafetyPlan }) {
   const f = m.plan.fields
   return (
@@ -23,7 +47,7 @@ export function SafetyPlanView({ plan }: { plan: SafetyPlan }) {
       {PLAN_FIELDS.filter((k) => plan[k]).map((k) => (
         <li key={k}>
           <h3>{f[k].label}</h3>
-          <p>{plan[k]}</p>
+          <p>{withPhoneLinks(plan[k])}</p>
         </li>
       ))}
     </ol>
@@ -62,6 +86,8 @@ function printPlan() {
 
 export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
   const [plan, setPlan] = useState<SafetyPlan>(initial ?? EMPTY)
+  // Zuletzt gespeicherter Stand – «Abbrechen» kehrt dorthin zurück.
+  const [saved, setSaved] = useState<SafetyPlan | null>(initial)
   const [editing, setEditing] = useState(!initial)
   const [offline, setOffline] = useState(false)
   const [pending, start] = useTransition()
@@ -105,7 +131,9 @@ export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
             e.preventDefault()
             start(async () => {
               if (!(await attempt(() => saveSafetyPlan(plan)))) return
-              if (offline) storeOffline(plan)
+              setSaved(plan)
+              // Lässt sich die Offline-Kopie nicht schreiben (Speicher voll), sagen wir es – sonst wäre sie still veraltet.
+              if (offline && !storeOffline(plan)) toast(m.common.error)
               toast(p.saved)
               setEditing(false)
             })
@@ -122,10 +150,23 @@ export function SafetyPlanEditor({ initial }: { initial: SafetyPlan | null }) {
               <textarea className="input" rows={3} maxLength={1500} value={plan[k]} onChange={(e) => setPlan({ ...plan, [k]: e.target.value })} />
             </label>
           ))}
-          <div>
+          <div className="row-actions">
             <button className="btn" disabled={pending}>
               {p.save}
             </button>
+            {saved && (
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={pending}
+                onClick={() => {
+                  setPlan(saved)
+                  setEditing(false)
+                }}
+              >
+                {m.common.cancel}
+              </button>
+            )}
           </div>
         </form>
       ) : filled ? (

@@ -79,7 +79,8 @@ export function Composer() {
   const [text, setText] = useState('')
   const [need, setNeed] = useState<Need>('listen')
   // Ohne eigene Wahl landet ein Gedanke in «Einfach so» (falls es den Kreis gibt) – nicht in einem Thema, das nicht passt.
-  const [circle, setCircle] = useState(viewer.circles.find((ci) => ci.slug === DEFAULT_CIRCLE)?.slug ?? viewer.circles[0]?.slug ?? '')
+  const defaultCircle = viewer.circles.find((ci) => ci.slug === DEFAULT_CIRCLE)?.slug ?? viewer.circles[0]?.slug ?? ''
+  const [circle, setCircle] = useState(defaultCircle)
   const forcedCw = viewer.circles.find((ci) => ci.slug === circle)?.requireCw ?? false
   const [mood, setMood] = useState(viewer.lastMood ?? 2)
   const [letGo, setLetGo] = useState<0 | 1 | 7 | 30>(0)
@@ -108,7 +109,12 @@ export function Composer() {
           setCircle(p.circle.slug)
           setCw(p.contentWarning)
         } else {
+          // Neu beginnen: Nach einem abgebrochenen Bearbeiten stünde sonst der alte Gedanke als «Entwurf» im Feld.
           setEdit(null)
+          setText('')
+          setNeed('listen')
+          setCircle(defaultCircle)
+          setCw(false)
           const draft = readDraft()
           if (detail?.text) setText(detail.text)
           else if (draft) {
@@ -123,7 +129,7 @@ export function Composer() {
         // Fokus setzt der Dialog nach showModal() auf das Textfeld (data-autofocus).
         setOpen(true)
       }),
-    [],
+    [defaultCircle],
   )
 
   // Entwürfe bleiben nur im Browser, nie auf dem Server – bis «Teilen».

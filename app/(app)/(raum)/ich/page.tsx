@@ -183,7 +183,7 @@ async function Saved({ v }: { v: Viewer }) {
             <li key={r.id} className="saved-reply">
               <blockquote>«{r.body}»</blockquote>
               <small>
-                {r.handle} · {formatDate(r.createdAt)} · zu «{r.postBody.length > 60 ? `${r.postBody.slice(0, 58)} …` : r.postBody}»
+                {r.handle} · {formatDate(r.createdAt)} · {m.me.savedTo(r.postBody.length > 60 ? `${r.postBody.slice(0, 58)} …` : r.postBody)}
               </small>
             </li>
           ))}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { on, pulse } from '@/lib/client/bus'
 import { m } from '@/messages'
 import { Dialog } from '../dialog'
@@ -16,6 +16,11 @@ export const inlineGrounding: { current: (() => void) | null } = { current: null
 export function Grounding() {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
+  const closeBtn = useRef<HTMLButtonElement>(null)
+  // Nach dem letzten Schritt verschwindet «Weiter» – der Fokus ginge sonst verloren (data-autofocus gilt nur beim Öffnen).
+  useEffect(() => {
+    if (open && step >= m.grounding.steps.length) closeBtn.current?.focus()
+  }, [open, step])
   useEffect(
     () =>
       on('grounding', () => {
@@ -34,7 +39,7 @@ export function Grounding() {
         <div className="stack" style={{ gap: 14 }}>
           <p className="grounding-text">{g.done}</p>
           <div>
-            <button type="button" className="btn" onClick={() => setOpen(false)} data-autofocus>
+            <button ref={closeBtn} type="button" className="btn" onClick={() => setOpen(false)} data-autofocus>
               {g.close}
             </button>
           </div>

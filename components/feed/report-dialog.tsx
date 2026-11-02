@@ -27,7 +27,7 @@ export function ReportDialog({ target, onClose }: { target: ReportTarget; onClos
     e.preventDefault()
     if (!target) return
     setBusy(true)
-    const res = await reportContent({ ...target, reason, note })
+    const res = await reportContent({ ...target, reason, note }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return toast(res.error)
     toast(r.thanks)

@@ -278,9 +278,11 @@ export async function getFeed(opts: {
   // In «Alle» wird jeder fünfte Platz mit einem Gedanken aus «Braucht Zuspruch» belegt.
   let pool: PostRow[] = []
   if (view === 'all') {
-    const exclude = [...injectedBefore, ...main.map((r) => r.id)]
+    // Nur Gedanken jenseits des Cursors (wie die Hauptliste): Was auf früheren Seiten schon stand, käme sonst
+    // als «Braucht Zuspruch» ein zweites Mal.
+    const exclude = main.map((r) => r.id)
     pool = await baseQuery()
-      .where(and(...scope, unheardWhere(viewerId), exclude.length ? notInArray(posts.id, exclude) : undefined))
+      .where(and(...where, unheardWhere(viewerId), exclude.length ? notInArray(posts.id, exclude) : undefined))
       .orderBy(...unheardOrder)
       .limit(Math.floor(take / 5))
   }
