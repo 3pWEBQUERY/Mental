@@ -2,7 +2,7 @@
  * Stammdaten: Kreise, Hilfe-Nummern, Krisen-Wortliste, kleine Schritte.
  * Idempotent – kann bei jedem Deployment laufen.
  */
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
 import { DEFAULT_HELP, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
 import { db, pool } from './index'
@@ -167,6 +167,11 @@ async function main() {
       sql`UPDATE steps SET i18n = i18n || jsonb_build_object('it', jsonb_build_object('text', ${s.it}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'it')`,
     )
   }
+  // Trauer: Inhaltshinweis immer an (Entscheid Nov. 2026). Einmalig – schaltet das Team ihn aus, bleibt er aus.
+  await once('trauer-cw-2026-11', async (tx) => {
+    await tx.update(circles).set({ requireCw: true }).where(eq(circles.slug, 'trauer'))
+  })
+
   // Kreise vom November 2026: kleine Schritte dazu, Hilfe je Kreis für alle Kreise (auch die bestehenden).
   await once('kreise-2026-11', async (tx) => {
     const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
