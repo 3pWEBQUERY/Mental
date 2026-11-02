@@ -45,7 +45,7 @@ export function Rail({ unread, onCircles }: { unread: number; onCircles: () => v
       <button
         type="button"
         data-label={n.notifications}
-        aria-label={unread ? `${n.notifications} (${unread} neu)` : n.notifications}
+        aria-label={unread ? m.nav.notificationsUnread(unread) : n.notifications}
         onClick={() => emit('notifications')}
       >
         {Icon.bell}

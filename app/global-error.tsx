@@ -11,7 +11,7 @@ export default function GlobalError({ retry }: { error: unknown; retry: () => vo
   return (
     <html lang="de-CH">
       <body>
-        <title>{`${m.brand} · Fehler`}</title>
+        <title>{`${m.brand} · ${m.errors.errorTitle}`}</title>
         <main className="public-main" style={{ maxWidth: 760, margin: '0 auto', padding: '48px 20px' }}>
           <div className="help-page">
             <h1 className="display">

@@ -2,7 +2,7 @@
 
 import { randomInt } from 'node:crypto'
 import { localStepText } from '@/lib/localize'
-import { and, count, desc, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, inArray, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
@@ -582,7 +582,16 @@ async function pickStep(userId: string): Promise<StepView> {
   const list = await db
     .select({ id: steps.id, text: steps.text, i18n: steps.i18n, circleId: steps.circleId })
     .from(steps)
-    .where(and(eq(steps.isActive, true), or(isNull(steps.circleId), notInArray(steps.circleId, muted))))
+    .where(
+      and(
+        eq(steps.isActive, true),
+        // Schritte eines deaktivierten Kreises gibt es so lange nicht, wie der Kreis aus ist.
+        or(
+          isNull(steps.circleId),
+          and(notInArray(steps.circleId, muted), inArray(steps.circleId, db.select({ id: circles.id }).from(circles).where(eq(circles.isActive, true)))),
+        ),
+      ),
+    )
     .orderBy(steps.sort)
   if (!list.length) return null
   const today = zurichDay()
@@ -646,6 +655,8 @@ export async function nextWaiting(cursor: string | null): Promise<{ post: Public
 export async function setCirclePref(slug: string, state: 'follow' | 'mute' | null): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
+  // Auch über /api/v1 erreichbar: unbekannte Werte sind ein normaler Fehler, kein Serverfehler.
+  if (typeof slug !== 'string' || slug.length > 40 || !(state === null || state === 'follow' || state === 'mute')) return fail(m.common.error)
   const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, slug))
   if (!c) return fail(m.common.error)
   if (state === null) {

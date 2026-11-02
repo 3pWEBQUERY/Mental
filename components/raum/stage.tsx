@@ -89,10 +89,14 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     pendingMood.current = { mood: i, timer: window.setTimeout(() => void commitRef.current(), 900) }
   }
 
+  // Doppelklick oder langsames Netz: ein Check-in, nicht zwei.
+  const [savingNote, setSavingNote] = useState(false)
   async function saveNote() {
-    if (mood === null || !note.trim()) return
+    if (mood === null || !note.trim() || savingNote) return
+    setSavingNote(true)
     await commitMood()
     const res = await attempt(() => saveCheckin({ mood, note }))
+    setSavingNote(false)
     if (res) {
       toast(m.stage.noteSaved)
       setNote('')
@@ -330,7 +334,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
                       <span className="count">
                         {note.length} / {LIMITS.noteMax}
                       </span>
-                      <button type="button" className="btn small" onClick={saveNote} disabled={!note.trim()}>
+                      <button type="button" className="btn small" onClick={saveNote} disabled={!note.trim() || savingNote}>
                         {m.common.save}
                       </button>
                     </div>

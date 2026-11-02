@@ -18,6 +18,7 @@ import { env } from '@/lib/server/env'
 import { notifyAdmins, notifySystem } from '@/lib/server/notify'
 import { displayNameProblem } from '@/lib/display-name'
 import { isValidUsername, looksLikeRealName, normalizeUsername } from '@/lib/username'
+import { syncReplyCountsOfAuthor } from '@/lib/reply-count'
 import { m } from '@/messages'
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; field?: string }
@@ -134,6 +135,7 @@ async function afterLogin(userId: string, status: string) {
       .update(users)
       .set({ status: sql`CASE WHEN ${users.mutedUntil} > now() THEN 'muted'::user_status ELSE 'active'::user_status END`, deleteAfter: null })
       .where(and(eq(users.id, userId), isNotNull(users.deleteAfter)))
+    await syncReplyCountsOfAuthor(userId)
     return m.auth.deletionCancelled
   }
   return null

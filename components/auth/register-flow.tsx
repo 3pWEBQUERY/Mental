@@ -77,7 +77,7 @@ export function RegisterFlow() {
   async function submitUsername(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
-    const res = await checkUsername(username)
+    const res = await checkUsername(username).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
     if (res.realName && !realName) {
@@ -92,13 +92,15 @@ export function RegisterFlow() {
     if (password.length < 10) return setError(r.passwordShort)
     if (password !== password2) return setError(r.passwordMismatch)
     setBusy(true)
-    const res = await checkPassword(password)
+    const res = await checkPassword(password).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) {
       setBusy(false)
       return setError(res.error)
     }
-    setKey(await prepareRecoveryKey())
+    const prepared = await prepareRecoveryKey().catch(() => null)
     setBusy(false)
+    if (!prepared) return setError(m.common.error)
+    setKey(prepared)
     go(4)
   }
 
@@ -117,7 +119,9 @@ export function RegisterFlow() {
       setBusy(false)
       return setError(r.botFailed)
     }
-    const res = await register({ username, password, sealedKey: key.sealed, ageConfirmed: true, rulesAccepted: true, pow: payload })
+    const res = await register({ username, password, sealedKey: key.sealed, ageConfirmed: true, rulesAccepted: true, pow: payload }).catch(
+      () => ({ ok: false as const, error: m.common.error, field: undefined }),
+    )
     setBusy(false)
     if (!res.ok) {
       setError(res.error)
@@ -131,7 +135,7 @@ export function RegisterFlow() {
   async function submitName(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
-    const res = await setInitialDisplayName(displayName)
+    const res = await setInitialDisplayName(displayName).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     // Die genaue Meldung zeigen (z. B. «keine Telefonnummer im Anzeigenamen»), nicht nur «Fehler».
     if (!res.ok) return setError(res.error)

@@ -17,7 +17,7 @@ export function RecoverForm() {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const res = await recover({ username, key, password })
+    const res = await recover({ username, key, password }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
     setWords(res.words)

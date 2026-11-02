@@ -32,7 +32,7 @@ export function LoginForm() {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const res = await login({ username, password })
+    const res = await login({ username, password }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
     done(res.notice)

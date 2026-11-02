@@ -49,7 +49,7 @@ export function MobileNav({ unread, circlesOpen, onCircles }: { unread: number; 
         <button
           type="button"
           className="mnav-round"
-          aria-label={unread ? `${n.notifications} (${unread} neu)` : n.notifications}
+          aria-label={unread ? m.nav.notificationsUnread(unread) : n.notifications}
           onClick={() => emit('notifications')}
         >
           {Icon.bell}

@@ -9,6 +9,7 @@ import { LIMITS } from '@/lib/constants'
 import { displayNameProblem } from '@/lib/display-name'
 import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
 import { enqueue, QUEUES } from '@/lib/jobs'
+import { syncReplyCountsOfAuthor } from '@/lib/reply-count'
 import { hmac, memberRef } from '@/lib/server/crypto'
 import { notifyAdmins, notifySystem } from '@/lib/server/notify'
 import { hashSecret, isPwned, verifySecret } from '@/lib/server/password'
@@ -112,7 +113,7 @@ export async function listPasskeys(): Promise<PasskeyItem[]> {
   const rows = await db.select().from(passkeys).where(eq(passkeys.userId, v.userId)).orderBy(asc(passkeys.createdAt))
   return rows.map((p) => ({
     id: p.id,
-    label: p.label ?? (p.deviceType === 'multiDevice' ? 'Synchronisierter Passkey' : 'Passkey auf einem Gerät'),
+    label: p.label ?? (p.deviceType === 'multiDevice' ? m.settings.passkeySynced : m.settings.passkeyDevice),
     createdAt: p.createdAt.toISOString(),
     lastUsedAt: p.lastUsedAt?.toISOString() ?? null,
   }))
@@ -261,6 +262,7 @@ export async function deleteAccount(password: string): Promise<R> {
   if (!(await checkPassword(v.userId, password))) return fail(m.auth.invalid)
   const deleteAfter = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   await db.update(users).set({ status: 'deleting', deleteAfter }).where(eq(users.id, v.userId))
+  await syncReplyCountsOfAuthor(v.userId)
   await db.delete(sessions).where(eq(sessions.userId, v.userId))
   await enqueue(QUEUES.purgeAccount, { userId: v.userId }, { startAfter: deleteAfter, singletonKey: `purge:${v.userId}` })
   ;(await cookies()).delete(SESSION_COOKIE)
