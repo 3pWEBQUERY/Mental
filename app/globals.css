@@ -705,6 +705,10 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 .table { width: 100%; border-collapse: collapse; font-size: calc(14px * var(--fz)); }
 .table th { text-align: left; font-weight: 500; font-size: calc(12px * var(--fz)); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); padding: 8px 8px 8px 0; }
 .table td { padding: 10px 8px 10px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.table-scroll { overflow-x: auto; max-width: 100%; }
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-row .chip { text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+.filter-row .chip[aria-current='page'] { border-style: solid; border-color: var(--ink); background: var(--ink); color: var(--paper); }
 .table .input { padding: 8px 12px; font-size: calc(14px * var(--fz)); border-radius: var(--r-m); }
 .inline-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
 .inline-form .input { width: auto; flex: 1; min-width: 140px; }

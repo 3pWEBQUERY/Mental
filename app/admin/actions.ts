@@ -105,25 +105,8 @@ export async function moderate(form: FormData) {
       break
     case 'mute24':
     case 'mute7':
-      if (target.userId) {
-        const hours = action === 'mute24' ? 24 : 24 * 7
-        const until = new Date(Date.now() + hours * 3600_000)
-        // Nur aktive oder schon stumme Konten: Eine Sperre oder eine laufende Löschung darf nicht zu «stumm» werden
-        // (sonst wäre die Sperre nach Ablauf aufgehoben und die Löschung fände nie statt). Läuft schon eine längere
-        // Stummschaltung, bleibt die längere.
-        await db
-          .update(users)
-          .set({ status: 'muted', mutedUntil: sql`GREATEST(COALESCE(${users.mutedUntil}, now()), ${until})` })
-          .where(and(eq(users.id, target.userId), inArray(users.status, ['active', 'muted'])))
-      }
-      break
     case 'ban':
-      if (target.userId) {
-        // Eine beantragte Löschung bleibt bestehen (deleteAfter wird nicht angetastet) – der Worker löscht auch
-        // gesperrte Konten, deren Frist abgelaufen ist.
-        await db.update(users).set({ status: 'banned', mutedUntil: null }).where(eq(users.id, target.userId))
-        await db.delete(sessions).where(eq(sessions.userId, target.userId))
-      }
+      if (target.userId) await sanctionAccount(target.userId, action)
       break
   }
 
@@ -151,6 +134,66 @@ export async function moderate(form: FormData) {
   if (message && target.userId)
     await notifyModeration(target.userId, targetType === 'post' ? targetId : target.postId, message, ['hide', 'warn', 'mute24', 'mute7'].includes(action))
   refresh()
+}
+
+/**
+ * Stummschalten oder Sperren eines Kontos – gemeinsam für die Warteschlange und die Kontoseite.
+ * Stumm: nur aktive oder schon stumme Konten. Eine Sperre oder eine laufende Löschung darf nicht zu «stumm» werden
+ * (sonst wäre die Sperre nach Ablauf aufgehoben und die Löschung fände nie statt). Läuft schon eine längere
+ * Stummschaltung, bleibt die längere. Gibt zurück, ob sich etwas geändert hat.
+ * Sperre: Eine beantragte Löschung bleibt bestehen (deleteAfter wird nicht angetastet) – der Worker löscht auch
+ * gesperrte Konten, deren Frist abgelaufen ist. Alle Sitzungen enden sofort.
+ */
+async function sanctionAccount(userId: string, action: 'mute24' | 'mute7' | 'ban') {
+  if (action === 'ban') {
+    const rows = await db.update(users).set({ status: 'banned', mutedUntil: null }).where(eq(users.id, userId)).returning({ id: users.id })
+    await db.delete(sessions).where(eq(sessions.userId, userId))
+    return rows.length > 0
+  }
+  const until = new Date(Date.now() + (action === 'mute24' ? 24 : 24 * 7) * 3600_000)
+  const rows = await db
+    .update(users)
+    .set({ status: 'muted', mutedUntil: sql`GREATEST(COALESCE(${users.mutedUntil}, now()), ${until})` })
+    .where(and(eq(users.id, userId), inArray(users.status, ['active', 'muted'])))
+    .returning({ id: users.id })
+  return rows.length > 0
+}
+
+const ACCOUNT_ACTIONS = ['warn', 'mute24', 'mute7', 'ban', 'logout'] as const
+
+/**
+ * Massnahme direkt am Konto (Kontoseite, ohne einen bestimmten Inhalt): verwarnen, stummschalten, sperren oder
+ * überall abmelden. Dieselben Regeln wie in der Warteschlange: Moderationskonten nie stumm oder gesperrt (erst über
+ * «Rollen» herabstufen), verwarnen und abmelden nur durch Admins; nie das eigene Konto.
+ */
+export async function moderateAccount(form: FormData): Promise<AdminResult> {
+  const parsed = z
+    .object({ token: z.string().max(400), action: z.enum(ACCOUNT_ACTIONS), reason: z.string().trim().max(500).optional() })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) return nope(INVALID)
+  const mod = await assertModerator('mod')
+  const userId = memberFromToken(parsed.data.token)
+  const t = m.admin.account
+  if (!userId) return nope(t.expired)
+  if (userId === mod.userId) return nope(t.self)
+  const { action } = parsed.data
+  const reason = parsed.data.reason ?? ''
+  const [u] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, userId))
+  if (!u) return nope(t.expired)
+  if (u.role !== 'member') {
+    if (!canModerate(mod, 'admin')) return nope(t.notAllowed)
+    if (action !== 'warn' && action !== 'logout') return nope(m.admin.staffNoBan)
+  }
+  if (u.status === 'banned' || (u.status === 'deleting' && action !== 'ban')) return nope(t.notAllowed)
+
+  if (action === 'logout') await db.delete(sessions).where(eq(sessions.userId, userId))
+  else if (action !== 'warn' && !(await sanctionAccount(userId, action))) return nope(t.notAllowed)
+
+  await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: userId, action, reason: reason || null })
+  const message = action === 'logout' || action === 'ban' ? null : notice(action, reason)
+  if (message) await notifyModeration(userId, null, message, true)
+  refresh()
+  return done(action === 'logout' ? t.loggedOut : t.done)
 }
 
 /* ----------------------------------------------------------- Übernahme */

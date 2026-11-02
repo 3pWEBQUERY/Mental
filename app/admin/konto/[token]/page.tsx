@@ -5,7 +5,8 @@ import { canModerate, memberFromToken, memberToken, requireModerator, ROLE_PROPO
 import { memberRef } from '@/lib/server/crypto'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
-import { decideRole, proposeRole, restoreAccount } from '../../actions'
+import { AdminForm } from '@/components/admin/admin-form'
+import { decideRole, moderateAccount, proposeRole, restoreAccount } from '../../actions'
 
 /**
  * Kontoseite in der Moderation: Status, Rolle, bisherige Massnahmen (am Konto und an seinen Inhalten) und das
@@ -18,7 +19,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
   const t = m.admin.account
   if (!userId) return <p className="notice">{t.expired}</p>
   const [u] = await db
-    .select({ status: users.status, role: users.role, mutedUntil: users.mutedUntil, createdAt: users.createdAt })
+    .select({ status: users.status, role: users.role, mutedUntil: users.mutedUntil, createdAt: users.createdAt, lastLoginAt: users.lastLoginAt })
     .from(users)
     .where(eq(users.id, userId))
   if (!u) return <p className="notice">{t.expired}</p>
@@ -78,6 +79,10 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
           <dd>{formatDate(u.createdAt, { month: 'long', year: 'numeric' })}</dd>
         </div>
         <div>
+          <dt>{t.lastSeen}</dt>
+          <dd>{u.lastLoginAt ? formatDate(u.lastLoginAt, { day: 'numeric', month: 'short', year: 'numeric' }) : m.admin.members.never}</dd>
+        </div>
+        <div>
           <dt>{t.posts}</dt>
           <dd>{p}</dd>
         </div>
@@ -86,6 +91,48 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
           <dd>{r}</dd>
         </div>
       </dl>
+
+      {userId === mod.userId ? (
+        <p className="fine">{t.self}</p>
+      ) : (u.status === 'active' || u.status === 'muted') && (u.role === 'member' || isAdmin) ? (
+        <section className="stack" style={{ gap: 10 }} aria-labelledby="sanction-title">
+          <h2 id="sanction-title" className="section-title">
+            {t.actionsTitle}
+          </h2>
+          <p className="fine">{t.actionsIntro}</p>
+          {/* Moderationskonten nie stumm oder gesperrt – erst über «Rollen» herabstufen (Vier-Augen-Prinzip). */}
+          {u.role !== 'member' && <p className="fine">{m.admin.staffNoBan}</p>}
+          <AdminForm
+            action={moderateAccount}
+            className="inline-form"
+            label={t.actionsTitle}
+            resetOnSuccess
+            confirm={{ ban: { message: t.banConfirm(ref), label: m.admin.actions.ban } }}
+          >
+            <input type="hidden" name="token" value={tok} />
+            <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} />
+            <button className="btn ghost small" name="action" value="warn">
+              {m.admin.actions.warn}
+            </button>
+            {u.role === 'member' && (
+              <>
+                <button className="btn ghost small" name="action" value="mute24">
+                  {m.admin.actions.mute24}
+                </button>
+                <button className="btn ghost small" name="action" value="mute7">
+                  {m.admin.actions.mute7}
+                </button>
+                <button className="btn ghost small danger" name="action" value="ban">
+                  {m.admin.actions.ban}
+                </button>
+              </>
+            )}
+            <button className="btn ghost small" name="action" value="logout">
+              {t.logout}
+            </button>
+          </AdminForm>
+        </section>
+      ) : null}
 
       {(u.status === 'muted' || (u.status === 'banned' && isAdmin)) && (
         <form action={restoreAccount} className="inline-form">
@@ -176,7 +223,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               <tr key={h.id}>
                 <td>{formatDate(h.createdAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td>{h.moderatorId ? memberRef(h.moderatorId) : 'System'}</td>
-                <td>{h.action}</td>
+                <td>{(m.admin.actions as Record<string, string>)[h.action] ?? (h.action === 'logout' ? t.logout : h.action)}</td>
                 <td>{m.admin.targetType[h.targetType]}</td>
                 <td>{h.reason ?? '—'}</td>
               </tr>

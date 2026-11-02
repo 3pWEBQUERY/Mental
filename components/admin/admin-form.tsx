@@ -20,6 +20,7 @@ export function AdminForm({
   style,
   label,
   resetOnSuccess,
+  confirm,
 }: {
   action: Action
   children?: ReactNode
@@ -28,6 +29,8 @@ export function AdminForm({
   style?: CSSProperties
   label?: string
   resetOnSuccess?: boolean
+  /** Rückfrage vor einzelnen Knöpfen, nach ihrem value (z. B. { ban: { message, label } }). */
+  confirm?: Record<string, { message: string; label: string }>
 }) {
   const [error, setError] = useState('')
   const [pending, start] = useTransition()
@@ -38,12 +41,16 @@ export function AdminForm({
       style={style}
       aria-label={label}
       aria-busy={pending || undefined}
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault()
         const form = e.currentTarget
         const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
         const data = new FormData(form, submitter)
+        const ask = submitter?.value ? confirm?.[submitter.value] : undefined
         setError('')
+        // Rückfrage vor der Transition: Updates innerhalb einer laufenden async-Transition zeigt React erst an ihrem
+        // Ende – der Dialog erschiene nie, und die Transition wartete ewig auf ihn.
+        if (ask && !(await askConfirm(ask.message, ask.label))) return
         start(async () => {
           let res: AdminResult
           try {
