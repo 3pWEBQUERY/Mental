@@ -472,6 +472,9 @@ export const fr: Messages = {
     passwordHint: 'Au moins 10 caractères.',
     passkey: 'Se connecter avec un passkey',
     passkeyFailed: 'Le passkey n’a pas fonctionné.',
+    passkeyLegacyFailed:
+      'Le passkey n’a pas fonctionné. Les passkeys créés avant le passage à jiaia.app ne marchent pas dans tous les navigateurs. Connecte-toi avec ton nom d’utilisateur et ton mot de passe, puis crée un nouveau passkey dans Réglages → Sécurité.',
+    passkeyLegacyNotice: 'Ton passkey date encore de l’ancienne adresse. Crée-en un nouveau dans Réglages → Sécurité : la connexion marchera alors partout.',
     forgot: 'Mot de passe oublié ?',
     noAccount: 'Pas encore de compte ?',
     haveAccount: 'Déjà un compte ?',
