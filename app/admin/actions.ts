@@ -59,7 +59,12 @@ export async function moderate(form: FormData) {
   if (!target) throw new Error('not found')
   if (['mute24', 'mute7', 'ban', 'warn'].includes(action) && target.userId) {
     const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, target.userId))
-    if (u && u.role !== 'member' && !canModerate(mod, 'admin')) throw new Error('forbidden')
+    if (u && u.role !== 'member') {
+      if (!canModerate(mod, 'admin')) throw new Error('forbidden')
+      // Moderationskonten nie direkt stummschalten oder sperren: Ein einzelnes (vielleicht übernommenes) Admin-Konto
+      // könnte sonst alle anderen aussperren. Erst über «Rollen» herabstufen – das braucht zwei Admins.
+      if (action !== 'warn') throw new Error('forbidden')
+    }
   }
 
   const setStatus = async (status: 'visible' | 'hidden') => {

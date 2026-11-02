@@ -178,7 +178,8 @@ export function PostCard({
   function support(k: SupportKind) {
     startTransition(async () => {
       toggleOptimistic(k)
-      const res = await toggleSupport(post.id, k)
+      // Netz weg: ruhige Meldung statt Fehlerseite (ein Fehler in der Transition landete sonst im Error-Boundary).
+      const res = await toggleSupport(post.id, k).catch(() => ({ ok: false as const, error: m.common.error }))
       if (!res.ok) return toast(res.error)
       // Nach dem await gehört ein Update nicht mehr automatisch zur Transition – ohne erneutes startTransition
       // fiele der optimistische Zustand kurz zurück, bevor das Ergebnis ankommt (sichtbares Flackern).
@@ -216,7 +217,8 @@ export function PostCard({
     setDerogationAck(false)
     startTransition(async () => {
       addReplyOptimistic(temp)
-      const res = await createReply(post.id, text)
+      // Netz weg: Der Text kommt zurück ins Feld, statt mit der Fehlerseite verloren zu gehen.
+      const res = await createReply(post.id, text).catch(() => ({ ok: false as const, error: m.common.error }))
       setBusy(false)
       if (!res.ok) {
         setReply(text)
@@ -235,7 +237,7 @@ export function PostCard({
 
   async function replyAction(r: PublicReply, kind: 'helpful' | 'hide') {
     const value = kind === 'helpful' ? !r.helpful : !r.hiddenByAuthor
-    const res = kind === 'helpful' ? await markHelpful(r.id, value) : await hideReply(r.id, value)
+    const res = await (kind === 'helpful' ? markHelpful(r.id, value) : hideReply(r.id, value)).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) return toast(res.error)
     onChange({ ...post, replies: post.replies.map((x) => (x.id === r.id ? { ...x, [kind === 'helpful' ? 'helpful' : 'hiddenByAuthor']: value } : x)) })
     if (kind === 'helpful' && value) toast(m.replies.helpfulMarked)
@@ -243,7 +245,7 @@ export function PostCard({
 
   async function removeOwnReply(r: PublicReply) {
     if (!(await askConfirm(m.replies.deleteConfirm, m.replies.delete))) return
-    const res = await deleteReply(r.id)
+    const res = await deleteReply(r.id).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) return toast(res.error)
     onChange({ ...post, replies: post.replies.map((x) => (x.id === r.id ? { ...x, deleted: true, body: null } : x)) })
     toast(m.replies.deleted)
@@ -254,7 +256,7 @@ export function PostCard({
     const anon = r.isAuthor && post.anonymous
     const f = m.feed
     if (!(await askConfirm(anon ? f.hideAnonymousConfirm : f.blockConfirm, anon ? f.hideAnonymous : f.block))) return
-    const res = await blockAuthor({ type: 'reply', id: r.id })
+    const res = await blockAuthor({ type: 'reply', id: r.id }).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) return toast(res.error)
     if (anon) onRemove(post.id)
     else onChange({ ...post, replies: post.replies.filter((x) => x.id !== r.id) })
@@ -276,7 +278,7 @@ export function PostCard({
           danger: true,
           onSelect: async () => {
             if (!(await askConfirm(f.deleteConfirm, f.deletePost))) return
-            const res = await deletePost(post.id)
+            const res = await deletePost(post.id).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!res.ok) return toast(res.error)
             onRemove(post.id)
             toast(f.deleted)
@@ -287,7 +289,7 @@ export function PostCard({
         {
           label: post.bookmarked ? f.unbookmark : f.bookmark,
           onSelect: async () => {
-            const res = await toggleBookmark(post.id)
+            const res = await toggleBookmark(post.id).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!res.ok) return toast(res.error)
             onChange({ ...post, bookmarked: res.bookmarked })
             if (res.bookmarked) toast(f.bookmarked)
@@ -300,7 +302,7 @@ export function PostCard({
           onSelect: async () => {
             const label = post.anonymous ? f.hideAnonymous : f.block
             if (!(await askConfirm(post.anonymous ? f.hideAnonymousConfirm : f.blockConfirm, label))) return
-            const res = await blockAuthor({ type: 'post', id: post.id })
+            const res = await blockAuthor({ type: 'post', id: post.id }).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!res.ok) return toast(res.error)
             onRemove(post.id)
             toast(post.anonymous ? f.hiddenAnonymous : f.blocked)

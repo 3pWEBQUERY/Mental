@@ -66,6 +66,8 @@ export const users = pgTable('users', {
   createdAt: createdAt(),
   lastLoginAt: ts('last_login_at'),
   deleteAfter: ts('delete_after'),
+  /** Letzte Wiederherstellung per Schlüssel: Moderationskonten legen danach 72 h keinen Passkey an. */
+  recoveredAt: ts('recovered_at'),
 })
 
 export const passkeys = pgTable(

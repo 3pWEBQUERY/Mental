@@ -15,6 +15,12 @@ import { m } from '@/messages'
 
 /** Direkt nach dem Login (z. B. bei der Registrierung) genügt die Sitzung. Danach braucht es das Passwort. */
 const FRESH_MS = 10 * 60_000
+/**
+ * Nach einer Wiederherstellung per Schlüssel: so lange kein neuer Passkey an einem Moderationskonto. Wer den
+ * Schlüssel erbeutet hat, kommt so nicht sofort in den Moderationsbereich – die Admins sind informiert und
+ * können das Konto in der Zeit sperren.
+ */
+const STAFF_RECOVERY_WAIT_MS = 72 * 60 * 60_000
 
 /**
  * Ein neuer Passkey öffnet den Moderationsbereich. Wer nur ein Passwort erbeutet hat, darf sich darum
@@ -29,7 +35,7 @@ async function canAddPasskey(password?: string) {
   if (!viewer) return { ok: false as const }
   const [[s], [u], [{ n, current } = { n: 0, current: 0 }]] = await Promise.all([
     db.select({ createdAt: sessions.createdAt }).from(sessions).where(eq(sessions.id, viewer.sessionId)),
-    db.select({ role: users.role, hash: users.passwordHash }).from(users).where(eq(users.id, viewer.userId)),
+    db.select({ role: users.role, hash: users.passwordHash, recoveredAt: users.recoveredAt }).from(users).where(eq(users.id, viewer.userId)),
     db
       .select({ n: count(), current: sql<number>`count(*) FILTER (WHERE ${passkeys.rpId} IS NULL OR ${passkeys.rpId} = ${env.rpId})::int` })
       .from(passkeys)
@@ -42,6 +48,7 @@ async function canAddPasskey(password?: string) {
   // Nur Passkeys für die aktuelle Domain zählen: Nach einem Domainwechsel kommt ein Moderationskonto sonst nie
   // wieder zu einem Passkey (die alten funktionieren dort nicht). Das Hinzufügen meldet das System den Admins.
   if (staff && current > 0 && viewer.authMethod !== 'passkey') return { ok: false as const, needsPasskey: true as const }
+  if (staff && u.recoveredAt && Date.now() - u.recoveredAt.getTime() < STAFF_RECOVERY_WAIT_MS) return { ok: false as const, staffWait: true as const }
   const fresh = s && Date.now() - s.createdAt.getTime() < FRESH_MS
   if (!fresh && viewer.authMethod !== 'passkey') {
     if (!password) return { ok: false as const, reauth: true as const }
@@ -55,6 +62,7 @@ export async function passkeyRegistrationOptions(password?: string) {
   const c = await canAddPasskey(password)
   if (!c.ok) {
     if ('needsPasskey' in c) return { needsPasskey: true as const }
+    if ('staffWait' in c) return { staffWait: true as const }
     if ('reauth' in c) return 'failed' in c ? { reauth: true as const, failed: true as const } : { reauth: true as const }
     return null
   }

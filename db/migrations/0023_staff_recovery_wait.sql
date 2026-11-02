@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "recovered_at" timestamp with time zone;

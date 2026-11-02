@@ -1,7 +1,7 @@
 'use server'
 
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import { and, eq, gt, isNotNull } from 'drizzle-orm'
+import { and, eq, gt, isNotNull, sql } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -128,9 +128,11 @@ const LOCK_MS = 15 * MIN
 
 async function afterLogin(userId: string, status: string) {
   if (status === 'deleting') {
+    // Löschung abgebrochen. Eine laufende Stummschaltung gilt weiter – sonst liesse sie sich mit «Konto löschen»
+    // und erneutem Anmelden umgehen.
     await db
       .update(users)
-      .set({ status: 'active', deleteAfter: null })
+      .set({ status: sql`CASE WHEN ${users.mutedUntil} > now() THEN 'muted'::user_status ELSE 'active'::user_status END`, deleteAfter: null })
       .where(and(eq(users.id, userId), isNotNull(users.deleteAfter)))
     return m.auth.deletionCancelled
   }
@@ -241,7 +243,7 @@ export async function recover(input: { username: string; key: string; password: 
   // Neues Passwort, neuer Schlüssel, alle anderen Sitzungen enden.
   const words = generateRecoveryKey()
   const [passwordHash, recoveryHash] = await Promise.all([hashSecret(password), hashSecret(words.join(' '))])
-  await db.update(users).set({ passwordHash, recoveryHash }).where(eq(users.id, u.id))
+  await db.update(users).set({ passwordHash, recoveryHash, recoveredAt: new Date() }).where(eq(users.id, u.id))
   // Passkeys entfernen: Wer sich fremden Zugang über Passwort oder Schlüssel verschafft und einen eigenen Passkey
   // angelegt hat, behält ihn sonst über die Wiederherstellung hinaus.
   await db.delete(passkeys).where(eq(passkeys.userId, u.id))

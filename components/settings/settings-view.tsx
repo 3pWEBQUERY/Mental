@@ -103,7 +103,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
       applyLocalPrefs({ theme: next.theme, fontSize: next.fontSize, motion: next.motion, discreet: next.discreet })
     }
     start(async () => {
-      const r = await updateSettings(patch)
+      const r = await updateSettings(patch).catch(() => ({ ok: false as const, error: m.common.error }))
       if (!r.ok) toast(r.error)
       else if ('motion' in patch || 'breathSound' in patch || 'hidePresence' in patch || 'collapseWarnings' in patch) router.refresh()
     })
@@ -136,6 +136,16 @@ export function SettingsView({ data }: { data: SettingsData }) {
   }, [data.vapidKey])
 
   async function togglePush(on: boolean) {
+    // subscribe() wirft z. B. in Safari ohne installierte Web-App – dann eine ruhige Meldung statt nichts.
+    try {
+      await applyPush(on)
+    } catch {
+      toast(m.common.error)
+      setPush(on ? 'off' : 'on')
+    }
+  }
+
+  async function applyPush(on: boolean) {
     const reg = await navigator.serviceWorker.ready
     if (on) {
       const perm = await Notification.requestPermission()
@@ -179,7 +189,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={(e: FormEvent) => {
             e.preventDefault()
             start(async () => {
-              const r = await updateIdentity({ displayName, defaultVisibility: visibility })
+              const r = await updateIdentity({ displayName, defaultVisibility: visibility }).catch(() => ({ ok: false as const, error: m.common.error }))
               toast(r.ok ? m.common.saved : r.error)
               if (r.ok) router.refresh()
             })
@@ -210,7 +220,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const r = await changePassword(pw)
+              const r = await changePassword(pw).catch(() => ({ ok: false as const, error: m.common.error }))
               setPwMsg(r.ok ? s.passwordChanged : r.error)
               if (r.ok) {
                 setPw({ current: '', next: '' })
@@ -317,7 +327,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const r = await regenerateRecoveryKey(keyPw)
+              const r = await regenerateRecoveryKey(keyPw).catch(() => ({ ok: false as const, error: m.common.error }))
               if (!r.ok) return toast(r.error)
               setNewKey(r.words)
               setKeyPw('')
@@ -462,7 +472,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   </option>
                 ))}
               </select>
-              <button type="button" className="btn ghost small" onClick={async () => toast((await updateQuietHours(quiet.from, quiet.to)).ok ? m.common.saved : m.common.error)}>
+              <button type="button" className="btn ghost small" onClick={async () => toast((await updateQuietHours(quiet.from, quiet.to).catch(() => ({ ok: false as const, error: m.common.error }))).ok ? m.common.saved : m.common.error)}>
                 {m.common.save}
               </button>
             </div>
@@ -530,7 +540,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 type="button"
                 className="btn ghost"
                 onClick={async () => {
-                  const r = await requestExport()
+                  const r = await requestExport().catch(() => ({ ok: false as const, error: m.common.error }))
                   if (!r.ok) return toast(r.error)
                   setExp({ status: r.status, id: r.id })
                 }}
@@ -545,7 +555,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={async (e) => {
             e.preventDefault()
             if (!(await askConfirm(s.deleteHint, s.deleteButton))) return
-            const r = await deleteAccount(delPw)
+            const r = await deleteAccount(delPw).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!r.ok) return setDelErr(r.error)
             window.location.replace('/')
           }}

@@ -1,6 +1,6 @@
-import { and, asc, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { caseClaims, posts, replies, reports, roleProposals } from '@/db/schema'
+import { caseClaims, posts, replies, reports, roleProposals, users } from '@/db/schema'
 import { canModerate, memberToken, requireModerator } from '@/lib/server/admin'
 import { memberRef } from '@/lib/server/crypto'
 import { formatDate, relativeTime } from '@/lib/time'
@@ -59,6 +59,11 @@ export default async function QueuePage() {
     replyIds.length ? db.select().from(replies).where(inArray(replies.id, replyIds)) : [],
     list.length ? db.select().from(caseClaims).where(inArray(caseClaims.targetId, [...postIds, ...replyIds])) : [],
   ])
+  // Moderationskonten lassen sich nicht direkt stummschalten oder sperren (moderate in actions.ts).
+  const authorIds = [...new Set([...postRows, ...replyRows].map((r) => r.userId).filter((id): id is string => Boolean(id)))]
+  const staffIds = new Set(
+    authorIds.length ? (await db.select({ id: users.id }).from(users).where(and(inArray(users.id, authorIds), ne(users.role, 'member')))).map((u) => u.id) : [],
+  )
   const isMod = canModerate(mod, 'mod')
   const a = m.admin.actions
   // Einsprüche gegen Massnahmen – nur für die Moderation (mod), nicht für Peers.
@@ -132,8 +137,7 @@ export default async function QueuePage() {
       <>
         {title}
         {proposalList}
-        {proposalList}
-      {appealList}
+        {appealList}
         <p className="notice">{m.admin.queueEmpty}</p>
       </>
     )
@@ -231,15 +235,21 @@ export default async function QueuePage() {
                     <button className="btn ghost small" name="action" value="warn">
                       {a.warn}
                     </button>
-                    <button className="btn ghost small" name="action" value="mute24">
-                      {a.mute24}
-                    </button>
-                    <button className="btn ghost small" name="action" value="mute7">
-                      {a.mute7}
-                    </button>
-                    <button className="btn ghost small danger" name="action" value="ban">
-                      {a.ban}
-                    </button>
+                    {content.userId && staffIds.has(content.userId) ? (
+                      <span className="fine">{m.admin.staffNoBan}</span>
+                    ) : (
+                      <>
+                        <button className="btn ghost small" name="action" value="mute24">
+                          {a.mute24}
+                        </button>
+                        <button className="btn ghost small" name="action" value="mute7">
+                          {a.mute7}
+                        </button>
+                        <button className="btn ghost small danger" name="action" value="ban">
+                          {a.ban}
+                        </button>
+                      </>
+                    )}
                     <button className="btn ghost small" name="action" value="dismiss">
                       {a.dismiss}
                     </button>

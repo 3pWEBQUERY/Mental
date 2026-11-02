@@ -402,6 +402,8 @@ export const de = {
     passkeyAdded: 'Passkey eingerichtet.',
     passkeyNone: 'Noch kein Passkey eingerichtet.',
     passkeyNeedsPasskey: 'Weitere Passkeys an einem Moderationskonto legst du nur an, wenn du mit einem Passkey angemeldet bist.',
+    passkeyRemoveNeedsPasskey: 'Passkeys an einem Moderationskonto entfernst du nur, wenn du mit einem Passkey angemeldet bist.',
+    passkeyStaffWait: 'Nach einer Wiederherstellung legt ein Moderationskonto erst nach 72 Stunden wieder einen Passkey an. Die Admins sind informiert.',
     passkeyRemove: 'Entfernen',
     recovery: 'Neuer Wiederherstellungsschlüssel',
     recoveryHint: 'Der alte Schlüssel wird ungültig.',
@@ -729,11 +731,13 @@ export const de = {
   },
   security: {
     passkeyAdded: 'Zu deinem Konto wurde ein neuer Passkey hinzugefügt. Warst du das nicht: Entferne ihn unter Einstellungen → Sicherheit und ändere dein Passwort.',
+    passkeyRemoved: 'Von deinem Konto wurde ein Passkey entfernt. Warst du das nicht: Ändere sofort dein Passwort.',
+    staffPasskeyRemoved: (ref: string) => `Am Moderationskonto ${ref} wurde ein Passkey entfernt. Wenn das nicht abgesprochen war: Konto prüfen.`,
     staffPasskeyAdded: (ref: string, role: string) =>
       `Am Moderationskonto ${ref} (${role}) wurde ein neuer Passkey angelegt. Wenn das nicht abgesprochen war: Konto prüfen und notfalls sperren.`,
     recovered: 'Dein Konto wurde mit dem Wiederherstellungsschlüssel zurückgesetzt. Alle anderen Sitzungen sind beendet und bisherige Passkeys entfernt – richte bei Bedarf einen neuen ein.',
     staffRecovered: (ref: string) =>
-      `Das Moderationskonto ${ref} wurde mit dem Wiederherstellungsschlüssel zurückgesetzt; seine Passkeys sind entfernt. Wenn das nicht abgesprochen war: Konto prüfen.`,
+      `Das Moderationskonto ${ref} wurde mit dem Wiederherstellungsschlüssel zurückgesetzt; seine Passkeys sind entfernt. Einen neuen Passkey (und damit den Moderationsbereich) gibt es erst in 72 Stunden. Wenn das nicht abgesprochen war: Konto jetzt sperren.`,
   },
   errors: {
     notFoundLead: 'Diese Seite',
@@ -769,6 +773,7 @@ export const de = {
       'Der Moderationsbereich ist nur mit einem Passkey erreichbar. Melde dich ab und wieder mit deinem Passkey an. Noch keinen? Lege ihn unter Einstellungen → Sicherheit an.',
     passkeyRelogin: 'Abmelden und mit Passkey anmelden',
     queueEmpty: 'Die Warteschlange ist leer.',
+    staffNoBan: 'Moderationskonto: Stummschalten und Sperren erst nach dem Herabstufen unter «Rollen» (Vier-Augen-Prinzip).',
     priority: ['Akut', 'Sorge', 'Meldung', 'Automatisch'],
     targetType: { post: 'Gedanke', reply: 'Antwort', user: 'Konto' },
     status: { pending: 'wartet auf Prüfung', visible: 'sichtbar', hidden: 'ausgeblendet', removed: 'entfernt' },
