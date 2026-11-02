@@ -469,6 +469,9 @@ export const de = {
     passwordHint: 'Mindestens 10 Zeichen.',
     passkey: 'Mit Passkey anmelden',
     passkeyFailed: 'Der Passkey hat nicht geklappt.',
+    passkeyLegacyFailed:
+      'Der Passkey hat nicht geklappt. Passkeys von vor dem Umzug auf jiaia.app gehen nicht in jedem Browser. Melde dich mit Benutzername und Passwort an und lege unter Einstellungen → Sicherheit einen neuen Passkey an.',
+    passkeyLegacyNotice: 'Dein Passkey stammt noch von der alten Adresse. Lege unter Einstellungen → Sicherheit einen neuen an – dann klappt die Anmeldung überall.',
     forgot: 'Passwort vergessen?',
     noAccount: 'Noch kein Konto?',
     haveAccount: 'Schon ein Konto?',

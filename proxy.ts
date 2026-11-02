@@ -45,7 +45,9 @@ export function proxy(request: NextRequest) {
   // gelten pro Domain – so landen alle auf derselben.
   const canonical = process.env.APP_URL?.startsWith('https://') ? new URL(process.env.APP_URL) : null
   const host = request.headers.get('host')
-  if (canonical && host && host !== canonical.host && host.endsWith('.up.railway.app')) {
+  // Ausnahme /.well-known/webauthn: Browser prüfen dort, ob alte Passkeys auf der neuen Domain gelten dürfen –
+  // ohne Weiterleitung.
+  if (canonical && host && host !== canonical.host && host.endsWith('.up.railway.app') && pathname !== '/.well-known/webauthn') {
     return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, canonical.origin), 308)
   }
   // Früher hiess der Feed /lichtung: alte Lesezeichen, Push-Nachrichten und installierte Apps landen dauerhaft auf /start.

@@ -213,7 +213,7 @@ test('Notfallplan: nur den Plan drucken, Offline-Kopie auf /offline, beim Abmeld
   await expect(page.locator('#offline-plan')).toBeHidden()
 })
 
-test('Ein kleiner Schritt: bei jedem Neuladen ein anderer, Feed und Seitenleiste gleich, erledigt bleibt erledigt', async ({ page }) => {
+test('Ein kleiner Schritt: bei jedem Neuladen und nach «Gemacht» ein anderer, Feed und Seitenleiste gleich', async ({ page }) => {
   await register(page)
   const text = () => page.locator('.side .step p').first().textContent()
   const seen: string[] = []
@@ -226,11 +226,16 @@ test('Ein kleiner Schritt: bei jedem Neuladen ein anderer, Feed und Seitenleiste
     if (seen.length) expect(t, `Neuladen ${i}`).not.toBe(seen[seen.length - 1])
     seen.push(t)
   }
-  // Erledigt: bleibt beim Neuladen stehen.
+  // «Gemacht»: sofort ein neuer Schritt (kein «erledigt»-Zustand), und der gemachte kommt heute nicht wieder.
+  const before = (await text())!.trim()
   await page.locator('.side .step').getByRole('button', { name: 'Gemacht' }).click()
-  await expect(page.locator('.side .step.done')).toBeVisible()
-  const done = (await text())!.trim()
-  await page.reload()
-  await expect(page.locator('.side .step.done')).toBeVisible()
-  expect((await text())!.trim()).toBe(done)
+  await expect(page.getByText('Ein Schritt. Das zählt.').first()).toBeVisible()
+  await expect(page.locator('.side .step p').first()).not.toHaveText(before)
+  await expect(page.locator('.side .step.done')).toHaveCount(0)
+  await expect(page.locator('.side .step').getByRole('button', { name: 'Gemacht' })).toBeVisible()
+  for (let i = 0; i < 4; i++) {
+    await page.reload()
+    await expect(page.locator('.side .step')).toBeVisible()
+    expect((await text())!.trim()).not.toBe(before)
+  }
 })

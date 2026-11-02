@@ -192,13 +192,20 @@ export async function passkeyLoginOptions() {
 }
 
 export async function passkeyLogin(response: AuthenticationResponseJSON): Promise<Result<{ notice: string | null }>> {
-  const userId = await verifyAuthentication(response)
-  if (!userId) return fail(m.auth.passkeyFailed)
+  let verified: Awaited<ReturnType<typeof verifyAuthentication>> = null
+  try {
+    verified = await verifyAuthentication(response)
+  } catch {
+    verified = null
+  }
+  if (!verified) return fail(m.auth.passkeyFailed)
+  const { userId, legacy } = verified
   const [u] = await db.select({ status: users.status }).from(users).where(eq(users.id, userId)).limit(1)
   if (!u || u.status === 'banned') return fail(m.auth.banned)
   const notice = await afterLogin(userId, u.status)
   await createSession(userId, 'passkey')
-  return { ok: true, notice }
+  // Alter Passkey (frühere Domain): klappt nur über die Brücke – zu einem neuen raten.
+  return { ok: true, notice: legacy ? [notice, m.auth.passkeyLegacyNotice].filter(Boolean).join(' ') : notice }
 }
 
 export async function logout() {

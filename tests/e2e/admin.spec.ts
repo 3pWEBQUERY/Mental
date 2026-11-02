@@ -65,6 +65,36 @@ test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nich
   await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
 })
 
+test('Domainwechsel: Anmeldung mit altem Passkey versucht die frühere Domain und erklärt sonst den Weg', async ({ page, context, request }) => {
+  // Die Brücke für Browser: Die frühere Domain nennt die aktuelle als erlaubte Adresse.
+  const wk = await request.get('/.well-known/webauthn')
+  expect(wk.ok()).toBe(true)
+  expect(wk.headers()['content-type']).toContain('application/json')
+  expect((await wk.json()).origins).toEqual([new URL(wk.url()).origin])
+
+  const cdp = await context.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
+  })
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
+  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    await pool.query(`UPDATE passkeys SET rp_id = 'alte-adresse.up.railway.app' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [username])
+  } finally {
+    await pool.end()
+  }
+  await cdp.send('WebAuthn.clearCredentials', { authenticatorId })
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
+  // Die alte Domain ist im Test nicht erreichbar: verständlicher Hinweis statt einer englischen Browser-Meldung.
+  await expect(page.locator('#form-error')).toContainText('Passkeys von vor dem Umzug auf jiaia.app')
+})
+
 /** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
 async function moderator(browser: import('@playwright/test').Browser, role: 'mod' | 'admin' = 'mod') {
   const ctx = await browser.newContext()
