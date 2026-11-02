@@ -182,7 +182,8 @@ export async function moderateAccount(form: FormData): Promise<AdminResult> {
   if (!u) return nope(t.expired)
   if (u.role !== 'member') {
     if (!canModerate(mod, 'admin')) return nope(t.notAllowed)
-    if (action !== 'warn' && action !== 'logout') return nope(m.admin.staffNoBan)
+    // Auch kein «Überall abmelden»: Ein übernommenes Admin-Konto könnte sonst die anderen Admins laufend aussperren.
+    if (action !== 'warn') return nope(m.admin.staffNoBan)
   }
   if (u.status === 'banned' || (u.status === 'deleting' && action !== 'ban')) return nope(t.notAllowed)
 
@@ -309,6 +310,9 @@ export async function decideRole(form: FormData) {
   if (!userId) throw new Error('invalid')
   const admin = await assertModerator('admin')
   const { decision } = parsed.data
+  // Über einen Vorschlag zum eigenen Konto entscheiden immer andere – sonst könnte ein übernommenes Admin-Konto
+  // jede Herabstufung ablehnen und wäre aus der App heraus nicht mehr zu entfernen.
+  if (userId === admin.userId) throw new Error('forbidden')
   const result = await db.transaction(async (tx) => {
     const [p] = await tx.select().from(roleProposals).where(eq(roleProposals.userId, userId)).for('update')
     if (!p) return null

@@ -74,3 +74,24 @@ test('Admin: das eigene Konto lässt sich nicht sperren', async ({ browser }) =>
   await expect(admin.getByText('Das ist dein eigenes Konto.')).toBeVisible()
   await expect(admin.getByRole('button', { name: 'Sperren' })).toHaveCount(0)
 })
+
+test('Admin: über eine Herabstufung des eigenen Kontos entscheiden die anderen; Moderationskonten nur verwarnen', async ({ browser }) => {
+  test.slow()
+  const first = await moderator(browser, 'admin')
+  const second = await moderator(browser, 'admin')
+  // Der erste Admin schlägt vor, den zweiten (das neueste Moderationskonto) herabzustufen.
+  await first.goto('/admin/mitglieder?status=staff')
+  await first.locator('table tbody tr a.member-link').first().click()
+  const form = first.getByRole('form', { name: 'Massnahme am Konto' })
+  await expect(form.getByRole('button', { name: 'Verwarnen' })).toBeVisible()
+  await expect(form.getByRole('button', { name: /stumm|Sperren|Überall abmelden/ })).toHaveCount(0)
+  await first.getByLabel('Neue Rolle').selectOption('member')
+  await first.getByLabel('Begründung (für das Audit-Log)').fill('Konto möglicherweise übernommen')
+  await first.getByRole('button', { name: 'Vorschlagen' }).click()
+  await expect(first.getByText(/Vorgeschlagen: Mitglied/)).toBeVisible()
+  // Der zweite Admin sieht den Vorschlag zum eigenen Konto, kann ihn aber weder ablehnen noch bestätigen.
+  await second.goto('/admin/mitglieder?status=staff')
+  await second.locator('table tbody tr a.member-link').first().click()
+  await expect(second.getByText('Ein Vorschlag zu deinem eigenen Konto')).toBeVisible()
+  await expect(second.getByRole('button', { name: /Verwerfen|Bestätigen/ })).toHaveCount(0)
+})

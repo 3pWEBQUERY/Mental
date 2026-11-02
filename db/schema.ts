@@ -220,6 +220,8 @@ export const posts = pgTable(
     expiresAt: ts('expires_at'),
     /** Zuhörende wurden auf diesen unbeantworteten Gedanken hingewiesen (höchstens einmal). */
     nudgedAt: ts('nudged_at'),
+    /** Zweite Prüfstufe (Worker) gelaufen. Fehlt der Wert nach 10 Minuten, reiht der Worker die Prüfung erneut ein. */
+    moderatedAt: ts('moderated_at'),
   },
   (t) => [
     index('posts_expires_idx').on(t.expiresAt).where(sql`expires_at IS NOT NULL AND deleted_at IS NULL`),
@@ -272,6 +274,8 @@ export const replies = pgTable(
     hiddenByAuthor: boolean('hidden_by_author').notNull().default(false),
     createdAt: createdAt(),
     deletedAt: ts('deleted_at'),
+    /** Zweite Prüfstufe (Worker) gelaufen – siehe posts.moderatedAt. */
+    moderatedAt: ts('moderated_at'),
   },
   (t) => [index('replies_post_created_idx').on(t.postId, t.createdAt), index('replies_user_idx').on(t.userId)],
 )

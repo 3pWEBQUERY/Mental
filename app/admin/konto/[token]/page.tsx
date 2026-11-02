@@ -127,9 +127,11 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
                 </button>
               </>
             )}
-            <button className="btn ghost small" name="action" value="logout">
-              {t.logout}
-            </button>
+            {u.role === 'member' && (
+              <button className="btn ghost small" name="action" value="logout">
+                {t.logout}
+              </button>
+            )}
           </AdminForm>
         </section>
       ) : null}
@@ -172,17 +174,22 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               )}
               {proposal.createdAt.getTime() < Date.now() - ROLE_PROPOSAL_DAYS * 86_400_000 && <p className="fine">{m.admin.roles.expiredHint}</p>}
               {proposal.proposedBy === mod.userId && <p className="fine">{m.admin.roles.ownProposal}</p>}
-              <form action={decideRole} className="inline-form">
-                <input type="hidden" name="token" value={tok} />
-                {proposal.proposedBy !== mod.userId && userId !== mod.userId && (
-                  <button className="btn small" name="decision" value="accept">
-                    {m.admin.roles.accept}
+              {/* Über das eigene Konto entscheiden immer andere Admins (decideRole). */}
+              {userId === mod.userId ? (
+                <p className="fine">{m.admin.roles.ownAccount}</p>
+              ) : (
+                <form action={decideRole} className="inline-form">
+                  <input type="hidden" name="token" value={tok} />
+                  {proposal.proposedBy !== mod.userId && (
+                    <button className="btn small" name="decision" value="accept">
+                      {m.admin.roles.accept}
+                    </button>
+                  )}
+                  <button className="btn ghost small" name="decision" value="reject">
+                    {proposal.proposedBy === mod.userId ? m.admin.roles.withdraw : m.admin.roles.reject}
                   </button>
-                )}
-                <button className="btn ghost small" name="decision" value="reject">
-                  {proposal.proposedBy === mod.userId ? m.admin.roles.withdraw : m.admin.roles.reject}
-                </button>
-              </form>
+                </form>
+              )}
             </div>
           ) : userId !== mod.userId ? (
             <form action={proposeRole} className="inline-form">

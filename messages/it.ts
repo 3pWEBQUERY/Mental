@@ -906,6 +906,7 @@ export const it: Messages = {
       reject: 'Scarta',
       withdraw: 'Ritira',
       ownProposal: 'La tua proposta – un’altra persona admin deve confermarla.',
+      ownAccount: 'Una proposta sul tuo account – decidono gli altri admin.',
       expiredHint: 'Scaduta – confermandola verrà solo scartata.',
       openTitle: 'Proposte di ruolo aperte',
       proposedNotice: 'È stato proposto un cambio di ruolo che attende la tua conferma (Moderazione → Coda).',

@@ -904,6 +904,7 @@ export const de = {
       reject: 'Verwerfen',
       withdraw: 'Zurückziehen',
       ownProposal: 'Dein Vorschlag – ein anderer Admin muss bestätigen.',
+      ownAccount: 'Ein Vorschlag zu deinem eigenen Konto – darüber entscheiden die anderen Admins.',
       expiredHint: 'Abgelaufen – beim Bestätigen wird er nur noch verworfen.',
       openTitle: 'Offene Rollen-Vorschläge',
       proposedNotice: 'Ein Rollenwechsel wurde vorgeschlagen und wartet auf deine Bestätigung (Moderation → Warteschlange).',

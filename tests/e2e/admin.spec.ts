@@ -40,7 +40,7 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
   await expect(page.getByText(/nur an, wenn du mit einem Passkey angemeldet bist/)).toBeVisible()
 })
 
-test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nicht aus', async ({ page, context }) => {
+test('Domainwechsel: Passkeys der alten Domain zählen weiter – Passwort allein legt keinen neuen an', async ({ page, context }) => {
   const cdp = await context.newCDPSession(page)
   await cdp.send('WebAuthn.enable')
   const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
@@ -58,11 +58,19 @@ test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nich
   } finally {
     await pool.end()
   }
-  // Wie nach einem echten Wechsel: Für die neue Domain hat das Gerät noch keinen Passkey.
+  // Wie nach einem echten Wechsel: Für die neue Domain hat das Gerät noch keinen Passkey. Die alten melden über die
+  // Brücke (Related Origins) weiter an – ein erbeutetes Passwort darf darum keinen eigenen neuen anlegen.
   await cdp.send('WebAuthn.clearCredentials', { authenticatorId })
   await page.reload()
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText(/nur an, wenn du mit einem Passkey angemeldet bist/)).toBeVisible()
+  const pool2 = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const { rows } = await pool2.query(`SELECT count(*)::int AS n FROM passkeys p JOIN users u ON u.id = p.user_id WHERE u.username = $1`, [username])
+    expect(rows[0].n).toBe(1)
+  } finally {
+    await pool2.end()
+  }
 })
 
 test('Domainwechsel: Anmeldung mit altem Passkey versucht die frühere Domain und erklärt sonst den Weg', async ({ page, context, request }) => {

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
-    "worker": "tsx worker/index.ts",
+    "worker": "DB_STATEMENT_TIMEOUT_MS=${DB_STATEMENT_TIMEOUT_MS:-120000} tsx worker/index.ts",
     "monitor": "tsx scripts/monitor.ts",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
