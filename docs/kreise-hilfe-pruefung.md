@@ -39,5 +39,5 @@ Bitte für jede Stelle prüfen, ob es sie gibt und ob Name, Link, Zeiten und Zie
 
 - «Inhaltshinweis immer an» (Admin → Kreise) verschwimmt jeden Gedanken im Kreis, auch ältere, bis man ihn antippt.
 - Im Gedanken-Fenster ist der Schalter dann fest an.
-- Voreingestellt ist das nur bei **Angehörige**.
-- Für **Trauer** und **Beziehungen & Familie** lohnt sich die Entscheidung im Team.
+- Voreingestellt bei **Angehörige** und **Trauer**. Trauer wird einmalig per Seed eingeschaltet (`trauer-cw-2026-11`).
+- Für **Beziehungen & Familie** lohnt sich die Entscheidung im Team.
