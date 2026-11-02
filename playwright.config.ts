@@ -31,12 +31,13 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }, testIgnore: /mobile\.spec\.ts/ },
     { name: 'mobil', use: { ...devices['Pixel 7'] }, testMatch: /mobile\.spec\.ts/ },
   ],
-  webServer: {
-    command: `npx next start -p ${PORT}`,
-    url: `http://localhost:${PORT}/api/health`,
+  // Zwei Server wie die zwei Web-Replikas auf Railway: Admin-Änderungen müssen auf beiden sofort gelten.
+  webServer: [PORT, PORT + 1].map((port) => ({
+    command: `npx next start -p ${port}`,
+    url: `http://localhost:${port}/api/health`,
     // Nie wiederverwenden: Jeder Lauf legt die Test-Datenbank neu an – ein alter Server hielte gekappte Verbindungen.
     reuseExistingServer: false,
     // APP_URL passend zum Port: Passkeys prüfen die Herkunft (origin) genau.
-    env: { HIBP_DISABLED: '1', REGISTRATIONS_PER_IP_PER_DAY: '1000', USERNAME_CHECKS_PER_10_MIN: '1000', PASSWORD_CHECKS_PER_10_MIN: '1000', APP_URL: `http://localhost:${PORT}` },
-  },
+    env: { HIBP_DISABLED: '1', REGISTRATIONS_PER_IP_PER_DAY: '1000', USERNAME_CHECKS_PER_10_MIN: '1000', PASSWORD_CHECKS_PER_10_MIN: '1000', APP_URL: `http://localhost:${port}` },
+  })),
 })

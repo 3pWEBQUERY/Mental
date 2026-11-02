@@ -6,6 +6,7 @@ import { db } from '@/db'
 import { postMedia, posts } from '@/db/schema'
 import { Mark } from '@/components/ui'
 import { AdminNav } from '@/components/admin/nav'
+import { ConfirmHost } from '@/components/confirm'
 import { canModerate, hasStrongAuth, requireModeratorRole } from '@/lib/server/admin'
 import { m } from '@/messages'
 
@@ -41,6 +42,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         {strong && <AdminNav level={level} imagesWaiting={waiting?.n ?? 0} />}
         {children}
       </main>
+      <ConfirmHost />
     </div>
   )
 }

@@ -7,9 +7,10 @@ import { ALL_DEFAULT_CRISIS_TERMS, type CrisisTerm } from '../crisis'
 import { defaultHelp, type HelpLanguage, type HelpResource } from '../help'
 
 /*
- * Der Cache liegt im Speicher jeder Web-Replika; updateTag wirkt nur auf der, die die Änderung speichert.
- * Darum kurze Lebensdauer ('minutes' = nach 1 Minute im Hintergrund neu laden): Eine Admin-Änderung
- * an Krisenbegriffen oder Nummern gilt so spätestens nach etwa einer Minute überall.
+ * Der Cache liegt im Speicher jeder Web-Replika. updateTag nach einer Admin-Änderung gilt sofort auf allen:
+ * cache-handlers/default.cjs verteilt die Invalidierung per Postgres NOTIFY. Als Sicherheitsnetz, falls eine
+ * Nachricht verloren geht, bleibt die Lebensdauer für Krisenbegriffe und Nummern kurz ('minutes' = nach
+ * 1 Minute im Hintergrund neu laden).
  * Die Rückfallliste bei DB-Fehlern wird nur kurz gehalten (FALLBACK), nie stundenlang. Kürzer geht nicht:
  * Beim Build ist die DB nicht erreichbar, und unter 30 s / 5 min Ablauf wäre /hilfe nicht mehr vorab
  * renderbar – der Build bricht dann ab (siehe cacheLife-Doku, «Prerendering behavior»).
