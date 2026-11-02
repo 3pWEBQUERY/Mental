@@ -14,6 +14,9 @@ import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
 import { AcuteDialog, CareNote } from './care'
 
+/** Kreis für Gedanken ohne passendes Thema (db/seed.ts). */
+const DEFAULT_CIRCLE = 'einfach-so'
+
 type Draft = { text: string; need: Need; circle: string; cw: boolean }
 
 function readDraft(): Draft | null {
@@ -75,7 +78,9 @@ export function Composer() {
   const [edit, setEdit] = useState<PublicPost | null>(null)
   const [text, setText] = useState('')
   const [need, setNeed] = useState<Need>('listen')
-  const [circle, setCircle] = useState(viewer.circles[0]?.slug ?? '')
+  // Ohne eigene Wahl landet ein Gedanke in «Einfach so» (falls es den Kreis gibt) – nicht in einem Thema, das nicht passt.
+  const [circle, setCircle] = useState(viewer.circles.find((ci) => ci.slug === DEFAULT_CIRCLE)?.slug ?? viewer.circles[0]?.slug ?? '')
+  const forcedCw = viewer.circles.find((ci) => ci.slug === circle)?.requireCw ?? false
   const [mood, setMood] = useState(viewer.lastMood ?? 2)
   const [letGo, setLetGo] = useState<0 | 1 | 7 | 30>(0)
   const [anonymous, setAnonymous] = useState(viewer.defaultVisibility === 'anonymous')
@@ -184,7 +189,7 @@ export function Composer() {
     setBusy(true)
     setError('')
     if (edit) {
-      const res = await updatePost({ id: edit.id, body: text, need, circle, contentWarning: cw }).catch(() => ({ ok: false as const, error: m.common.error }))
+      const res = await updatePost({ id: edit.id, body: text, need, circle, contentWarning: cw || forcedCw }).catch(() => ({ ok: false as const, error: m.common.error }))
       setBusy(false)
       if (!res.ok) return setError(res.error)
       emit('post-updated', res.post)
@@ -200,7 +205,7 @@ export function Composer() {
       circle,
       mood,
       visibility: anonymous ? 'anonymous' : 'pseudonym',
-      contentWarning: cw,
+      contentWarning: cw || forcedCw,
       mediaId: upload && 'mediaId' in upload ? upload.mediaId : null,
       mediaAlt: upload && alt.trim() ? alt.trim() : null,
       letGoDays: letGo,
@@ -318,11 +323,11 @@ export function Composer() {
               </div>
             )}
             <label className="switch">
-              <input type="checkbox" checked={cw} onChange={(e) => setCw(e.target.checked)} />
+              <input type="checkbox" checked={cw || forcedCw} disabled={forcedCw} onChange={(e) => setCw(e.target.checked)} />
               <i />
               <span>
                 {c.contentWarning}
-                <small>{c.contentWarningHint}</small>
+                <small>{forcedCw ? c.contentWarningRequired : c.contentWarningHint}</small>
               </span>
             </label>
             {!edit && (

@@ -1,12 +1,13 @@
 import { asc } from 'drizzle-orm'
 import { db } from '@/db'
-import { helpResources } from '@/db/schema'
+import { circles, helpResources } from '@/db/schema'
 import { AdminForm, DeleteButton } from '@/components/admin/admin-form'
 import { requireModerator } from '@/lib/server/admin'
 import { m } from '@/messages'
 import { deleteHelp, saveHelp } from '../actions'
 
 type Help = typeof helpResources.$inferSelect
+type Circle = typeof circles.$inferSelect
 
 const LANGS = [
   { code: 'de', name: 'Deutsch', page: '/hilfe' },
@@ -21,20 +22,26 @@ const LANGS = [
  */
 export default async function HelpAdmin() {
   await requireModerator('admin')
-  const rows = await db.select().from(helpResources).orderBy(asc(helpResources.language), asc(helpResources.sort), asc(helpResources.name))
+  const [rows, circleRows] = await Promise.all([
+    db.select().from(helpResources).orderBy(asc(helpResources.language), asc(helpResources.sort), asc(helpResources.name)),
+    db.select().from(circles).orderBy(asc(circles.sort)),
+  ])
+  const circleSort = new Map(circleRows.map((c, i) => [c.id, i]))
+  // Erst die allgemeinen, dann nach Kreis.
+  const order = (h: Help) => (h.circleId ? 1 + (circleSort.get(h.circleId) ?? 0) : 0)
   return (
     <div className="stack">
       <h1 className="page-title">{m.admin.nav.help}</h1>
       <h2 className="eyebrow">Neue Nummer</h2>
-      <HelpForm h={null} sort={rows.reduce((max, h) => Math.max(max, h.sort + 10), 0)} />
+      <HelpForm h={null} sort={rows.reduce((max, h) => Math.max(max, h.sort + 10), 0)} circles={circleRows} />
       {LANGS.map((l) => {
-        const list = rows.filter((h) => h.language === l.code)
+        const list = rows.filter((h) => h.language === l.code).sort((a, b) => order(a) - order(b))
         return (
           <section key={l.code} className="stack" aria-label={l.name}>
             <h2 className="eyebrow">
               {l.name} – <a href={l.page}>{l.page}</a> ({list.length})
             </h2>
-            {list.length ? list.map((h) => <HelpForm key={h.id} h={h} sort={h.sort} />) : <p className="fine">Keine eigenen Einträge – es gelten die Standardnummern.</p>}
+            {list.length ? list.map((h) => <HelpForm key={h.id} h={h} sort={h.sort} circles={circleRows} />) : <p className="fine">Keine eigenen Einträge – es gelten die Standardnummern.</p>}
           </section>
         )
       })}
@@ -42,7 +49,7 @@ export default async function HelpAdmin() {
   )
 }
 
-function HelpForm({ h, sort }: { h: Help | null; sort: number }) {
+function HelpForm({ h, sort, circles }: { h: Help | null; sort: number; circles: Circle[] }) {
   const del = h ? `hilfe-loeschen-${h.id}` : ''
   return (
     <>
@@ -57,6 +64,14 @@ function HelpForm({ h, sort }: { h: Help | null; sort: number }) {
           {LANGS.map((l) => (
             <option key={l.code} value={l.code}>
               {l.name}
+            </option>
+          ))}
+        </select>
+        <select className="input" name="circleId" defaultValue={h?.circleId ?? ''} aria-label="Kreis (Hilfe zu einem Thema)" style={{ flex: '0 0 170px', minWidth: 170 }}>
+          <option value="">Allgemein (überall)</option>
+          {circles.map((c) => (
+            <option key={c.id} value={c.id}>
+              Kreis: {c.name}
             </option>
           ))}
         </select>

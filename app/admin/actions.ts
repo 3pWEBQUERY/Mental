@@ -363,6 +363,7 @@ export async function saveCircle(form: FormData): Promise<AdminResult> {
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       sort: z.coerce.number().int().min(0).max(999),
       isActive: z.string().optional(),
+      requireCw: z.string().optional(),
       nameFr: optional(40),
       descriptionFr: optional(400),
       rulesFr: optional(400),
@@ -385,6 +386,7 @@ export async function saveCircle(form: FormData): Promise<AdminResult> {
     color: d.color,
     sort: d.sort,
     isActive: d.isActive === 'on',
+    requireCw: d.requireCw === 'on',
     i18n: { ...(has(fr) ? { fr } : {}), ...(has(it) ? { it } : {}) },
   }
   const [taken] = await db
@@ -455,6 +457,7 @@ const helpSchema = z.object({
   audience: str(120),
   sort: z.coerce.number().int().min(0).max(999),
   language: z.enum(['de', 'fr', 'it']).default('de'),
+  circleId: z.uuid().optional().or(z.literal('')),
 })
 
 export async function saveHelp(form: FormData): Promise<AdminResult> {
@@ -466,7 +469,20 @@ export async function saveHelp(form: FormData): Promise<AdminResult> {
   }
   const d = parsed.data
   if (!d.phone && !d.url) return nope('Bitte eine Nummer oder einen Link angeben.')
-  const values = { name: d.name, phone: d.phone || null, url: d.url || null, hours: d.hours, audience: d.audience, sort: d.sort, language: d.language }
+  if (d.circleId) {
+    const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.id, d.circleId))
+    if (!c) return nope('Den gewählten Kreis gibt es nicht mehr.')
+  }
+  const values = {
+    name: d.name,
+    phone: d.phone || null,
+    url: d.url || null,
+    hours: d.hours,
+    audience: d.audience,
+    sort: d.sort,
+    language: d.language,
+    circleId: d.circleId || null,
+  }
   if (d.id) {
     const [row] = await db.update(helpResources).set(values).where(eq(helpResources.id, d.id)).returning({ id: helpResources.id })
     if (!row) return nope('Diesen Eintrag gibt es nicht mehr.')

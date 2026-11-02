@@ -65,6 +65,11 @@ function CircleForm({ c, sort, posts = 0, others = [] }: { c: Circle | null; sor
             <i />
             Aktiv
           </label>
+          <label className="switch" title="Jeder Gedanke im Kreis ist verschwommen, bis man ihn antippt – auch ältere.">
+            <input type="checkbox" name="requireCw" defaultChecked={c?.requireCw ?? false} />
+            <i />
+            Inhaltshinweis immer an
+          </label>
           <button className="btn small">{c ? m.common.save : 'Kreis anlegen'}</button>
           {c && (
             <DeleteButton

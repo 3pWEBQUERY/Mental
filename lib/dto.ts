@@ -87,6 +87,8 @@ export type PostRow = {
   /** Übersetzte Kreisnamen; optional, damit ältere Abfragen/Tests ohne sie auskommen. */
   circleI18n?: CircleI18n | null
   circleColor: string
+  /** Kreis mit Pflicht-Inhaltshinweis: gilt auch für ältere Gedanken darin. */
+  circleCw?: boolean
 }
 
 export type ReplyRow = {
@@ -146,7 +148,7 @@ export function toPublicPost(
     circle: { slug: p.circleSlug, name: localCircleName(p.circleName, p.circleI18n), color: p.circleColor },
     need: p.need,
     body: p.body,
-    contentWarning: p.contentWarning,
+    contentWarning: p.contentWarning || Boolean(p.circleCw),
     createdAt: p.createdAt.toISOString(),
     editedAt: p.editedAt?.toISOString() ?? null,
     expiresAt: isMine ? (p.expiresAt?.toISOString() ?? null) : null,
