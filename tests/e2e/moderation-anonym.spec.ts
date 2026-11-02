@@ -90,7 +90,7 @@ test('«Gutgetan» zeigt keine Antworten, die die Moderation ausgeblendet hat', 
   await card.getByRole('button', { name: 'Antwort senden' }).click()
   await expect(card.getByText(reply)).toBeVisible()
   await sql(`UPDATE replies SET helpful = true WHERE body = $1`, [reply])
-  await a.goto('/ich')
+  await a.goto('/ich?tab=gutgetan')
   await expect(a.getByText(reply)).toBeVisible()
   await sql(`UPDATE replies SET status = 'hidden' WHERE body = $1`, [reply])
   await a.reload()
@@ -100,7 +100,7 @@ test('«Gutgetan» zeigt keine Antworten, die die Moderation ausgeblendet hat', 
 
 test('Tagebuch: PIN vergessen → mit Passwort löschen und neu beginnen', async ({ page }) => {
   await register(page)
-  await page.goto('/ich')
+  await page.goto('/ich?tab=tagebuch')
   await page.locator('#pin').fill('geheim123')
   await page.locator('#pin2').fill('geheim123')
   await page.getByRole('button', { name: 'Tagebuch einrichten' }).click()
