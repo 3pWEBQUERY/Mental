@@ -405,6 +405,8 @@ export const fr: Messages = {
     passkeyAdded: 'Passkey configuré.',
     passkeyNone: 'Aucun passkey configuré pour l’instant.',
     passkeyNeedsPasskey: 'Sur un compte de modération, tu ne peux ajouter d’autres passkeys que si ta connexion actuelle s’est faite avec un passkey.',
+    passkeyRemoveNeedsPasskey: 'Sur un compte de modération, tu ne peux retirer des passkeys que si ta connexion actuelle s’est faite avec un passkey.',
+    passkeyStaffWait: 'Après une récupération, un compte de modération ne peut créer un nouveau passkey qu’après 72 heures. Les admins sont informé·es.',
     passkeyRemove: 'Retirer',
     recovery: 'Nouvelle clé de récupération',
     recoveryHint: 'L’ancienne clé ne sera plus valable.',
@@ -731,12 +733,14 @@ export const fr: Messages = {
     rejected: (r: string) => `Ton recours a été examiné, la mesure est maintenue.${r ? ` Motif : ${r}` : ''}`,
   },
   security: {
+    passkeyRemoved: 'Un passkey a été retiré de ton compte. Si ce n’était pas toi : change immédiatement ton mot de passe.',
+    staffPasskeyRemoved: (ref: string) => `Un passkey a été retiré du compte de modération ${ref}. Si ce n’était pas convenu : vérifier le compte.`,
     passkeyAdded: 'Un nouveau passkey a été ajouté à ton compte. Si ce n’était pas toi : retire-le sous Réglages → Sécurité et change ton mot de passe.',
     staffPasskeyAdded: (ref: string, role: string) =>
       `Un nouveau passkey a été créé sur le compte de modération ${ref} (${role}). Si ce n’était pas convenu : vérifier le compte et le suspendre si nécessaire.`,
     recovered: 'Ton compte a été réinitialisé avec la clé de récupération. Toutes les autres sessions sont fermées et les passkeys existants ont été retirés – configure-en un nouveau si besoin.',
     staffRecovered: (ref: string) =>
-      `Le compte de modération ${ref} a été réinitialisé avec la clé de récupération ; ses passkeys ont été retirés. Si ce n’était pas convenu : vérifier le compte.`,
+      `Le compte de modération ${ref} a été réinitialisé avec la clé de récupération ; ses passkeys ont été retirés. Un nouveau passkey (et donc l’accès à la modération) ne sera possible que dans 72 heures. Si ce n’était pas convenu : suspendre le compte maintenant.`,
   },
   errors: {
     notFoundLead: 'Cette page',
@@ -772,6 +776,7 @@ export const fr: Messages = {
       'L’espace de modération n’est accessible qu’avec un passkey. Déconnecte-toi et reconnecte-toi avec ton passkey. Pas encore de passkey ? Crée-le sous Réglages → Sécurité.',
     passkeyRelogin: 'Se déconnecter et se reconnecter avec un passkey',
     queueEmpty: 'La file d’attente est vide.',
+    staffNoBan: 'Compte de modération : rendre muet ou suspendre seulement après rétrogradation sous « Rôles » (principe des quatre yeux).',
     priority: ['Aigu', 'Inquiétude', 'Signalement', 'Automatique'],
     targetType: { post: 'Pensée', reply: 'Réponse', user: 'Compte' },
     status: { pending: 'en attente de vérification', visible: 'visible', hidden: 'masqué', removed: 'retiré' },

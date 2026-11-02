@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, eq, gt, ne, sql } from 'drizzle-orm'
+import { and, eq, gt, lt, ne, sql } from 'drizzle-orm'
 import { cookies, headers } from 'next/headers'
 import { connection } from 'next/server'
 import { redirect } from 'next/navigation'
@@ -169,7 +169,11 @@ const loadViewer = cache(async (): Promise<Viewer | null> => {
   }
   let status = row.status
   if (status === 'muted' && row.mutedUntil && row.mutedUntil.getTime() < now) {
-    await db.update(users).set({ status: 'active', mutedUntil: null }).where(eq(users.id, row.userId))
+    // Nur, wenn es noch dieselbe abgelaufene Stummschaltung ist – eine gleichzeitige Sperre bleibt bestehen.
+    await db
+      .update(users)
+      .set({ status: 'active', mutedUntil: null })
+      .where(and(eq(users.id, row.userId), eq(users.status, 'muted'), lt(users.mutedUntil, new Date())))
     status = 'active'
   }
   return {

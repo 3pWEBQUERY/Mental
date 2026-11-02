@@ -186,6 +186,15 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
 
 const editSchema = postSchema.pick({ body: true, need: true, circle: true, contentWarning: true }).extend({ id: z.uuid() })
 
+async function openAcuteReport(postId: string) {
+  const [r] = await db
+    .select({ id: reports.id })
+    .from(reports)
+    .where(and(eq(reports.targetType, 'post'), eq(reports.targetId, postId), eq(reports.reason, 'auto_acute'), eq(reports.status, 'open')))
+    .limit(1)
+  return Boolean(r)
+}
+
 export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<{ post: PublicPost }> | Fail> {
   const v = await writer()
   if (isFail(v)) return v
@@ -198,6 +207,8 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     .where(and(eq(posts.id, d.id), eq(posts.userId, v.userId), isNull(posts.deletedAt)))
   if (!p) return fail(m.common.error)
   if (Date.now() - p.createdAt.getTime() > LIMITS.editWindowMs) return fail(m.composer.editExpired)
+  // Mehr als ein paar Korrekturen braucht niemand – ohne Grenze liesse sich die Moderation mit Alarmen fluten.
+  if (await limited(`edit:${v.userId}`, 20, 60 * 60_000)) return fail(m.common.rateLimited)
   const [circle] = await db.select({ id: circles.id, requireCw: circles.requireCw }).from(circles).where(eq(circles.slug, d.circle))
   if (!circle) return fail(m.common.error)
 
@@ -214,7 +225,8 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
       ...(level === 'acute' ? { status: 'pending' as const } : {}),
     })
     .where(eq(posts.id, d.id))
-  if (level === 'acute') {
+  // Ein offener Krisenhinweis zu diesem Gedanken genügt: weitere Bearbeitungen erzeugen weder Meldung noch Alarm.
+  if (level === 'acute' && !(await openAcuteReport(d.id))) {
     await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
     await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }

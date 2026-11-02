@@ -1,16 +1,22 @@
 'use client'
 
-import { m } from '@/messages'
+import { defaultHelp } from '@/lib/help'
+import { currentLocale, m } from '@/messages'
 import { Dialog } from '../dialog'
 import { PhoneScript } from '../ui'
 import { useModerationAway } from './use-moderation-away'
+
+/** Name der Stelle hinter einer Nummer in der aktuellen Sprache (143: Die Dargebotene Hand / La Main Tendue / Telefono Amico). */
+function lineName(phone: string) {
+  return defaultHelp(currentLocale()).find((h) => h.phone === phone)?.name ?? ''
+}
 
 /** Ruhiger Hinweis bei Krisensprache. Blockiert das Teilen nie. */
 export function CareNote() {
   const c = m.care
   return (
     <div className="care" role="status">
-      {c.text} <a href="tel:143">143</a> Die Dargebotene Hand ({c.allDay}) · <a href="tel:147">147</a> {c.youth} · {c.acuteDanger}{' '}
+      {c.text} <a href="tel:143">143</a> {lineName('143')} ({c.allDay}) · <a href="tel:147">147</a> {c.youth} · {c.acuteDanger}{' '}
       <a href="tel:144">144</a>. {c.canShare}
     </div>
   )
@@ -30,7 +36,9 @@ export function AcuteDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="call">
           <a href="tel:143">
             <b>143</b>
-            <span>Die Dargebotene Hand · {m.care.allDay}</span>
+            <span>
+              {lineName('143')} · {m.care.allDay}
+            </span>
           </a>
           <a href="tel:147">
             <b>147</b>
@@ -38,7 +46,9 @@ export function AcuteDialog({ open, onClose }: { open: boolean; onClose: () => v
           </a>
           <a href="tel:144" className="urgent">
             <b>144</b>
-            <span>Notruf · {m.care.acuteDanger}</span>
+            <span>
+              {lineName('144')} · {m.care.acuteDanger}
+            </span>
           </a>
         </div>
         <PhoneScript />

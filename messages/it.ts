@@ -405,6 +405,8 @@ export const it: Messages = {
     passkeyAdded: 'Passkey configurata.',
     passkeyNone: 'Ancora nessuna passkey configurata.',
     passkeyNeedsPasskey: 'Su un account di moderazione puoi aggiungere altre passkey solo se hai effettuato l’accesso con una passkey.',
+    passkeyRemoveNeedsPasskey: 'Su un account di moderazione puoi rimuovere passkey solo se hai effettuato l’accesso con una passkey.',
+    passkeyStaffWait: 'Dopo un recupero, un account di moderazione può creare una nuova passkey solo dopo 72 ore. Gli admin sono informati.',
     passkeyRemove: 'Rimuovi',
     recovery: 'Nuova chiave di recupero',
     recoveryHint: 'La vecchia chiave non sarà più valida.',
@@ -731,12 +733,14 @@ export const it: Messages = {
     rejected: (r: string) => `Il tuo ricorso è stato esaminato: la misura resta in vigore.${r ? ` Motivo: ${r}` : ''}`,
   },
   security: {
+    passkeyRemoved: 'Dal tuo account è stata rimossa una passkey. Se non sei stata/o tu: cambia subito la password.',
+    staffPasskeyRemoved: (ref: string) => `Dall’account di moderazione ${ref} è stata rimossa una passkey. Se non era concordato: verificare l’account.`,
     passkeyAdded: 'Al tuo account è stata aggiunta una nuova passkey. Se non l’hai aggiunta tu: rimuovila in Impostazioni → Sicurezza e cambia la password.',
     staffPasskeyAdded: (ref: string, role: string) =>
       `Sull’account di moderazione ${ref} (${role}) è stata creata una nuova passkey. Se non era concordato: verificare l’account e, se necessario, sospenderlo.`,
     recovered: 'Il tuo account è stato reimpostato con la chiave di recupero. Tutte le altre sessioni sono state chiuse e le passkey esistenti rimosse – se serve, configurane una nuova.',
     staffRecovered: (ref: string) =>
-      `L’account di moderazione ${ref} è stato reimpostato con la chiave di recupero; le sue passkey sono state rimosse. Se non era concordato: verificare l’account.`,
+      `L’account di moderazione ${ref} è stato reimpostato con la chiave di recupero; le sue passkey sono state rimosse. Una nuova passkey (e quindi l’accesso alla moderazione) sarà possibile solo tra 72 ore. Se non era concordato: sospendere subito l’account.`,
   },
   errors: {
     notFoundLead: 'Questa pagina',
@@ -772,6 +776,7 @@ export const it: Messages = {
       'L’area di moderazione è accessibile solo con una passkey. Esci e accedi di nuovo con la tua passkey. Non ne hai ancora una? Creala in Impostazioni → Sicurezza.',
     passkeyRelogin: 'Esci e accedi con la passkey',
     queueEmpty: 'La coda è vuota.',
+    staffNoBan: 'Account di moderazione: silenziare o sospendere solo dopo il declassamento in «Ruoli» (principio dei quattro occhi).',
     priority: ['Acuto', 'Preoccupazione', 'Segnalazione', 'Automatico'],
     targetType: { post: 'Pensiero', reply: 'Risposta', user: 'Account' },
     status: { pending: 'in attesa di verifica', visible: 'visibile', hidden: 'nascosto', removed: 'rimosso' },

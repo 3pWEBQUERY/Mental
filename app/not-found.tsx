@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { HelpList, PublicShell } from '@/components/ui'
-import { DEFAULT_HELP } from '@/lib/help'
-import { m } from '@/messages'
+import { defaultHelp } from '@/lib/help'
+import { currentLocale, m } from '@/messages'
 
 export const metadata: Metadata = { title: '404' }
 
@@ -24,7 +24,7 @@ export default function NotFound() {
           </Link>
         </p>
         <section className="help">
-          <HelpList resources={DEFAULT_HELP} />
+          <HelpList resources={defaultHelp(currentLocale())} />
         </section>
       </div>
     </PublicShell>

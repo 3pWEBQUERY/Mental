@@ -9,7 +9,8 @@ import { LIMITS } from '@/lib/constants'
 import { displayNameProblem } from '@/lib/display-name'
 import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
 import { enqueue, QUEUES } from '@/lib/jobs'
-import { hmac } from '@/lib/server/crypto'
+import { hmac, memberRef } from '@/lib/server/crypto'
+import { notifyAdmins, notifySystem } from '@/lib/server/notify'
 import { hashSecret, isPwned, verifySecret } from '@/lib/server/password'
 import { hit } from '@/lib/server/rate-limit'
 import { generateRecoveryKey } from '@/lib/server/recovery'
@@ -117,10 +118,20 @@ export async function listPasskeys(): Promise<PasskeyItem[]> {
   }))
 }
 
+/**
+ * Passkey entfernen. Moderationskonten nur aus einer Passkey-Sitzung: Sonst könnte jemand mit dem Passwort allein
+ * alle Passkeys löschen, einen eigenen anlegen und so in den Moderationsbereich kommen. Jede Entfernung wird
+ * gemeldet (Glocke), an Moderationskonten zusätzlich allen Admins.
+ */
 export async function removePasskey(id: string): Promise<R> {
   const v = await viewer()
   if (!z.uuid().safeParse(id).success) return fail(m.common.error)
-  await db.delete(passkeys).where(and(eq(passkeys.id, id), eq(passkeys.userId, v.userId)))
+  const staff = v.role !== 'member'
+  if (staff && v.authMethod !== 'passkey') return fail(m.settings.passkeyRemoveNeedsPasskey)
+  const [row] = await db.delete(passkeys).where(and(eq(passkeys.id, id), eq(passkeys.userId, v.userId))).returning({ id: passkeys.id })
+  if (!row) return fail(m.common.error)
+  await notifySystem([v.userId], (t) => t.security.passkeyRemoved)
+  if (staff) await notifyAdmins((t) => t.security.staffPasskeyRemoved(memberRef(v.userId)), v.userId)
   return { ok: true }
 }
 
