@@ -29,3 +29,22 @@ test('Startseite auf Französisch', async ({ browser }) => {
   await expect(page.locator('section.hero')).toContainText('Qu’est-ce que tu portes avec toi aujourd’hui ?')
   await expect(page.getByRole('navigation', { name: 'Accès rapide' }).getByRole('link', { name: 'Aide' })).toHaveAttribute('href', '/aide')
 })
+
+test('Datenschutz und Impressum: auf Deutsch ganz deutsch, Hinweis nur in der gewählten Sprache', async ({ browser }) => {
+  const de = await (await browser.newContext({ locale: 'de-CH' })).newPage()
+  for (const path of ['/datenschutz', '/impressum']) {
+    await de.goto(path)
+    await expect(de.getByText('Ce texte juridique')).toBeHidden()
+    await expect(de.getByText('Questo testo giuridico')).toBeHidden()
+    expect(await de.locator('main').innerText()).not.toMatch(/juridique|giuridico/)
+  }
+  const ctx = await browser.newContext()
+  const fr = await ctx.newPage()
+  await fr.goto('/')
+  await ctx.addCookies([{ name: 'lichtung_lang', value: 'fr', url: fr.url() }])
+  for (const path of ['/datenschutz', '/impressum']) {
+    await fr.goto(path)
+    await expect(fr.getByText('Ce texte juridique')).toBeVisible()
+    await expect(fr.getByText('Questo testo giuridico')).toBeHidden()
+  }
+})

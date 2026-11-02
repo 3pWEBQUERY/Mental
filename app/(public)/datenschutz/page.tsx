@@ -10,11 +10,12 @@ export default function PrivacyPage() {
     <PublicShell>
       <div className="prose" style={{ margin: '0 auto' }}>
         <h1 className="display">Datenschutz, einfach erklärt</h1>
-        {/* Rechtstexte gibt es vorerst nur auf Deutsch – die französische Fassung folgt nach rechtlicher Prüfung. */}
-        <p className="fine" lang="fr">
+        {/* Rechtstexte gibt es vorerst nur auf Deutsch. Der Hinweis darauf erscheint nur, wer Französisch oder
+            Italienisch gewählt hat (data-ui, lib/prefs-script.ts) – auf Deutsch bleibt die Seite ganz deutsch. */}
+        <p className="fine legal-note" lang="fr">
           Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
         </p>
-        <p className="fine" lang="it">
+        <p className="fine legal-note" lang="it">
           Questo testo giuridico esiste per ora solo in tedesco. Una versione italiana seguirà dopo una verifica giuridica.
         </p>
         <p>
