@@ -25,6 +25,7 @@ import { AppealInline } from './appeal'
 import { Onboarding } from './onboarding'
 import { MobileNav } from './mobile-nav'
 import { useModerationAway } from './use-moderation-away'
+import { showCarriedNotice } from '@/lib/client/notice'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -59,6 +60,8 @@ export function AppChrome({
     } catch {}
   }, [viewer.theme, viewer.fontSize, viewer.motion, viewer.discreet])
   useEffect(() => on('help', () => setHelpOpen(true)), [])
+  // Hinweis aus der Anmeldung (z. B. «Löschung abgebrochen») – die Seite wurde dafür neu geladen.
+  useEffect(showCarriedNotice, [])
   useEffect(
     () =>
       on('notifications', async () => {

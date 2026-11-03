@@ -206,6 +206,8 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
   await share(user, body)
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   try {
+    // Teilen läuft im Hintergrund weiter – erst warten, bis der Gedanke gespeichert ist.
+    await expect.poll(async () => (await pool.query(`SELECT id FROM posts WHERE body = $1`, [body])).rows.length).toBe(1)
     const { rows } = await pool.query(`SELECT id FROM posts WHERE body = $1`, [body])
     await pool.query(`INSERT INTO reports (id, target_type, target_id, reason, priority, reporter_id) VALUES (gen_random_uuid(), 'post', $1, 'other', 2, NULL)`, [rows[0].id])
   } finally {

@@ -4,7 +4,7 @@ import { browserSupportsWebAuthn, startAuthentication } from '@simplewebauthn/br
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { login, passkeyLogin, passkeyLoginOptions } from '@/app/(auth)/actions'
-import { toast } from '@/lib/client/bus'
+import { carryNotice } from '@/lib/client/notice'
 import { solvePow } from '@/lib/client/pow'
 import { forgetPrivate } from '@/lib/client/private-storage'
 import { m } from '@/messages'
@@ -23,7 +23,8 @@ export function LoginForm() {
   useEffect(forgetPrivate, [])
 
   function done(notice: string | null) {
-    if (notice) toast(notice)
+    // Der Hinweis (z. B. «Löschung abgebrochen») überlebt den Seitenaufbau – die App zeigt ihn nach dem Laden.
+    if (notice) carryNotice(notice)
     // Ganzer Seitenaufbau statt Client-Navigation: kein Zustand einer vorherigen Sitzung im Tab.
     window.location.replace('/start')
   }

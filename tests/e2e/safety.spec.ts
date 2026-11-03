@@ -58,7 +58,11 @@ test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => localStorage.getItem('lichtung-draft'))).toBeNull()
   await login(page, username)
   await page.waitForURL('**/start')
-  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  // Nach der Anmeldung lädt die Seite ganz neu – klicken, sobald sie bereit ist.
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+    await expect(page.locator('#composer-text')).toBeVisible({ timeout: 1_000 })
+  }).toPass({ timeout: 10_000 })
   await expect(page.locator('#composer-text')).toHaveValue('')
 })
 
