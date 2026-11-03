@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, count, desc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, replies, stepLog } from '@/db/schema'
+import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, pushSubscriptions, replies, stepLog } from '@/db/schema'
 import { openText } from '@/lib/at-rest'
 import { localizeCircle } from '@/lib/localize'
 import { nightStaffed } from '@/lib/moderation-hours'
@@ -21,7 +21,7 @@ export async function me() {
   if (!v) return null
   // Sprache aus «X-Locale» der App (lib/server/request-locale.ts) – Kreise und Hilfe-Nummern wie im Web übersetzt.
   const locale = currentLocale()
-  const [last, circles, crisisTerms, help, circleHelp, follows] = await Promise.all([
+  const [last, circles, crisisTerms, help, circleHelp, follows, [sub]] = await Promise.all([
     db.select({ mood: checkins.mood }).from(checkins).where(eq(checkins.userId, v.userId)).orderBy(desc(checkins.createdAt)).limit(1),
     getCircles(),
     getCrisisTerms(),
@@ -32,6 +32,7 @@ export async function me() {
       .from(circlePrefs)
       .innerJoin(circlesTable, eq(circlesTable.id, circlePrefs.circleId))
       .where(and(eq(circlePrefs.userId, v.userId), eq(circlesTable.isActive, true))),
+    db.select({ from: pushSubscriptions.quietFrom, to: pushSubscriptions.quietTo }).from(pushSubscriptions).where(eq(pushSubscriptions.userId, v.userId)).limit(1),
   ])
   const s = v.settings
   return {
@@ -50,6 +51,8 @@ export async function me() {
       // Neu (Nov. 2026): Atemmuster und Dauer – ältere App-Versionen ignorieren die Felder.
       breathPattern: s.breathPattern ?? 'calm',
       breathMinutes: s.breathMinutes ?? 1,
+      // Ruhezeiten (Stunden, Ortszeit Schweiz) – ändern mit updateQuietHours(from, to).
+      quiet: sub ?? s.quiet ?? { from: 22, to: 7 },
       collapseWarnings: s.collapseWarnings ?? true,
       hidePresence: s.hidePresence ?? false,
       discreet: s.discreet ?? false,

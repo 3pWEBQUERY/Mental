@@ -8,6 +8,7 @@ import { m } from '@/messages'
 import { AdminForm } from '@/components/admin/admin-form'
 import { decideRole, moderateAccount, proposeRole, restoreAccount } from '../../actions'
 import { ModForm } from '@/components/admin/mod-form'
+import { auditLabel } from '@/lib/audit-label'
 
 /**
  * Kontoseite in der Moderation: Status, Rolle, bisherige Massnahmen (am Konto und an seinen Inhalten) und das
@@ -24,6 +25,8 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
     .from(users)
     .where(eq(users.id, userId))
   if (!u) return <p className="notice">{t.expired}</p>
+  // Abgelaufene Stummschaltung: gilt schon nicht mehr (zurückgesetzt wird sie beim nächsten Besuch des Mitglieds).
+  if (u.status === 'muted' && u.mutedUntil && u.mutedUntil <= new Date()) Object.assign(u, { status: 'active' as const, mutedUntil: null })
   const ref = memberRef(userId)
   const [[{ p } = { p: 0 }], [{ r } = { r: 0 }], history, [proposal]] = await Promise.all([
     db
@@ -193,7 +196,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               )}
             </div>
           ) : userId !== mod.userId ? (
-            <form action={proposeRole} className="inline-form">
+            <ModForm action={proposeRole} className="inline-form">
               <p className="fine" style={{ flexBasis: '100%', maxWidth: 640 }}>
                 {m.admin.roles.intro}
               </p>
@@ -207,7 +210,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               </select>
               <input className="input" name="reason" required minLength={3} maxLength={500} placeholder={m.admin.roles.reason} aria-label={m.admin.roles.reason} />
               <button className="btn small">{m.admin.roles.propose}</button>
-            </form>
+            </ModForm>
           ) : null}
         </section>
       )}
@@ -231,7 +234,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               <tr key={h.id}>
                 <td>{formatDate(h.createdAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td>{h.moderatorId ? memberRef(h.moderatorId) : 'System'}</td>
-                <td>{(m.admin.actions as Record<string, string>)[h.action] ?? (h.action === 'logout' ? t.logout : h.action)}</td>
+                <td>{auditLabel(h.action)}</td>
                 <td>{m.admin.targetType[h.targetType]}</td>
                 <td>{h.reason ?? '—'}</td>
               </tr>

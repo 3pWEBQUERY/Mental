@@ -83,8 +83,10 @@ async function History({ v }: { v: Viewer }) {
     db.select({ n: count() }).from(breathLog).where(eq(breathLog.userId, v.userId)),
     db.select({ n: count() }).from(stepLog).where(and(eq(stepLog.userId, v.userId), eq(stepLog.action, 'done'))),
   ])
+  // Von heute (Schweizer Kalender) mittags aus zurückzählen – so gibt es auch bei der Zeitumstellung jeden Tag genau einmal.
+  const noon = Date.parse(`${zurichDay()}T12:00:00Z`)
   const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000)
+    const d = new Date(noon - (29 - i) * 24 * 60 * 60 * 1000)
     return { key: zurichDay(d), date: d }
   })
   const byDay = new Map<string, number[]>()
@@ -108,7 +110,7 @@ async function History({ v }: { v: Viewer }) {
                   {formatDate(d.date, { weekday: 'long', day: 'numeric', month: 'long' })}:{' '}
                   {(byDay.get(d.key) ?? []).map((mood) => m.moods.labels[mood]).join(', ') || m.me.historyNone}
                 </span>
-                <span aria-hidden="true">{d.date.getDate() === 1 || d.key === days[0]!.key ? formatDate(d.date, { day: 'numeric', month: 'short' }) : ''}</span>
+                <span aria-hidden="true">{d.key.endsWith('-01') || d.key === days[0]!.key ? formatDate(d.date, { day: 'numeric', month: 'short' }) : ''}</span>
                 {(byDay.get(d.key) ?? []).map((mood, i) => (
                   <i key={i} aria-hidden="true" style={{ background: `var(--mood-${mood})` }} title={m.moods.labels[mood]} />
                 ))}

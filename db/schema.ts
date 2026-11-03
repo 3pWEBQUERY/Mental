@@ -124,6 +124,8 @@ export type Settings = {
   /** Atemmuster und Dauer im Raum (lib/breath.ts). */
   breathPattern?: 'calm' | 'box' | 'relax'
   breathMinutes?: 1 | 3 | 5
+  /** Ruhezeiten für Benachrichtigungen (Stunden, Ortszeit Schweiz). */
+  quiet?: { from: number; to: number }
   hidePresence?: boolean
   collapseWarnings?: boolean
   /** Diskret: neutraler Tab-Titel, Inhalt verschwimmt beim Verlassen des Fensters. */

@@ -70,6 +70,8 @@ const CALLS: Record<string, Call> = {
   // Für mich
   journalState: me.journalState,
   setupJournal: me.setupJournal,
+  // Tagebuch-PIN vergessen: Einträge löschen und neu beginnen (mit Passwort bestätigt).
+  resetJournal: me.resetJournal,
   listJournal: me.listJournal,
   addJournalEntry: me.addJournalEntry,
   deleteJournalEntry: me.deleteJournalEntry,
@@ -92,6 +94,8 @@ const CALLS: Record<string, Call> = {
   requestExport: settings.requestExport,
   exportStatus: settings.exportStatus,
   deleteAccount: settings.deleteAccount,
+  // Ruhezeiten für Benachrichtigungen (wie in der Web-App, gilt für alle Geräte des Kontos).
+  updateQuietHours: settings.updateQuietHours,
 }
 
 const MAX_BODY = 64 * 1024

@@ -39,6 +39,13 @@ import { journalDeletion } from '../../lib/deletion-journal'
 
 const DAY = 24 * 60 * 60 * 1000
 
+/** Hinweis im Export in der Sprache des Kontos. «letGoAt» bei Gedanken = Datum, an dem «Loslassen» ihn löscht. */
+const EXPORT_HINT = {
+  de: 'Dein Tagebuch ist verschlüsselt. Entschlüsseln kannst nur du – mit deiner Tagebuch-PIN. «letGoAt» bei einem Gedanken ist der Tag, an dem du ihn loslässt (er wird dann gelöscht).',
+  fr: 'Ton journal est chiffré. Toi seul·e peux le déchiffrer – avec le code PIN de ton journal. «letGoAt» pour une pensée est le jour où tu la laisses partir (elle sera alors supprimée).',
+  it: 'Il tuo diario è cifrato. Puoi decifrarlo solo tu – con il PIN del diario. «letGoAt» per un pensiero è il giorno in cui lo lasci andare (verrà eliminato).',
+}
+
 /** ZIP mit allen Daten des Kontos (JSON + eigene Bilder), 24 Stunden über einen signierten Link abrufbar. */
 export async function exportAccount({ exportId }: { exportId: string }) {
   const [job] = await db.select().from(exports).where(eq(exports.id, exportId))
@@ -51,12 +58,13 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       .where(eq(users.id, userId))
     const [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId))
     const myPosts = await db
-      .select({ id: posts.id, circle: circles.name, need: posts.need, mood: posts.mood, body: posts.body, visibility: posts.visibility, authorHandle: posts.authorHandle, contentWarning: posts.contentWarning, status: posts.status, createdAt: posts.createdAt, editedAt: posts.editedAt })
+      .select({ id: posts.id, circle: circles.name, need: posts.need, mood: posts.mood, body: posts.body, visibility: posts.visibility, authorHandle: posts.authorHandle, contentWarning: posts.contentWarning, status: posts.status, createdAt: posts.createdAt, editedAt: posts.editedAt, letGoAt: posts.expiresAt })
       .from(posts)
       .innerJoin(circles, eq(circles.id, posts.circleId))
       .where(and(eq(posts.userId, userId), sql`${posts.deletedAt} IS NULL`))
     const [myReplies, myCheckins, journal, given, marks, prefs, breaths, stepsDone, blocked, media, plan, myLetters] = await Promise.all([
-      db.select({ postId: replies.postId, body: replies.body, authorHandle: replies.authorHandle, createdAt: replies.createdAt }).from(replies).where(eq(replies.userId, userId)),
+      // Gelöschte Antworten (leerer Text) gehören nicht mehr dazu.
+      db.select({ postId: replies.postId, body: replies.body, authorHandle: replies.authorHandle, createdAt: replies.createdAt }).from(replies).where(and(eq(replies.userId, userId), sql`${replies.deletedAt} IS NULL`)),
       db.select({ mood: checkins.mood, note: checkins.note, createdAt: checkins.createdAt }).from(checkins).where(eq(checkins.userId, userId)),
       db.select({ ciphertext: journalEntries.ciphertext, iv: journalEntries.iv, salt: journalEntries.salt, createdAt: journalEntries.createdAt }).from(journalEntries).where(eq(journalEntries.userId, userId)),
       db.select({ postId: support.postId, kind: support.kind, createdAt: support.createdAt }).from(support).where(eq(support.userId, userId)),
@@ -111,7 +119,8 @@ export async function exportAccount({ exportId }: { exportId: string }) {
     const { journalSalt, journalCheck, ...settings } = profile?.settings ?? {}
     const data = {
       exportedAt: new Date().toISOString(),
-      hinweis: 'Dein Tagebuch ist verschlüsselt. Entschlüsseln kannst nur du – mit deiner Tagebuch-PIN.',
+      hinweis: EXPORT_HINT[(profile?.settings?.locale as 'fr' | 'it' | undefined) ?? 'de'] ?? EXPORT_HINT.de,
+      sprache: profile?.settings?.locale ?? 'de',
       account: { ...user, displayName: profile?.displayName, defaultVisibility: profile?.defaultVisibility, settings },
       gedanken: myPosts,
       antworten: myReplies,

@@ -616,6 +616,9 @@ html:has(.with-hero), html:has(.with-hero) body { background: #050a16; }
 /* Etwas mehr Nacht hinter dem Text – der Himmel ist an manchen Stellen hell. */
 .hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse 62% 46% at 50% 30%, rgba(4, 9, 20, 0.62), transparent 74%), linear-gradient(to bottom, rgba(4, 9, 20, 0.4), transparent 28%); }
 .hero-inner { width: min(1080px, 100%); padding: calc(96px + 5vh) clamp(16px, 4vw, 32px) 0; text-align: center; display: grid; justify-items: center; }
+/* Platz für die runden Schnellzugriffe unten (absolut positioniert): Bei sehr grosser Schrift wächst der Hero,
+   statt dass die Knöpfe über «Anmelden» liegen. */
+.hero-inner { padding-bottom: calc(52px + clamp(16px, 4vh, 44px) + 28px); }
 .hero-eyebrow { font-size: calc(12px * var(--fz)); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(244, 239, 230, 0.74); margin-bottom: 18px; }
 .hero-title { font-family: var(--serif); font-weight: 400; font-size: calc(clamp(42px, 5.6vw, 96px) * var(--fz)); line-height: 1; letter-spacing: -0.02em; text-wrap: balance; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45); }
 .hero-title em { font-style: italic; }

@@ -737,6 +737,8 @@ export async function unreadState(): Promise<{ unread: number; supportSinceLastV
 
 /** Für die Kreis-Liste: Mitglieder der letzten 15 Minuten, auf 5 gerundet, unter 5 «ein paar». */
 export async function presenceCounts(): Promise<Record<string, number | null>> {
+  // Nur für angemeldete Mitglieder – sonst wäre die Aktivität je Kreis für alle abrufbar (auch über /api/v1).
+  if (!(await getViewer())) return {}
   const rows = await db.execute<{ slug: string; n: number }>(sql`
     SELECT c.slug, count(p.user_id)::int AS n
     FROM circles c LEFT JOIN circle_presence p ON p.circle_id = c.id AND p.seen_at > now() - interval '15 minutes'

@@ -46,7 +46,7 @@ async function Data() {
         circles: circleRows.map((c) => ({ slug: c.slug, name: localCircleName(c.name, c.i18n), color: c.color, state: prefs.find((p) => p.circleId === c.id)?.state ?? null })),
         sessions,
         blocked,
-        quiet: { from: sub?.quietFrom ?? 22, to: sub?.quietTo ?? 7 },
+        quiet: sub ? { from: sub.quietFrom, to: sub.quietTo } : (v.settings.quiet ?? { from: 22, to: 7 }),
         vapidKey: process.env.VAPID_PUBLIC_KEY ?? null,
       }}
     />

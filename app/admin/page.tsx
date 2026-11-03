@@ -204,11 +204,11 @@ export default async function QueuePage() {
                 if (c && c.userId === mod.userId) return <p className="claim mine">{m.admin.claim.mine}</p>
                 if (c) return <p className="claim">{m.admin.claim.other(memberRef(c.userId), relativeTime(c.claimedAt))}</p>
                 return (
-                  <form action={claimCase}>
+                  <ModForm action={claimCase}>
                     <input type="hidden" name="targetType" value={g.type} />
                     <input type="hidden" name="targetId" value={g.id} />
                     <button className="btn ghost small">{m.admin.claim.take}</button>
-                  </form>
+                  </ModForm>
                 )
               })()}
               <ModForm action={moderate} className="inline-form">

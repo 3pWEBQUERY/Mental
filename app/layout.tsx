@@ -7,6 +7,7 @@ import { Toaster } from '@/components/toast'
 import { PREFS_SCRIPT } from '@/lib/prefs-script'
 import { m } from '@/messages'
 import './globals.css'
+import { HtmlLang } from '@/components/html-lang'
 
 const sans = localFont({ src: './fonts/Geist-Variable.woff2', variable: '--font-sans', weight: '100 900', display: 'swap' })
 const serif = localFont({
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Toaster />
         <PanicGuard />
         <DiscreetGuard />
+        <HtmlLang />
       </body>
     </html>
   )
