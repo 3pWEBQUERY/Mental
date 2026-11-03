@@ -117,3 +117,24 @@ test('Admin: Inhaltshinweis je Kreis und Hilfe einem Kreis zuordnen', async ({ b
     }
   }
 })
+
+test('Inaktiver Kreis: über einen alten Link nicht mehr erreichbar, nicht mehr folgbar', async ({ browser }) => {
+  const { Pool } = await import('pg')
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  const slug = `inaktiv-${Date.now().toString(36)}`
+  const desc = `Beschreibung nur für ${slug}`
+  try {
+    await pool.query(`INSERT INTO circles (id, slug, name, description, rules, color, sort, is_active) VALUES (gen_random_uuid(), $1, $2, $3, 'Freundlich', '#888888', 990, true)`, [slug, `Kreis ${slug}`, desc])
+    const page = await browser.newPage()
+    await register(page)
+    await page.goto(`/start?kreis=${slug}`)
+    await expect(page.getByText(desc)).toBeVisible()
+    await pool.query(`UPDATE circles SET is_active = false WHERE slug = $1`, [slug])
+    await page.goto(`/start?kreis=${slug}`)
+    await expect(page.locator('main')).toBeVisible()
+    await expect(page.getByText(desc)).toHaveCount(0)
+  } finally {
+    await pool.query(`DELETE FROM circles WHERE slug = $1`, [slug])
+    await pool.end()
+  }
+})

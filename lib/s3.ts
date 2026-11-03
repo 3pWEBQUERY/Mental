@@ -1,5 +1,7 @@
 import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
 
 /**
  * Railway Storage Bucket (S3-kompatibel, privat). Variablen kommen als Railway-Referenzen
@@ -53,6 +55,12 @@ export async function getObjectBytes(key: string): Promise<Uint8Array> {
 
 export async function putObject(key: string, body: Uint8Array | Buffer, contentType: string) {
   await s3().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: contentType }))
+}
+
+/** Datei von der Platte hochladen, gestreamt – grosse Dateien (Datenexport) liegen nie ganz im Speicher. */
+export async function putObjectFile(key: string, path: string, contentType: string) {
+  const { size } = await stat(path)
+  await s3().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: createReadStream(path), ContentLength: size, ContentType: contentType }))
 }
 
 export async function deleteObject(key: string) {

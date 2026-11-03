@@ -64,11 +64,13 @@ function baseQuery() {
     .$dynamic()
 }
 
+/** «Meine Kreise»: nur aktive – ein deaktivierter Kreis verschwindet auch aus dem Filter. */
 function followedCircles(viewerId: string) {
   return db
     .select({ id: circlePrefs.circleId })
     .from(circlePrefs)
-    .where(and(eq(circlePrefs.userId, viewerId), eq(circlePrefs.state, 'follow')))
+    .innerJoin(circles, eq(circles.id, circlePrefs.circleId))
+    .where(and(eq(circlePrefs.userId, viewerId), eq(circlePrefs.state, 'follow'), eq(circles.isActive, true)))
 }
 
 function mutedCircles(viewerId: string) {

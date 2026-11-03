@@ -34,6 +34,19 @@ test('Admin: Mitglieder auflisten, suchen, stummschalten, sperren, überall abme
   await expect(admin.locator('table tbody tr')).toHaveCount(1)
   await admin.locator('table tbody tr a.member-link').click()
   await expect(admin.getByRole('heading', { name: `Mitglied ${ref}` })).toBeVisible()
+  // Die Adresse verrät die Konto-ID nicht (verschlüsseltes Token, nicht nur Base64).
+  const userId = (await sql<{ id: string }>(`SELECT id FROM users WHERE username = $1`, [username]))[0]!.id
+  const tok = decodeURIComponent(new URL(admin.url()).pathname.split('/').pop()!)
+  expect(Buffer.from(tok.split('.')[0]!, 'base64url').toString('latin1')).not.toContain(userId)
+
+  // Enter im Begründungsfeld löst keine Massnahme aus (sonst gälte «Verwarnen» als gedrückt).
+  const reason = admin.getByRole('form', { name: 'Massnahme am Konto' }).getByLabel(/Begründung/)
+  await reason.fill('nur getippt')
+  await reason.press('Enter')
+  await admin.waitForTimeout(800)
+  await expect(admin.getByText('Massnahme ausgeführt.')).toHaveCount(0)
+  expect((await sql<{ n: number }>(`SELECT count(*)::int AS n FROM moderation_actions WHERE target_id = $1 AND action = 'warn'`, [userId]))[0]!.n).toBe(0)
+  await reason.fill('')
 
   // 24 Stunden stumm – mit Begründung, die Person bekommt eine Nachricht.
   await admin.getByRole('form', { name: 'Massnahme am Konto' }).getByLabel(/Begründung/).fill('Bitte freundlich bleiben.')

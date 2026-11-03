@@ -654,6 +654,21 @@ html:has(.with-hero), html:has(.with-hero) body { background: #050a16; }
 .principles li { padding: 24px 22px 24px 0; border-bottom: 1px solid var(--line); }
 .principles b { display: block; font-family: var(--serif); font-weight: 400; font-size: calc(26px * var(--fz)); line-height: 1.1; margin-bottom: 8px; }
 .principles span { color: var(--ink-2); font-size: calc(14px * var(--fz)); }
+/* Partner: Logos auf hellen Kacheln – auch im dunklen Farbschema, sonst verschwinden dunkle Logos. Flach, schmaler Rand. */
+.partners { margin-top: 72px; }
+.partner-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 18px; }
+.partner-tile { display: grid; place-items: center; height: 128px; padding: 22px 26px; border-radius: 18px; background: #fbfaf6; border: var(--bw) solid color-mix(in srgb, var(--ink) 18%, transparent); color: #2b2a26; text-decoration: none; transition: border-color 0.2s; }
+a.partner-tile:hover { border-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+.partner-tile img { max-width: 100%; max-height: 72px; width: auto; height: auto; object-fit: contain; }
+@media (max-width: 640px) { .partner-list { grid-template-columns: 1fr 1fr; gap: 10px; } .partner-tile { height: 96px; padding: 14px 16px; border-radius: 14px; } .partner-tile img { max-height: 56px; } }
+.partner-name { font-family: var(--serif); font-size: calc(22px * var(--fz)); line-height: 1.15; text-align: center; }
+/* Admin → Partner */
+.partner-thumb { flex: 0 0 auto; width: 120px; height: 56px; display: grid; place-items: center; padding: 6px; border-radius: 10px; background: #fbfaf6; border: var(--bw) solid var(--line); color: #2b2a26; }
+.partner-thumb img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.partner-media { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.partner-media-item { display: grid; gap: 8px; justify-items: start; }
+.partner-media-item .partner-thumb { width: 100%; height: 96px; }
+.partner-media-name { font-weight: 500; overflow-wrap: anywhere; }
 .prose { max-width: 66ch; }
 .prose p { margin: 12px 0; color: var(--ink-2); }
 .prose h2 { font-family: var(--serif); font-weight: 400; font-size: calc(28px * var(--fz)); margin-top: 28px; }
@@ -873,3 +888,7 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 .transparency-quarter h3 { margin-top: 18px; }
 .transparency-quarter .facts { margin: 10px 0 6px; }
 .transparency-quarter .facts > div { min-width: 180px; flex: 1 1 200px; }
+
+/* Formular-Sperre während einer Aktion (components/admin/mod-form.tsx): unsichtbar fürs Layout. */
+.form-lock { display: contents; border: 0; margin: 0; padding: 0; min-inline-size: auto; }
+.form-lock:disabled button { opacity: 0.55; cursor: progress; }

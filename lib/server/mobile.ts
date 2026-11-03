@@ -31,7 +31,7 @@ export async function me() {
       .select({ slug: circlesTable.slug, state: circlePrefs.state })
       .from(circlePrefs)
       .innerJoin(circlesTable, eq(circlesTable.id, circlePrefs.circleId))
-      .where(eq(circlePrefs.userId, v.userId)),
+      .where(and(eq(circlePrefs.userId, v.userId), eq(circlesTable.isActive, true))),
   ])
   const s = v.settings
   return {

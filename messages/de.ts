@@ -597,6 +597,8 @@ export const de = {
     transparency: 'Transparenz',
     social: 'Jiaia in den sozialen Medien',
     socialLink: (name: string) => `Jiaia auf ${name} (öffnet ein neues Fenster)`,
+    partners: 'Unsere Partner',
+    partnerLink: (name: string) => `${name} (öffnet ein neues Fenster)`,
   },
   transparency: {
     title: 'Transparenz',
@@ -785,7 +787,7 @@ export const de = {
   },
   admin: {
     title: 'Moderation',
-    nav: { queue: 'Warteschlange', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', audit: 'Audit-Log', stats: 'Statistik', members: 'Mitglieder' },
+    nav: { queue: 'Warteschlange', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', audit: 'Audit-Log', stats: 'Statistik', members: 'Mitglieder', partners: 'Partner' },
     passkeyRequired:
       'Der Moderationsbereich ist nur mit einem Passkey erreichbar. Melde dich ab und wieder mit deinem Passkey an. Noch keinen? Lege ihn unter Einstellungen → Sicherheit an.',
     passkeyRelogin: 'Abmelden und mit Passkey anmelden',

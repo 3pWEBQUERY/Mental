@@ -29,7 +29,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       .select({ slug: circlesTable.slug })
       .from(circlePrefs)
       .innerJoin(circlesTable, eq(circlesTable.id, circlePrefs.circleId))
-      .where(and(eq(circlePrefs.userId, v.userId), eq(circlePrefs.state, 'follow'))),
+      .where(and(eq(circlePrefs.userId, v.userId), eq(circlePrefs.state, 'follow'), eq(circlesTable.isActive, true))),
   ])
   const s = v.settings
   const value: ClientViewer = {

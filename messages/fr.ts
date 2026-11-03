@@ -600,6 +600,8 @@ export const fr: Messages = {
     transparency: 'Transparence',
     social: 'Jiaia sur les réseaux sociaux',
     socialLink: (name: string) => `Jiaia sur ${name} (nouvelle fenêtre)`,
+    partners: 'Nos partenaires',
+    partnerLink: (name: string) => `${name} (nouvelle fenêtre)`,
   },
   transparency: {
     title: 'Transparence',
@@ -787,7 +789,7 @@ export const fr: Messages = {
   },
   admin: {
     title: 'Modération',
-    nav: { queue: 'File d’attente', images: 'Images', circles: 'Cercles', help: 'Numéros d’aide', terms: 'Liste de termes de crise', steps: 'Petits pas', audit: 'Journal d’audit', stats: 'Statistiques', members: 'Membres' },
+    nav: { queue: 'File d’attente', images: 'Images', circles: 'Cercles', help: 'Numéros d’aide', terms: 'Liste de termes de crise', steps: 'Petits pas', audit: 'Journal d’audit', stats: 'Statistiques', members: 'Membres', partners: 'Partenaires' },
     passkeyRequired:
       'L’espace de modération n’est accessible qu’avec un passkey. Déconnecte-toi et reconnecte-toi avec ton passkey. Pas encore de passkey ? Crée-le sous Réglages → Sécurité.',
     passkeyRelogin: 'Se déconnecter et se reconnecter avec un passkey',

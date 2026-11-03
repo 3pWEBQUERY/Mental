@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useTransition, type CSSProperties, type ReactNode } from 'react'
+import { useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react'
 import { askConfirm } from '@/components/confirm'
 import { toast } from '@/lib/client/bus'
 import type { AdminResult } from '@/lib/admin-result'
+import { blockEnter } from './mod-form'
 
 type Action = (form: FormData) => Promise<AdminResult>
 
@@ -34,6 +35,8 @@ export function AdminForm({
 }) {
   const [error, setError] = useState('')
   const [pending, start] = useTransition()
+  /** Sofort gesetzt (vor dem nächsten Render) – `pending` allein greift beim schnellen Doppelklick zu spät. */
+  const busy = useRef(false)
   return (
     <form
       id={id}
@@ -41,8 +44,11 @@ export function AdminForm({
       style={style}
       aria-label={label}
       aria-busy={pending || undefined}
+      onKeyDown={blockEnter}
       onSubmit={async (e) => {
         e.preventDefault()
+        // Doppelklick: läuft schon – nicht ein zweites Mal auslösen.
+        if (pending || busy.current) return
         const form = e.currentTarget
         const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
         const data = new FormData(form, submitter)
@@ -50,7 +56,11 @@ export function AdminForm({
         setError('')
         // Rückfrage vor der Transition: Updates innerhalb einer laufenden async-Transition zeigt React erst an ihrem
         // Ende – der Dialog erschiene nie, und die Transition wartete ewig auf ihn.
-        if (ask && !(await askConfirm(ask.message, ask.label))) return
+        busy.current = true
+        if (ask && !(await askConfirm(ask.message, ask.label))) {
+          busy.current = false
+          return
+        }
         start(async () => {
           let res: AdminResult
           try {
@@ -58,6 +68,7 @@ export function AdminForm({
           } catch {
             res = { ok: false, error: 'Das hat nicht geklappt. Bitte noch einmal versuchen.' }
           }
+          busy.current = false
           if (!res.ok) return setError(res.error)
           toast(res.message)
           if (resetOnSuccess) form.reset()
