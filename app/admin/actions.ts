@@ -484,7 +484,8 @@ async function otherActiveCircle(id: string) {
 
 /**
  * Kreis löschen. Gedanken bleiben erhalten: Hat der Kreis welche, wandern sie in den gewählten Kreis.
- * Schritte des Kreises gelten danach für alle Kreise, Folgen/Stummschalten und «gerade hier» entfallen.
+ * Schritte des Kreises werden deaktiviert (bleiben zum Wiederverwenden), seine Hilfe-Einträge gelöscht;
+ * Folgen/Stummschalten und «gerade hier» entfallen.
  */
 export async function deleteCircle(form: FormData): Promise<AdminResult> {
   const admin = await assertModerator('admin')
@@ -511,11 +512,21 @@ export async function deleteCircle(form: FormData): Promise<AdminResult> {
         .set({ circleId: moveTo, ...(c.requireCw ? { contentWarning: true } : {}) })
         .where(eq(posts.circleId, id))
     }
+    // Schritte zum Kreis passen nicht einfach überall: deaktivieren statt still zu allgemeinen machen.
+    const stepRows = await tx.update(steps).set({ circleId: null, isActive: false }).where(eq(steps.circleId, id)).returning({ id: steps.id })
+    // Hilfe zum Thema des Kreises: ausdrücklich löschen und melden (nicht still per Fremdschlüssel).
+    const helpRows = await tx.delete(helpResources).where(eq(helpResources.circleId, id)).returning({ id: helpResources.id })
     await tx.delete(circles).where(eq(circles.id, id))
-    return done(n > 0 ? `Kreis «${c.name}» gelöscht, ${n} Gedanken verschoben.` : `Kreis «${c.name}» gelöscht.`)
+    const parts = [
+      n > 0 ? `${n} Gedanken verschoben` : '',
+      stepRows.length ? `${stepRows.length} ${stepRows.length === 1 ? 'Schritt' : 'Schritte'} deaktiviert` : '',
+      helpRows.length ? `${helpRows.length} Hilfe-${helpRows.length === 1 ? 'Eintrag' : 'Einträge'} gelöscht` : '',
+    ].filter(Boolean)
+    return done(`Kreis «${c.name}» gelöscht${parts.length ? `, ${parts.join(', ')}` : ''}.`)
   })
   if (!result.ok) return result
   await audit(admin.userId, 'circle:delete', admin.userId, id)
+  updateTag('help')
   changed('circles')
   return result
 }

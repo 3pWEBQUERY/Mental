@@ -638,7 +638,8 @@ export async function loadFeed(view: FeedView, circleSlug: string | null, cursor
   const safeView: FeedView = view === 'unheard' || view === 'brave' ? view : 'all'
   let circleId: string | null = null
   if (circleSlug) {
-    const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, circleSlug))
+    // Inaktive Kreise sind nicht mehr erreichbar – auch nicht über einen alten Link.
+    const [c] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, circleSlug), eq(circles.isActive, true)))
     circleId = c?.id ?? null
   }
   return getFeed({ viewerId: v.userId, view: safeView, circleId, cursor })
@@ -657,8 +658,9 @@ export async function setCirclePref(slug: string, state: 'follow' | 'mute' | nul
   if (!v) return fail(m.common.sessionEnded)
   // Auch über /api/v1 erreichbar: unbekannte Werte sind ein normaler Fehler, kein Serverfehler.
   if (typeof slug !== 'string' || slug.length > 40 || !(state === null || state === 'follow' || state === 'mute')) return fail(m.common.error)
-  const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, slug))
-  if (!c) return fail(m.common.error)
+  const [c] = await db.select({ id: circles.id, isActive: circles.isActive }).from(circles).where(eq(circles.slug, slug))
+  // Einem deaktivierten Kreis folgt man nicht neu; Entfolgen geht weiterhin.
+  if (!c || (state !== null && !c.isActive)) return fail(m.common.error)
   if (state === null) {
     await db.delete(circlePrefs).where(and(eq(circlePrefs.userId, v.userId), eq(circlePrefs.circleId, c.id)))
   } else {

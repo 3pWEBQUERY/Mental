@@ -71,12 +71,21 @@ test('Admin: Kreise anlegen, bearbeiten, löschen – sofort in der App und auf 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   try {
     await pool.query(`UPDATE posts SET circle_id = (SELECT id FROM circles WHERE slug = $1) WHERE id = (SELECT id FROM posts ORDER BY created_at DESC LIMIT 1)`, [slug])
+    // Ein Schritt und ein Hilfe-Eintrag zum Kreis: Schritt wird deaktiviert (nicht still allgemein), Hilfe gelöscht.
+    const stepText = `Schritt nur für ${slug}`
+    await pool.query(`INSERT INTO steps (id, text, circle_id, sort, is_active) VALUES (gen_random_uuid(), $1, (SELECT id FROM circles WHERE slug = $2), 1, true)`, [stepText, slug])
+    await pool.query(
+      `INSERT INTO help_resources (id, name, phone, hours, audience, language, circle_id) VALUES (gen_random_uuid(), $1, '143', 'immer', 'alle', 'de', (SELECT id FROM circles WHERE slug = $2))`,
+      [`Hilfe ${slug}`, slug],
+    )
     await admin.reload()
     const edited = admin.getByRole('form', { name: `Kreis ${renamed}`, exact: true })
     await expect(admin.getByLabel('Gedanken verschieben nach').last()).toBeAttached()
     await edited.getByRole('button', { name: 'Löschen' }).click()
     await admin.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
-    await expect(admin.getByText(`Kreis «${renamed}» gelöscht, 1 Gedanken verschoben.`)).toBeVisible()
+    await expect(admin.getByText(`Kreis «${renamed}» gelöscht, 1 Gedanken verschoben, 1 Schritt deaktiviert, 1 Hilfe-Eintrag gelöscht.`)).toBeVisible()
+    const step = await pool.query(`SELECT circle_id, is_active FROM steps WHERE text = $1`, [stepText])
+    expect(step.rows[0]).toEqual({ circle_id: null, is_active: false })
     await expect(edited).toHaveCount(0)
     const { rows } = await pool.query(`SELECT count(*)::int AS n FROM circles WHERE slug = $1`, [slug])
     expect(rows[0].n).toBe(0)

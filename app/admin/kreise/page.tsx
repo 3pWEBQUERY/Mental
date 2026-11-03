@@ -1,6 +1,6 @@
 import { asc, count } from 'drizzle-orm'
 import { db } from '@/db'
-import { circles, posts } from '@/db/schema'
+import { circles, helpResources, posts, steps } from '@/db/schema'
 import { AdminForm, DeleteButton } from '@/components/admin/admin-form'
 import { requireModerator } from '@/lib/server/admin'
 import { m } from '@/messages'
@@ -11,11 +11,15 @@ type Circle = typeof circles.$inferSelect
 /** Kreise anlegen, bearbeiten, löschen. Änderungen gelten sofort in der App, auf /regeln und in der iOS-App. */
 export default async function CirclesAdmin() {
   await requireModerator('admin')
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, stepCounts, helpCounts] = await Promise.all([
     db.select().from(circles).orderBy(asc(circles.sort), asc(circles.name)),
     db.select({ circleId: posts.circleId, n: count() }).from(posts).groupBy(posts.circleId),
+    db.select({ circleId: steps.circleId, n: count() }).from(steps).groupBy(steps.circleId),
+    db.select({ circleId: helpResources.circleId, n: count() }).from(helpResources).groupBy(helpResources.circleId),
   ])
   const postsIn = new Map(counts.map((c) => [c.circleId, c.n]))
+  const stepsIn = new Map(stepCounts.map((c) => [c.circleId, c.n]))
+  const helpIn = new Map(helpCounts.map((c) => [c.circleId, c.n]))
   const nextSort = rows.reduce((max, c) => Math.max(max, c.sort + 1), 0)
   return (
     <div className="stack">
@@ -24,13 +28,31 @@ export default async function CirclesAdmin() {
       <CircleForm c={null} sort={nextSort} />
       <h2 className="eyebrow">Bestehende Kreise ({rows.length})</h2>
       {rows.map((c) => (
-        <CircleForm key={c.id} c={c} sort={c.sort} posts={postsIn.get(c.id) ?? 0} others={rows.filter((o) => o.id !== c.id)} />
+        <CircleForm key={c.id} c={c} sort={c.sort} posts={postsIn.get(c.id) ?? 0} stepCount={stepsIn.get(c.id) ?? 0} helpCount={helpIn.get(c.id) ?? 0} others={rows.filter((o) => o.id !== c.id)} />
       ))}
     </div>
   )
 }
 
-function CircleForm({ c, sort, posts = 0, others = [] }: { c: Circle | null; sort: number; posts?: number; others?: Circle[] }) {
+function CircleForm({
+  c,
+  sort,
+  posts = 0,
+  stepCount = 0,
+  helpCount = 0,
+  others = [],
+}: {
+  c: Circle | null
+  sort: number
+  posts?: number
+  stepCount?: number
+  helpCount?: number
+  others?: Circle[]
+}) {
+  const extra = [
+    stepCount ? `${stepCount} ${stepCount === 1 ? 'Schritt wird' : 'Schritte werden'} deaktiviert (bleiben unter «Kleine Schritte»)` : '',
+    helpCount ? `${helpCount} ${helpCount === 1 ? 'Hilfe-Eintrag' : 'Hilfe-Einträge'} zum Kreis ${helpCount === 1 ? 'wird' : 'werden'} gelöscht` : '',
+  ].filter(Boolean)
   const del = c ? `kreis-loeschen-${c.id}` : ''
   return (
     <div className="card stack" data-circle={c?.slug ?? 'neu'}>
@@ -75,9 +97,9 @@ function CircleForm({ c, sort, posts = 0, others = [] }: { c: Circle | null; sor
             <DeleteButton
               form={del}
               message={
-                posts
-                  ? `Kreis «${c.name}» löschen? Seine ${posts} Gedanken kommen in den unten gewählten Kreis.`
-                  : `Kreis «${c.name}» löschen?`
+                `Kreis «${c.name}» löschen?` +
+                (posts ? ` Seine ${posts} Gedanken kommen in den unten gewählten Kreis.` : '') +
+                (extra.length ? ` ${extra.join(', ')}.` : '')
               }
             />
           )}

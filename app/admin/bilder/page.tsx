@@ -6,6 +6,7 @@ import { memberRef } from '@/lib/server/crypto'
 import { relativeTime } from '@/lib/time'
 import { m } from '@/messages'
 import { cleanImage, reviewImage } from '../actions'
+import { ModForm } from '@/components/admin/mod-form'
 
 /** Bildfreigabe: jedes Bild an einem Gedanken wartet hier, bis die Moderation es freigibt oder ablehnt. */
 export default async function ImagesPage() {
@@ -69,7 +70,7 @@ export default async function ImagesPage() {
                 {r.postStatus !== 'visible' && <p className="fine">{t.postHidden}</p>}
               </div>
             </div>
-            <form action={reviewImage} className="inline-form">
+            <ModForm action={reviewImage} className="inline-form">
               <input type="hidden" name="mediaId" value={r.id} />
               <input className="input" name="reason" placeholder={t.reason} maxLength={500} aria-label={t.reason} />
               {r.status === 'review' && (
@@ -80,7 +81,7 @@ export default async function ImagesPage() {
               <button className="btn ghost small danger" name="decision" value="reject">
                 {t.reject}
               </button>
-            </form>
+            </ModForm>
           </li>
         ))}
       </ul>

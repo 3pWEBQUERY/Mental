@@ -1,6 +1,6 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
-import { seal, unseal } from './crypto'
+import { encSeal, encUnseal } from './crypto'
 import { env } from './env'
 import { getViewer, type Viewer } from './session'
 
@@ -50,8 +50,9 @@ export async function assertModerator(level: ModLevel): Promise<Viewer> {
  * oder errät. Gilt eine Woche (Lesezeichen in der Warteschlange veralten nicht sofort).
  */
 export function memberToken(userId: string) {
-  return seal(userId, 7 * 24 * 60 * 60_000, 'member-page')
+  // Verschlüsselt: Ein signierter Wert wäre nur Base64 – die Konto-ID stünde lesbar in der Adresse und im Verlauf.
+  return encSeal(userId, 7 * 24 * 60 * 60_000, 'member-page')
 }
 export function memberFromToken(token: string) {
-  return unseal<string>(token, 'member-page')
+  return encUnseal<string>(token, 'member-page')
 }

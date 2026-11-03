@@ -888,3 +888,7 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 .transparency-quarter h3 { margin-top: 18px; }
 .transparency-quarter .facts { margin: 10px 0 6px; }
 .transparency-quarter .facts > div { min-width: 180px; flex: 1 1 200px; }
+
+/* Formular-Sperre während einer Aktion (components/admin/mod-form.tsx): unsichtbar fürs Layout. */
+.form-lock { display: contents; border: 0; margin: 0; padding: 0; min-inline-size: auto; }
+.form-lock:disabled button { opacity: 0.55; cursor: progress; }

@@ -1,5 +1,8 @@
 import { and, eq, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
-import { strToU8, zipSync, type Zippable } from 'fflate'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { strToU8 } from 'fflate'
 import { db } from '../../db'
 import {
   moderationActions,
@@ -27,7 +30,8 @@ import {
   support,
   users,
 } from '../../db/schema'
-import { bucketConfigured, deleteObject, getObjectBytes, putObject } from '../../lib/s3'
+import { writeZip } from '../../lib/zip-file'
+import { bucketConfigured, deleteObject, getObjectBytes, putObjectFile } from '../../lib/s3'
 import { syncReplyCount } from '../../lib/reply-count'
 import { safeMessage } from '../../lib/log-safe'
 import { openJson, openText } from '../../lib/at-rest'
@@ -130,16 +134,30 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       massnahmen: actionsAgainst,
       bilder: allMedia,
     }
-    const files: Zippable = { 'jiaia.json': strToU8(JSON.stringify(data, null, 2)) }
-    for (const m of media) {
-      try {
-        files[`bilder/${m.id}.webp`] = await getObjectBytes(m.key)
-      } catch {}
+    // ZIP gestreamt auf die Platte schreiben und von dort hochladen: Im Speicher liegt immer nur ein Bild,
+    // auch bei einem Konto mit Hunderten Bildern.
+    const dir = await mkdtemp(join(tmpdir(), 'jiaia-export-'))
+    try {
+      const path = join(dir, 'export.zip')
+      await writeZip(path, async (add) => {
+        await add('jiaia.json', strToU8(JSON.stringify(data, null, 2)), true)
+        for (const m of media) {
+          let bytes: Uint8Array
+          try {
+            bytes = await getObjectBytes(m.key)
+          } catch {
+            continue
+          }
+          // WebP ist schon komprimiert – unverändert ablegen.
+          await add(`bilder/${m.id}.webp`, bytes, false)
+        }
+      })
+      const key = `exports/${exportId}.zip`
+      await putObjectFile(key, path, 'application/zip')
+      await db.update(exports).set({ status: 'ready', bucketKey: key, expiresAt: new Date(Date.now() + DAY) }).where(eq(exports.id, exportId))
+    } finally {
+      await rm(dir, { recursive: true, force: true })
     }
-    const zip = zipSync(files, { level: 6 })
-    const key = `exports/${exportId}.zip`
-    await putObject(key, zip, 'application/zip')
-    await db.update(exports).set({ status: 'ready', bucketKey: key, expiresAt: new Date(Date.now() + DAY) }).where(eq(exports.id, exportId))
   } catch (e) {
     console.error('[export]', safeMessage(e))
     await db.update(exports).set({ status: 'failed' }).where(eq(exports.id, exportId))
@@ -222,3 +240,4 @@ export async function purgeInactiveAccounts() {
     await purgeAccount({ userId: id, reason: 'inactive' }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e)))
   }
 }
+

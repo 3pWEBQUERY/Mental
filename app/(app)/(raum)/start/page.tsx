@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { cache } from 'react'
 import { localizeCircle } from '@/lib/localize'
 import Link from 'next/link'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { CirclesList } from '@/components/app/circles'
 import { Side } from '@/components/app/side'
@@ -95,7 +95,7 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams
   const view: FeedView = sp.ansicht === 'unheard' || sp.ansicht === 'brave' ? sp.ansicht : 'all'
   const mine = sp.kreis === MINE
-  const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
+  const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(and(eq(circles.slug, sp.kreis), eq(circles.isActive, true))) : []
   const circle = raw ? localizeCircle(raw) : undefined
   if (circle) await touchCircle(circle.slug)
   const [page, step, topicHelp] = await Promise.all([

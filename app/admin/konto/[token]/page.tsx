@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { AdminForm } from '@/components/admin/admin-form'
 import { decideRole, moderateAccount, proposeRole, restoreAccount } from '../../actions'
+import { ModForm } from '@/components/admin/mod-form'
 
 /**
  * Kontoseite in der Moderation: Status, Rolle, bisherige Massnahmen (am Konto und an seinen Inhalten) und das
@@ -137,7 +138,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
       ) : null}
 
       {(u.status === 'muted' || (u.status === 'banned' && isAdmin)) && (
-        <form action={restoreAccount} className="inline-form">
+        <ModForm action={restoreAccount} className="inline-form">
           <input type="hidden" name="token" value={tok} />
           <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} />
           {u.status === 'muted' && (
@@ -150,7 +151,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               {t.unban}
             </button>
           )}
-        </form>
+        </ModForm>
       )}
 
       {isAdmin && (
@@ -178,7 +179,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               {userId === mod.userId ? (
                 <p className="fine">{m.admin.roles.ownAccount}</p>
               ) : (
-                <form action={decideRole} className="inline-form">
+                <ModForm action={decideRole} className="inline-form">
                   <input type="hidden" name="token" value={tok} />
                   {proposal.proposedBy !== mod.userId && (
                     <button className="btn small" name="decision" value="accept">
@@ -188,7 +189,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
                   <button className="btn ghost small" name="decision" value="reject">
                     {proposal.proposedBy === mod.userId ? m.admin.roles.withdraw : m.admin.roles.reject}
                   </button>
-                </form>
+                </ModForm>
               )}
             </div>
           ) : userId !== mod.userId ? (

@@ -8,6 +8,7 @@ import { m } from '@/messages'
 import { Sensitive } from '@/components/admin/sensitive'
 import Link from 'next/link'
 import { claimCase, moderate, resolveAppeal } from './actions'
+import { ModForm } from '@/components/admin/mod-form'
 
 /** Frist für akute Hinweise – danach erscheint «überfällig» (und der Monitor erinnert das Team). */
 const ACUTE_SLA_MS = 30 * 60_000
@@ -115,7 +116,7 @@ export default async function QueuePage() {
               <span>{relativeTime(ap.createdAt)}</span>
             </div>
             <blockquote>{ap.note || '—'}</blockquote>
-            <form action={resolveAppeal} className="inline-form">
+            <ModForm action={resolveAppeal} className="inline-form">
               <input type="hidden" name="reportId" value={ap.id} />
               <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} />
               <button className="btn small" name="decision" value="accept">
@@ -124,7 +125,7 @@ export default async function QueuePage() {
               <button className="btn ghost small" name="decision" value="reject">
                 {m.admin.appealReject}
               </button>
-            </form>
+            </ModForm>
           </li>
         ))}
       </ul>
@@ -210,7 +211,7 @@ export default async function QueuePage() {
                   </form>
                 )
               })()}
-              <form action={moderate} className="inline-form">
+              <ModForm action={moderate} className="inline-form">
                 <input type="hidden" name="targetType" value={g.type} />
                 <input type="hidden" name="targetId" value={g.id} />
                 <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} list="mod-templates" />
@@ -257,7 +258,7 @@ export default async function QueuePage() {
                     </button>
                   </>
                 )}
-              </form>
+              </ModForm>
             </li>
           )
         })}

@@ -78,13 +78,29 @@ export function AppChrome({
   }, [pulseOnOpen])
 
   useEffect(() => {
-    const es = new EventSource('/api/events')
-    es.addEventListener('notification', (e) => {
-      const data = JSON.parse((e as MessageEvent<string>).data) as { unread: number; support: boolean }
-      setUnread(data.unread)
-      if (data.support) pulse()
-    })
-    return () => es.close()
+    let es: EventSource | null = null
+    const connect = () => {
+      if (es && es.readyState !== EventSource.CLOSED) return
+      es = new EventSource('/api/events')
+      es.addEventListener('notification', (e) => {
+        const data = JSON.parse((e as MessageEvent<string>).data) as { unread: number; support: boolean }
+        setUnread(data.unread)
+        if (data.support) pulse()
+      })
+      // Ein neuerer Tab hat die Verbindung übernommen (höchstens 4 je Konto): erst im Vordergrund wieder verbinden.
+      es.addEventListener('bye', () => es?.close())
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') connect()
+    }
+    connect()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+      es?.close()
+    }
   }, [])
 
   return (
