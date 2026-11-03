@@ -232,6 +232,11 @@ export async function updateQuietHours(from: number, to: number): Promise<R> {
   const q = z.object({ from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).safeParse({ from, to })
   if (!q.success) return fail(m.common.error)
   await db.update(pushSubscriptions).set({ quietFrom: q.data.from, quietTo: q.data.to }).where(eq(pushSubscriptions.userId, v.userId))
+  // Auch im Konto merken: gilt für Geräte, die erst später Benachrichtigungen erlauben (und für die iOS-App).
+  await db
+    .update(profiles)
+    .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ quiet: q.data })}::jsonb` })
+    .where(eq(profiles.userId, v.userId))
   return { ok: true }
 }
 

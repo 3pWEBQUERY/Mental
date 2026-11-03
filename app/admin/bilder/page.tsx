@@ -59,10 +59,10 @@ export default async function ImagesPage() {
               ) : (
                 <div className="image-review-preview stack" style={{ gap: 12, padding: 20, textAlign: 'center', justifyItems: 'center' }}>
                   <p className="fine">{t.quarantineHint}</p>
-                  <form action={cleanImage}>
+                  <ModForm action={cleanImage}>
                     <input type="hidden" name="mediaId" value={r.id} />
                     <button className="btn small">{t.clean}</button>
-                  </form>
+                  </ModForm>
                 </div>
               )}
               <div className="stack" style={{ gap: 10 }}>

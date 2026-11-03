@@ -223,7 +223,7 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
   await expect(first.getByRole('button', { name: 'Bestätigen' })).toHaveCount(0)
   await expect(first.getByRole('button', { name: 'Zurückziehen' })).toBeVisible()
   await expect(first.locator('.facts')).toContainText('Mitglied')
-  await expect(first.locator('table')).toContainText('role_propose')
+  await expect(first.locator('table')).toContainText('Rolle vorgeschlagen')
 
   // Zweiter Admin: Glocke, offene Vorschläge in der Warteschlange, bestätigen.
   await second.reload()
@@ -236,7 +236,7 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
   await open.getByRole('link', { name: /Mitglied/ }).click()
   await second.getByRole('button', { name: 'Bestätigen' }).click()
   await expect(second.locator('.facts')).toContainText('Moderation')
-  await expect(second.locator('table')).toContainText('role_accept')
+  await expect(second.locator('table')).toContainText('Rolle bestätigt')
   await expect(second.getByRole('button', { name: 'Vorschlagen' })).toBeVisible()
 
   await user.reload()

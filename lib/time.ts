@@ -15,7 +15,9 @@ export function relativeTime(iso: string | Date, now: number = Date.now()): stri
   if (diff < HOUR) return tm.minutes(Math.floor(diff / MIN))
   if (diff < 20 * HOUR) return tm.hours(Math.floor(diff / HOUR))
   const days = dayIndex(now) - dayIndex(t)
-  if (days <= 1) return tm.yesterday
+  // Gleicher Kalendertag (z. B. 00:30 → 21:00): noch «vor 20 Std.», nicht «gestern».
+  if (days <= 0) return tm.hours(Math.floor(diff / HOUR))
+  if (days === 1) return tm.yesterday
   return tm.days(days)
 }
 

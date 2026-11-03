@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
 import Link from 'next/link'
 import { db } from '@/db'
 import { users } from '@/db/schema'
@@ -37,6 +37,9 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const where: SQL[] = []
   if (filter === 'staff') where.push(ne(users.role, 'member'))
   else if (filter === 'reported') where.push(sql`${openReports} > 0`)
+  // Abgelaufene Stummschaltungen zählen als aktiv (zurückgesetzt wird erst beim nächsten Besuch des Mitglieds).
+  else if (filter === 'muted') where.push(and(eq(users.status, 'muted'), sql`(${users.mutedUntil} IS NULL OR ${users.mutedUntil} > now())`)!)
+  else if (filter === 'active') where.push(or(eq(users.status, 'active'), and(eq(users.status, 'muted'), sql`${users.mutedUntil} <= now()`))!)
   else if (filter !== 'all') where.push(eq(users.status, filter))
   if (q) {
     // Mitglieds-ID: für alle passenden Konten berechnen (kleine Zahl Konten – bei Bedarf später eine Spalte).
@@ -69,7 +72,8 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
     .from(users)
     .where(where.length ? and(...where) : undefined)
   const more = rows.length > PAGE
-  const list = rows.slice(0, PAGE)
+  const now = new Date()
+  const list = rows.slice(0, PAGE).map((u) => (u.status === 'muted' && u.mutedUntil && u.mutedUntil <= now ? { ...u, status: 'active' as const, mutedUntil: null } : u))
   const link = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams()
     const next = { status: filter === 'all' ? undefined : filter, q: sp.q?.trim() || undefined, seite: undefined, ...patch }
