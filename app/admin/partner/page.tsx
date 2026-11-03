@@ -68,7 +68,7 @@ function PartnerForm({ p, sort, media }: { p: Partner | null; sort: number; medi
   const logo = p?.mediaId ? media.find((x) => x.id === p.mediaId) : undefined
   return (
     <>
-      <AdminForm action={savePartner} className="card inline-form" label={p ? `Partner ${p.name}` : 'Neuer Partner'} resetOnSuccess={!p}>
+      <AdminForm action={savePartner} className={p ? 'card partner-card' : 'card partner-card new'} label={p ? `Partner ${p.name}` : 'Neuer Partner'} resetOnSuccess={!p}>
         <input type="hidden" name="id" value={p?.id ?? ''} />
         {p && (
           <span className="partner-thumb" aria-hidden="true">
@@ -80,24 +80,40 @@ function PartnerForm({ p, sort, media }: { p: Partner | null; sort: number; medi
             )}
           </span>
         )}
-        <input className="input" name="name" defaultValue={p?.name} placeholder="Name" aria-label="Name" maxLength={80} required />
-        <input className="input" name="url" type="url" defaultValue={p?.url ?? ''} placeholder="https://…" aria-label="Link zur Website" maxLength={300} />
-        <select className="input" name="mediaId" defaultValue={p?.mediaId ?? ''} aria-label="Logo" style={{ flex: '0 0 200px', minWidth: 180 }}>
-          <option value="">Ohne Logo (nur Name)</option>
-          {media.map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name}
-            </option>
-          ))}
-        </select>
-        <input className="input" name="sort" type="number" min={0} max={999} defaultValue={sort} aria-label="Reihenfolge" style={{ flex: '0 0 80px', minWidth: 80 }} />
-        <label className="switch">
-          <input type="checkbox" name="isActive" defaultChecked={p ? p.isActive : true} />
-          <i />
-          Auf der Startseite
-        </label>
-        <button className="btn small">{p ? m.common.save : 'Hinzufügen'}</button>
-        {p && <DeleteButton form={del} message={`Partner «${p.name}» löschen? Das Logo bleibt in den Medien.`} />}
+        <div className="partner-fields">
+          <label className="partner-field">
+            <span className="field-label">Name</span>
+            <input className="input" name="name" defaultValue={p?.name} placeholder="z. B. Pro Juventute" aria-label="Name" maxLength={80} required />
+          </label>
+          <label className="partner-field">
+            <span className="field-label">Website</span>
+            <input className="input" name="url" type="url" defaultValue={p?.url ?? ''} placeholder="https://…" aria-label="Link zur Website" maxLength={300} />
+          </label>
+          <label className="partner-field">
+            <span className="field-label">Logo</span>
+            <select className="input" name="mediaId" defaultValue={p?.mediaId ?? ''} aria-label="Logo">
+              <option value="">Ohne Logo (nur Name)</option>
+              {media.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="partner-field sort">
+            <span className="field-label">Reihenfolge</span>
+            <input className="input" name="sort" type="number" min={0} max={999} defaultValue={sort} aria-label="Reihenfolge" />
+          </label>
+        </div>
+        <div className="partner-actions">
+          <label className="switch">
+            <input type="checkbox" name="isActive" defaultChecked={p ? p.isActive : true} />
+            <i />
+            Auf der Startseite
+          </label>
+          <button className="btn small">{p ? m.common.save : 'Hinzufügen'}</button>
+          {p && <DeleteButton form={del} message={`Partner «${p.name}» löschen? Das Logo bleibt in den Medien.`} />}
+        </div>
       </AdminForm>
       {p && (
         <AdminForm id={del} action={deletePartner} label={`${p.name} löschen`} style={{ display: 'contents' }}>
