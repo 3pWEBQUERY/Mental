@@ -577,7 +577,10 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 @media (min-resolution: 2dppx) { :root { --bw: 0.5px; } }
 
 /* Startseite: Sternenhimmel über die ganze Breite. Bleibt in beiden Farbschemata dunkel – das Bild ist Nacht. */
-.with-hero { position: relative; }
+.with-hero { position: relative; background: var(--paper); }
+/* Safari (ab iOS 26) färbt Statusleiste und Leisten nach dem Seitenhintergrund, nicht nach theme-color:
+   Auf der Startseite darum dunkel wie der Himmel – der Inhalt darunter bleibt über .with-hero hell. */
+html:has(.with-hero), html:has(.with-hero) body { background: #050a16; }
 .with-hero .public-main { padding: 0 0 60px; }
 .with-hero .landing { padding: 56px clamp(16px, 4vw, 48px) 0; }
 .public-top.on-hero {
@@ -593,7 +596,9 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .public-top.on-hero .theme-toggle:hover { background: rgba(255, 255, 255, 0.1); }
 .public-top.on-hero :focus-visible { outline-color: #f4efe6; }
 
-.hero { position: relative; isolation: isolate; min-height: max(100svh, 680px); display: grid; justify-items: center; align-content: start; overflow: hidden; color: #f4efe6; background: #0b1426; }
+/* Volle Höhe bis unter die Browser-Leisten (lvh): Mit svh endete der Hero über der durchsichtigen Safari-Leiste,
+   darunter schimmerte der helle Seitenhintergrund durch. */
+.hero { position: relative; isolation: isolate; min-height: max(100vh, 680px); min-height: max(100lvh, 680px); display: grid; justify-items: center; align-content: start; overflow: hidden; color: #f4efe6; background: #0b1426; }
 /* Querformat: Bild etwas höher als der Bereich, damit die Person unter dem Text steht und das Licht auf ihn zuläuft. */
 .hero-bg-wrap { position: absolute; inset: 0 0 auto; height: 100%; z-index: -2; }
 @media (min-aspect-ratio: 1/1) { .hero-bg-wrap { height: 118%; } }
@@ -616,7 +621,8 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .hero-lead { margin-top: 18px; max-width: 52ch; font-size: calc(15px * var(--fz)); line-height: 1.55; color: rgba(244, 239, 230, 0.9); text-shadow: 0 0 10px rgba(2, 6, 16, 0.95), 0 1px 3px rgba(2, 6, 16, 0.9); }
 .hero-login { margin-top: 22px; padding: 10px 24px; border-radius: 999px; border: var(--bw) solid rgba(255, 255, 255, 0.2); background: rgba(8, 14, 28, 0.38); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #f4efe6; text-decoration: none; font-size: calc(14px * var(--fz)); font-weight: 500; transition: border-color 0.2s; }
 .hero-login:hover { border-color: rgba(255, 255, 255, 0.6); }
-.hero-quick { position: absolute; bottom: clamp(16px, 4vh, 44px); left: 50%; transform: translateX(-50%); display: flex; gap: 18px; }
+/* Über der Leiste bleiben: lvh − svh ist die Höhe, die Browser-Leisten verdecken können. */
+.hero-quick { position: absolute; bottom: clamp(16px, 4vh, 44px); bottom: calc(clamp(16px, 4vh, 44px) + 100lvh - 100svh); left: 50%; transform: translateX(-50%); display: flex; gap: 18px; }
 .hero-quick a { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; color: #f4efe6; border: var(--bw) solid rgba(255, 255, 255, 0.18); background: rgba(8, 14, 28, 0.32); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.04); transition: background 0.2s, border-color 0.2s; }
 .hero-quick a:hover { background: rgba(8, 14, 28, 0.55); border-color: rgba(255, 255, 255, 0.5); }
 .hero :focus-visible { outline: 2px solid #f4efe6; outline-offset: 3px; }
@@ -630,7 +636,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 }
 @media (max-width: 640px) {
   .public-top.on-hero { top: 10px; padding: 5px 5px 5px 12px; }
-  .hero { min-height: max(100svh, 640px); }
+  .hero { min-height: max(100vh, 640px); min-height: max(100lvh, 640px); }
   .hero-inner { padding-top: 112px; }
   .hero-ask { padding-left: 18px; font-size: calc(15px * var(--fz)); }
   .hero-ask-go { width: 42px; height: 42px; }
