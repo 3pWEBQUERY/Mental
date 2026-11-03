@@ -892,3 +892,9 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 /* Formular-Sperre während einer Aktion (components/admin/mod-form.tsx): unsichtbar fürs Layout. */
 .form-lock { display: contents; border: 0; margin: 0; padding: 0; min-inline-size: auto; }
 .form-lock:disabled button { opacity: 0.55; cursor: progress; }
+
+/* Atemmuster und Dauer im Raum: zwei kleine Auswahlleisten unter den Knöpfen; während des Atmens zurückgenommen. */
+.breath-options { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-top: 14px; }
+.segment.small { padding: 3px; }
+.segment.small button, .segment.small .blob-copy { padding: 5px 11px; font-size: calc(12px * var(--fz)); }
+.breath-hint { flex-basis: 100%; margin: 0; font-size: calc(12.5px * var(--fz)); color: var(--ink-3); max-width: 44ch; }

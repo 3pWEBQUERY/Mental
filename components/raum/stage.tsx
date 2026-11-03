@@ -4,8 +4,10 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { logBreath, saveCheckin } from '@/app/(app)/actions'
+import { updateSettings } from '@/app/(app)/einstellungen/actions'
+import { BREATH_MINUTES, BREATH_PATTERN_IDS, breathAt, breathPlan, type BreathMinutes, type BreathPatternId, type BreathPhase } from '@/lib/breath'
 import { emit, on, toast } from '@/lib/client/bus'
-import { BREATH, LIMITS, MOOD_HEAVY } from '@/lib/constants'
+import { LIMITS, MOOD_HEAVY } from '@/lib/constants'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { panic } from '../panic'
@@ -29,10 +31,8 @@ function OrbFallback() {
 // Three.js landet nur im Client-Bundle und blockiert den ersten Paint nicht.
 const Orb = dynamic(() => import('./orb'), { ssr: false, loading: OrbFallback })
 
-type Phase = 'inhale' | 'hold' | 'exhale'
+type Phase = BreathPhase
 type Mode = 'breath' | 'ground'
-const CYCLE = BREATH.inhale + BREATH.hold + BREATH.exhale
-const TOTAL = CYCLE * BREATH.cycles
 
 export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: string }) {
   const viewer = useViewer()
@@ -41,6 +41,18 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   const [note, setNote] = useState('')
   const [breathing, setBreathing] = useState(false)
   const [phase, setPhase] = useState<Phase>('inhale')
+  // Atemmuster und Dauer: in den Einstellungen gespeichert, hier und unter Einstellungen → Raum wählbar.
+  const [pattern, setPattern] = useState<BreathPatternId>(viewer.breathPattern)
+  const [minutes, setMinutes] = useState<BreathMinutes>(viewer.breathMinutes)
+  const plan = breathPlan(pattern, minutes)
+  const planRef = useRef(plan)
+  planRef.current = plan
+  function choose(patch: { breathPattern?: BreathPatternId; breathMinutes?: BreathMinutes }) {
+    if (breathing) return
+    if (patch.breathPattern) setPattern(patch.breathPattern)
+    if (patch.breathMinutes) setMinutes(patch.breathMinutes)
+    void updateSettings(patch).catch(() => {})
+  }
   const [left, setLeft] = useState<number | null>(null)
   const [proHint, setProHint] = useState(false)
   const [letter, setLetter] = useState<{ body: string; createdAt: string } | null>(null)
@@ -109,8 +121,8 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     setBreathing(false)
     setLeft(null)
     const seconds = Math.round((performance.now() - started.current) / 1000)
-    if (seconds >= 10) void logBreath(Math.min(seconds, TOTAL))
-    if (done) toast(m.stage.breathDone)
+    if (seconds >= 10) void logBreath(Math.min(seconds, planRef.current.total))
+    if (done) toast(m.stage.breathDoneFor(minutes))
   }
 
   function startBreath() {
@@ -128,16 +140,16 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
       setPhase(p)
       setLeft(l)
     }
+    const current = planRef.current
     if (api.current) {
-      api.current.breathe(tick, finish)
+      api.current.breathe(tick, finish, current)
       return
     }
     // Ohne Animation führt nur der Text.
     const loop = () => {
-      const t0 = (performance.now() - started.current) / 1000
-      if (t0 >= TOTAL) return finish(true)
-      const t = t0 % CYCLE
-      tick(t < BREATH.inhale ? 'inhale' : t < BREATH.inhale + BREATH.hold ? 'hold' : 'exhale', Math.ceil(TOTAL - t0))
+      const at = breathAt(current, (performance.now() - started.current) / 1000)
+      if (!at) return finish(true)
+      tick(at.phase, at.left)
       fallbackTimer.current = requestAnimationFrame(loop)
     }
     loop()
@@ -256,7 +268,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
       {/* Angesagt wird nur die Phase (Einatmen/Halten/Ausatmen) – nicht jede Sekunde. */}
       <div className="breath-label" aria-hidden={!breathing}>
         <b aria-live="polite">{breathing ? s[phase] : ''}</b>
-        <span aria-hidden="true">{left === null ? s.breathStart : s.breathMeta(left)}</span>
+        <span aria-hidden="true">{left === null ? s.breathStartFor(minutes, s.patternNames[pattern]) : s.breathMeta(left)}</span>
       </div>
       <div className="checkin">
         <div className="stage-switch-wrap" onPointerEnter={() => api.current?.prepareGround()} onFocus={() => api.current?.prepareGround()}>
@@ -348,11 +360,28 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
             )}
             <div className="stage-actions">
               <button type="button" className="btn" onClick={breathing ? stopBreath : startBreath}>
-                {breathing ? s.stop : s.breathe}
+                {breathing ? s.stop : s.breatheFor(minutes)}
               </button>
               <button type="button" className="btn ghost" onClick={() => emit('compose')}>
                 {s.share}
               </button>
+            </div>
+            <div className="breath-options" role="group" aria-label={s.breathOptions} inert={breathing}>
+              <RadioGroup
+                className="segment small"
+                label={s.patternLabel}
+                value={pattern}
+                onChange={(v) => choose({ breathPattern: v })}
+                options={BREATH_PATTERN_IDS.map((id) => ({ value: id, label: <span title={s.patternNames[id]}>{s.patterns[id]}</span> }))}
+              />
+              <RadioGroup
+                className="segment small"
+                label={s.minutesLabel}
+                value={minutes}
+                onChange={(v) => choose({ breathMinutes: v })}
+                options={BREATH_MINUTES.map((n) => ({ value: n, label: s.minutesOption(n) }))}
+              />
+              <p className="breath-hint">{s.patternHints[pattern]}</p>
             </div>
           </div>
           <div className="slide slide-ground" inert={mode !== 'ground'} aria-hidden={mode !== 'ground'}>

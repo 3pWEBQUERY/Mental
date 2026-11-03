@@ -121,6 +121,9 @@ export type Settings = {
   fontSize?: 'normal' | 'large' | 'xlarge'
   motion?: 'on' | 'reduced' | 'off'
   breathSound?: boolean
+  /** Atemmuster und Dauer im Raum (lib/breath.ts). */
+  breathPattern?: 'calm' | 'box' | 'relax'
+  breathMinutes?: 1 | 3 | 5
   hidePresence?: boolean
   collapseWarnings?: boolean
   /** Diskret: neutraler Tab-Titel, Inhalt verschwimmt beim Verlassen des Fensters. */

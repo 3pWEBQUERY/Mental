@@ -47,6 +47,9 @@ export async function me() {
       fontSize: s.fontSize ?? 'normal',
       motion: s.motion ?? 'on',
       breathSound: s.breathSound ?? false,
+      // Neu (Nov. 2026): Atemmuster und Dauer – ältere App-Versionen ignorieren die Felder.
+      breathPattern: s.breathPattern ?? 'calm',
+      breathMinutes: s.breathMinutes ?? 1,
       collapseWarnings: s.collapseWarnings ?? true,
       hidePresence: s.hidePresence ?? false,
       discreet: s.discreet ?? false,

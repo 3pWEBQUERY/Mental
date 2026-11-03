@@ -26,6 +26,8 @@ export type ClientViewer = {
   /** Nachtbereitschaft der Moderation (NIGHT_MODERATION) – sonst ist das Team 22–7 Uhr nicht da. */
   nightModeration: boolean
   breathSound: boolean
+  breathPattern: 'calm' | 'box' | 'relax'
+  breathMinutes: 1 | 3 | 5
   collapseWarnings: boolean
   hidePresence: boolean
   circles: ClientCircle[]
