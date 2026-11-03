@@ -659,16 +659,38 @@ html:has(.with-hero), html:has(.with-hero) body { background: #050a16; }
 .partner-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 18px; }
 .partner-tile { display: grid; place-items: center; height: 128px; padding: 22px 26px; border-radius: 18px; background: #fbfaf6; border: var(--bw) solid color-mix(in srgb, var(--ink) 18%, transparent); color: #2b2a26; text-decoration: none; transition: border-color 0.2s; }
 a.partner-tile:hover { border-color: color-mix(in srgb, var(--ink) 45%, transparent); }
-.partner-tile img { max-width: 100%; max-height: 72px; width: auto; height: auto; object-fit: contain; }
+.partner-tile img { max-width: 100%; max-height: 80px; width: auto; height: auto; object-fit: contain; }
 @media (max-width: 640px) { .partner-list { grid-template-columns: 1fr 1fr; gap: 10px; } .partner-tile { height: 96px; padding: 14px 16px; border-radius: 14px; } .partner-tile img { max-height: 56px; } }
 .partner-name { font-family: var(--serif); font-size: calc(22px * var(--fz)); line-height: 1.15; text-align: center; }
-/* Admin → Partner */
-.partner-thumb { flex: 0 0 auto; width: 120px; height: 56px; display: grid; place-items: center; padding: 6px; border-radius: 10px; background: #fbfaf6; border: var(--bw) solid var(--line); color: #2b2a26; }
-.partner-thumb img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
-.partner-media { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-.partner-media-item { display: grid; gap: 8px; justify-items: start; }
-.partner-media-item .partner-thumb { width: 100%; height: 96px; }
+/* Admin → Partner: Karte mit Vorschau links, Feldern mit Beschriftung und Aktionen rechts. */
+.partner-thumb { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; overflow: hidden; width: 168px; height: 96px; padding: 10px; border-radius: 12px; background: #fbfaf6; border: var(--bw) solid var(--line); color: #2b2a26; }
+/* Feste Box mit object-fit: Das Logo passt immer hinein, egal wie gross die Datei ist. */
+.partner-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.partner-card { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 16px 22px; align-items: start; }
+.partner-card.new { grid-template-columns: minmax(0, 1fr); }
+.partner-card .partner-thumb { grid-row: span 2; }
+.partner-fields { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.3fr) 110px; gap: 12px; }
+.partner-field { display: block; min-width: 0; }
+.partner-field .field-label { font-size: calc(12px * var(--fz)); color: var(--ink-3); font-weight: 500; }
+.partner-field .input { width: 100%; }
+.partner-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.partner-actions .switch { margin-right: auto; }
+.logo-upload { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.logo-upload .error { grid-column: 1 / -1; }
+.input[type='file'] { padding: 7px 8px; font-size: calc(14px * var(--fz)); color: var(--ink-2); }
+.input[type='file']::file-selector-button { font: inherit; color: var(--ink); background: var(--paper-2); border: var(--bw) solid var(--line-strong); border-radius: 999px; padding: 6px 14px; margin-right: 12px; cursor: pointer; }
+.partner-media { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.partner-media-item { display: grid; gap: 8px; align-content: start; justify-items: start; min-width: 0; }
+.partner-media-item .partner-thumb { width: 100%; height: 120px; }
 .partner-media-name { font-weight: 500; overflow-wrap: anywhere; }
+@media (max-width: 980px) { .partner-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .partner-card { grid-template-columns: minmax(0, 1fr); }
+  .partner-card .partner-thumb { grid-row: auto; width: 100%; }
+  .partner-fields, .logo-upload { grid-template-columns: minmax(0, 1fr); }
+}
+/* Auswahlfelder wie Eingabefelder (Safari zeichnet sonst die schmale System-Auswahl). */
+select.input { appearance: none; -webkit-appearance: none; padding-right: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a8578' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; }
 .prose { max-width: 66ch; }
 .prose p { margin: 12px 0; color: var(--ink-2); }
 .prose h2 { font-family: var(--serif); font-weight: 400; font-size: calc(28px * var(--fz)); margin-top: 28px; }

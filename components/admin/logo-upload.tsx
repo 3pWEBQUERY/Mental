@@ -17,7 +17,7 @@ export function LogoUpload({ partners }: { partners: { id: string; name: string 
   return (
     <form
       ref={ref}
-      className="card inline-form"
+      className="card logo-upload"
       aria-label="Logo hochladen"
       aria-busy={busy || undefined}
       onSubmit={async (e) => {
@@ -43,15 +43,21 @@ export function LogoUpload({ partners }: { partners: { id: string; name: string 
         }
       }}
     >
-      <input className="input" type="file" name="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif,image/avif" aria-label="Bilddatei (PNG, JPEG, WebP, SVG, bis 3 MB)" required />
-      <select className="input" name="partnerId" defaultValue="" aria-label="Direkt einem Partner zuweisen" style={{ flex: '0 0 220px', minWidth: 200 }}>
-        <option value="">Nur in die Medien</option>
-        {partners.map((p) => (
-          <option key={p.id} value={p.id}>
-            Logo für: {p.name}
-          </option>
-        ))}
-      </select>
+      <label className="partner-field file">
+        <span className="field-label">Bilddatei</span>
+        <input className="input" type="file" name="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif,image/avif" aria-label="Bilddatei (PNG, JPEG, WebP, SVG, bis 3 MB)" required />
+      </label>
+      <label className="partner-field">
+        <span className="field-label">Zuweisen</span>
+        <select className="input" name="partnerId" defaultValue="" aria-label="Direkt einem Partner zuweisen">
+          <option value="">Nur in die Medien</option>
+          {partners.map((p) => (
+            <option key={p.id} value={p.id}>
+              Logo für: {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <button className="btn small" disabled={busy}>
         {busy ? 'Lädt hoch …' : 'Hochladen'}
       </button>
