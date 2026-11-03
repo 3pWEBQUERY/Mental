@@ -595,6 +595,8 @@ export const de = {
     imprint: 'Impressum',
     help: 'Hilfe',
     transparency: 'Transparenz',
+    social: 'Jiaia in den sozialen Medien',
+    socialLink: (name: string) => `Jiaia auf ${name} (öffnet ein neues Fenster)`,
   },
   transparency: {
     title: 'Transparenz',

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { glyphPath } from '@/lib/glyph'
 import type { HelpResource } from '@/lib/help'
+import { SOCIAL } from '@/lib/social'
 import { m, type Messages } from '@/messages'
 import { ThemeToggle } from './theme-toggle'
 import { LangSwitch } from './lang-switch'
@@ -123,6 +124,7 @@ export function PublicShell({
         <Link href="/transparenz">{t.landing.transparency}</Link>
         <Link href="/impressum">{t.landing.imprint}</Link>
         <Link href={helpHref}>{t.landing.help}</Link>
+        <SocialLinks label={t.landing.social} linkLabel={t.landing.socialLink} />
       </footer>
     </div>
   )
@@ -151,5 +153,22 @@ export function PhoneScript({ open = false, t = m }: { open?: boolean; t?: Messa
       </ul>
       <p className="fine">{p.after}</p>
     </details>
+  )
+}
+
+/** Runde Knöpfe zu Jiaia in den sozialen Medien (lib/social.ts) – nur Konten mit Adresse. */
+function SocialLinks({ label, linkLabel }: { label: string; linkLabel: (name: string) => string }) {
+  const list = SOCIAL.filter((s) => s.url)
+  if (!list.length) return null
+  return (
+    <nav className="social" aria-label={label}>
+      {list.map((s) => (
+        <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer me" aria-label={linkLabel(s.name)} title={s.name}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d={s.path} />
+          </svg>
+        </a>
+      ))}
+    </nav>
   )
 }

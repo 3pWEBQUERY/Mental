@@ -81,3 +81,16 @@ test('Startseite: Video-Hintergrund lädt erst nach der Seite und läuft in Schl
   await expect(c.locator('video.hero-video')).not.toHaveClass(/\bon\b/)
   await calm.close()
 })
+
+test('Footer: runde Knöpfe zu den sozialen Medien, öffnen in neuem Fenster', async ({ page }) => {
+  await page.goto('/hilfe')
+  const social = page.getByRole('navigation', { name: 'Jiaia in den sozialen Medien' })
+  const ig = social.getByRole('link', { name: 'Jiaia auf Instagram (öffnet ein neues Fenster)' })
+  await expect(ig).toHaveAttribute('href', 'https://www.instagram.com/jiaia.app/')
+  await expect(ig).toHaveAttribute('target', '_blank')
+  await expect(ig).toHaveAttribute('rel', /noopener/)
+  const box = await ig.boundingBox()
+  expect(box && Math.round(box.width) === Math.round(box.height) && box.width >= 44).toBe(true)
+  // Nur Konten mit Adresse erscheinen – keine toten Knöpfe.
+  for (const a of await social.getByRole('link').all()) await expect(a).toHaveAttribute('href', /^https:\/\//)
+})
