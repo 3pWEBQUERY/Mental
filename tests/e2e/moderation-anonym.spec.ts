@@ -61,6 +61,8 @@ test('Freigegebene Antwort benachrichtigt die Person, die den Gedanken geteilt h
   await card.getByLabel('Antwort schreiben').fill(reply)
   await card.getByRole('button', { name: 'Antwort senden' }).click()
   await expect(card.getByText(reply)).toBeVisible()
+  // Die Antwort erscheint sofort (optimistisch) – gespeichert ist sie erst einen Moment später.
+  await expect.poll(async () => (await one<{ n: number }>(`SELECT count(*)::int AS n FROM replies WHERE body = $1`, [reply])).n).toBe(1)
   const r = await one<{ id: string; post_id: string }>(`SELECT id, post_id FROM replies WHERE body = $1`, [reply])
   await sql(`UPDATE replies SET status = 'pending' WHERE id = $1`, [r.id])
   await sql(`DELETE FROM notifications WHERE post_id = $1`, [r.post_id])
