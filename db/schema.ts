@@ -556,6 +556,35 @@ export const helpResources = pgTable('help_resources', {
   circleId: uuid('circle_id').references(() => circles.id, { onDelete: 'cascade' }),
 })
 
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' })
+
+/**
+ * Logos der Partner (Admin → Partner): beim Hochladen mit sharp neu gerechnet (WebP, höchstens 800×400, SVG gerastert),
+ * darum klein genug für die Datenbank. Inhalt ändert sich nie – ein neues Logo ist eine neue Zeile (lange cachebar).
+ */
+export const partnerMedia = pgTable('partner_media', {
+  id: id(),
+  /** Ursprünglicher Dateiname, nur zur Orientierung im Admin-Bereich. */
+  name: text('name').notNull(),
+  contentType: text('content_type').notNull().default('image/webp'),
+  data: bytea('data').notNull(),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: createdAt(),
+})
+
+/** Partner auf der Startseite (z. B. Die Dargebotene Hand, Pro Juventute): Name, Link und Logo. */
+export const partners = pgTable('partners', {
+  id: id(),
+  name: text('name').notNull(),
+  url: text('url'),
+  mediaId: uuid('media_id').references(() => partnerMedia.id, { onDelete: 'set null' }),
+  sort: integer('sort').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: createdAt(),
+})
+
 /** Einmalige Seed-Schritte (z. B. Standard-Hilfe je Kreis): einmal ausgeführt, danach pflegt das Admin-Team. */
 export const seedMarks = pgTable('seed_marks', {
   key: text('key').primaryKey(),

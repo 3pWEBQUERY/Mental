@@ -10,6 +10,8 @@ import {
   crisisTerms,
   helpResources,
   moderationActions,
+  partnerMedia,
+  partners,
   postMedia,
   posts,
   replies,
@@ -412,7 +414,7 @@ const INVALID = 'Bitte die Felder prüfen – etwas fehlt oder ist zu lang.'
 const optional = (max: number) => z.string().trim().max(max).optional()
 
 /** Kreise, Hilfe-Nummern und Schritte: Jede Änderung gilt sofort – im Cache aller Replikas (cache-handlers/default.cjs) und auf dieser Seite. */
-function changed(tag?: 'circles' | 'help') {
+function changed(tag?: 'circles' | 'help' | 'partners') {
   if (tag) updateTag(tag)
   refresh()
 }
@@ -634,4 +636,58 @@ export async function deleteStep(form: FormData): Promise<AdminResult> {
   await audit(admin.userId, 'steps:delete', admin.userId, row.text.slice(0, 60))
   changed()
   return done('Schritt gelöscht.')
+}
+
+/* ------------------------------------------------------------- Partner */
+
+/** Partner anlegen oder ändern. Erscheint sofort auf der Startseite (cacheTag «partners»), wenn aktiv. */
+export async function savePartner(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const parsed = z
+    .object({
+      id: z.uuid().optional().or(z.literal('')),
+      name: str(80),
+      url: z.url({ protocol: /^https$/ }).max(300).optional().or(z.literal('')),
+      mediaId: z.uuid().optional().or(z.literal('')),
+      sort: z.coerce.number().int().min(0).max(999),
+      isActive: z.string().optional(),
+    })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) return nope(parsed.error.issues.some((i) => i.path[0] === 'url') ? 'Der Link muss mit https:// beginnen.' : INVALID)
+  const d = parsed.data
+  if (d.mediaId) {
+    const [media] = await db.select({ id: partnerMedia.id }).from(partnerMedia).where(eq(partnerMedia.id, d.mediaId))
+    if (!media) return nope('Dieses Logo gibt es nicht mehr.')
+  }
+  const values = { name: d.name, url: d.url || null, mediaId: d.mediaId || null, sort: d.sort, isActive: d.isActive === 'on' }
+  if (d.id) {
+    const [row] = await db.update(partners).set(values).where(eq(partners.id, d.id)).returning({ id: partners.id })
+    if (!row) return nope('Diesen Partner gibt es nicht mehr.')
+  } else await db.insert(partners).values(values)
+  await audit(admin.userId, d.id ? 'partner:update' : 'partner:create', admin.userId, d.name)
+  changed('partners')
+  return done(d.id ? `«${d.name}» gespeichert.` : `«${d.name}» hinzugefügt.`)
+}
+
+export async function deletePartner(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const id = z.uuid().safeParse(form.get('id'))
+  if (!id.success) return nope(INVALID)
+  const [row] = await db.delete(partners).where(eq(partners.id, id.data)).returning({ name: partners.name })
+  if (!row) return nope('Diesen Partner gibt es nicht mehr.')
+  await audit(admin.userId, 'partner:delete', admin.userId, row.name)
+  changed('partners')
+  return done(`«${row.name}» gelöscht.`)
+}
+
+/** Logo aus den Medien löschen. Partner, die es nutzen, bleiben – ohne Logo (nur der Name erscheint). */
+export async function deletePartnerMedia(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const id = z.uuid().safeParse(form.get('id'))
+  if (!id.success) return nope(INVALID)
+  const [row] = await db.delete(partnerMedia).where(eq(partnerMedia.id, id.data)).returning({ name: partnerMedia.name })
+  if (!row) return nope('Dieses Logo gibt es nicht mehr.')
+  await audit(admin.userId, 'partner-media:delete', admin.userId, row.name)
+  changed('partners')
+  return done(`«${row.name}» gelöscht.`)
 }
