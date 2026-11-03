@@ -57,7 +57,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     help,
   }
   return (
-    <ViewerProvider value={value}>
+    // Schlüssel = Konto: Next hält ausgeblendete Seiten mit ihrem Zustand vor (Activity). Meldet sich im selben Tab
+    // jemand anderes an, darf nichts davon (Feed mit «du», Einstellungen, entsperrtes Tagebuch) wieder auftauchen.
+    <ViewerProvider value={value} key={v.userId}>
       <AppChrome initialUnread={unread.unread} pulseOnOpen={unread.supportSinceLastVisit} presence={presence}>
         {children}
       </AppChrome>

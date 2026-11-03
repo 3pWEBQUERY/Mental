@@ -7,6 +7,7 @@ import { uuidv7 } from '@/lib/id'
 import { bucketConfigured, presignUpload } from '@/lib/s3'
 import { getViewer } from '@/lib/server/session'
 import { m } from '@/messages'
+import { hit } from '@/lib/server/rate-limit'
 
 const schema = z.object({ type: z.enum(IMAGE_TYPES), size: z.number().int().positive().max(LIMITS.imageMaxBytes) })
 
@@ -27,6 +28,10 @@ export async function POST(request: Request) {
     .from(postMedia)
     .where(and(eq(postMedia.userId, v.userId), gt(postMedia.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))))
   if (n >= LIMITS.postsPerDay) return Response.json({ error: m.composer.limit }, { status: 429 })
+  // Zusätzlich ein Zähler, der nicht verschwindet: Abgebrochene Uploads räumt der Worker nach 1 h weg – ohne ihn
+  // gingen sonst 10 Uploads pro Stunde statt pro Tag.
+  if (!(await hit(`upload-day:${v.userId}`, LIMITS.postsPerDay * 2, 24 * 60 * 60 * 1000)).ok)
+    return Response.json({ error: m.composer.limit }, { status: 429 })
 
   const id = uuidv7()
   const key = `quarantine/${id}`

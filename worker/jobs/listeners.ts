@@ -16,6 +16,8 @@ export const LISTENERS_PER_POST = 3
  * höchstens einmal. Nur in der Glocke, nie als Push und nie mit dem Text des Gedankens (der steht im Feed).
  * Wer blockiert, ausgeblendet oder den Kreis stummgeschaltet hat, wird nicht gefragt – in beide Richtungen.
  */
+const NOBODY = Symbol('nobody')
+
 export async function nudgeListeners() {
   let posts = 0
   let people = 0
@@ -48,7 +50,8 @@ export async function nudgeListeners() {
             LIMIT ${LISTENERS_PER_POST}
             FOR UPDATE OF pr SKIP LOCKED`)
           .then((r) => r.rows)
-        if (!listeners.length) return 0
+        // Niemand frei: zurückrollen, damit der Gedanke beim nächsten Durchlauf wieder an der Reihe ist.
+        if (!listeners.length) throw NOBODY
         const ids = listeners.map((l) => l.user_id)
         await tx.update(profiles).set({ listenerNudgedAt: new Date() }).where(inArray(profiles.userId, ids))
         const locales = await localesOf(ids)
@@ -64,6 +67,7 @@ export async function nudgeListeners() {
         people += n
       }
     } catch (e) {
+      if (e === NOBODY) continue
       console.error(`[listeners] ${post.id} fehlgeschlagen:`, safeMessage(e))
     }
   }

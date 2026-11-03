@@ -50,15 +50,22 @@ export async function moderate(form: FormData) {
     })
     .safeParse(Object.fromEntries(form))
   if (!parsed.success) throw new Error('invalid')
-  const { targetType, targetId, action } = parsed.data
+  const { targetType, targetId } = parsed.data
+  let action = parsed.data.action
   const reason = parsed.data.reason?.trim() ?? ''
   const mod = await assertModerator(PEER_ACTIONS.includes(action) ? 'peer' : 'mod')
+  // Inhaltshinweis gibt es nur für Gedanken – bei einer Antwort wäre «cw» ein verdecktes Verwerfen (Peer-Rolle darf das nicht).
+  if (action === 'cw' && targetType === 'reply') throw new Error('invalid')
 
   const [target] =
     targetType === 'post'
-      ? await db.select({ userId: posts.userId, postId: posts.id }).from(posts).where(eq(posts.id, targetId))
-      : await db.select({ userId: replies.userId, postId: replies.postId }).from(replies).where(eq(replies.id, targetId))
+      ? await db.select({ userId: posts.userId, postId: posts.id, status: posts.status }).from(posts).where(eq(posts.id, targetId))
+      : await db.select({ userId: replies.userId, postId: replies.postId, status: replies.status }).from(replies).where(eq(replies.id, targetId))
   if (!target) throw new Error('not found')
+  // Zurückgehaltener Inhalt (akuter Krisen-Treffer): «Verwerfen» heisst «kein Problem» – also freigeben. Sonst bliebe er
+  // für immer «wartet auf Prüfung», unsichtbar und aus der Warteschlange verschwunden.
+  const held = target.status === 'pending'
+  if (held && action === 'dismiss') action = 'approve'
   if (['mute24', 'mute7', 'ban', 'warn'].includes(action) && target.userId) {
     const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, target.userId))
     if (u && u.role !== 'member') {
@@ -78,6 +85,7 @@ export async function moderate(form: FormData) {
     }
   }
 
+  let sanctioned = false
   switch (action) {
     case 'approve':
     // «Gesehen · Fürsorge senden»: wie Freigeben, dazu eine ruhige Nachricht mit den Hilfe-Nummern an die Person.
@@ -108,7 +116,8 @@ export async function moderate(form: FormData) {
     case 'mute24':
     case 'mute7':
     case 'ban':
-      if (target.userId) await sanctionAccount(target.userId, action)
+      // Konto schon gesperrt oder in Löschung: keine Massnahme – dann auch nichts protokollieren oder ankündigen.
+      if (target.userId) sanctioned = await sanctionAccount(target.userId, action)
       break
   }
 
@@ -123,16 +132,18 @@ export async function moderate(form: FormData) {
         eq(reports.targetId, targetId),
         eq(reports.status, 'open'),
         ...(peerOnly ? [ne(reports.reason, 'auto_acute')] : []),
+        // Noch zurückgehalten (z. B. nur verwarnt): Der Krisen-Fall bleibt offen, bis jemand freigibt oder ausblendet.
+        ...(held && !['approve', 'care', 'hide'].includes(action) ? [ne(reports.reason, 'auto_acute')] : []),
       ),
     )
 
   await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType, targetId, action, reason: reason || null })
   // Erledigt – die Übernahme gibt den Fall frei.
   await db.delete(caseClaims).where(and(eq(caseClaims.targetType, targetType), eq(caseClaims.targetId, targetId)))
-  if (target.userId && ['mute24', 'mute7', 'ban'].includes(action)) {
+  if (target.userId && sanctioned) {
     await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: target.userId, action, reason: reason || null })
   }
-  const message = notice(action, reason)
+  const message = ['mute24', 'mute7', 'ban'].includes(action) && !sanctioned ? null : notice(action, reason)
   if (message && target.userId)
     await notifyModeration(target.userId, targetType === 'post' ? targetId : target.postId, message, ['hide', 'warn', 'mute24', 'mute7'].includes(action))
   refresh()
@@ -293,6 +304,11 @@ export async function proposeRole(form: FormData) {
   // Gesperrte oder gelöschte Konten bekommen keine Rolle.
   if (parsed.data.role !== 'member' && u.status !== 'active') throw new Error('forbidden')
   const { role, reason } = parsed.data
+  // Einen offenen Vorschlag eines anderen Admins nie still überschreiben – sonst bestätigte jemand auf einer
+  // veralteten Seite eine Rolle, die er nie gesehen hat. Erst verwerfen, dann neu vorschlagen.
+  const [open] = await db.select({ proposedBy: roleProposals.proposedBy, createdAt: roleProposals.createdAt }).from(roleProposals).where(eq(roleProposals.userId, userId))
+  const fresh = open && open.createdAt.getTime() >= Date.now() - ROLE_PROPOSAL_DAYS * 86_400_000
+  if (fresh && open.proposedBy !== admin.userId) throw new Error('forbidden')
   await db
     .insert(roleProposals)
     .values({ userId, role, proposedBy: admin.userId, reason })
@@ -305,7 +321,7 @@ export async function proposeRole(form: FormData) {
 /** Rollenwechsel, Schritt 2: ein anderer Admin bestätigt – oder jemand (auch die vorschlagende Person) verwirft. */
 export async function decideRole(form: FormData) {
   const parsed = z
-    .object({ token: z.string().max(400), decision: z.enum(['accept', 'reject']) })
+    .object({ token: z.string().max(400), decision: z.enum(['accept', 'reject']), role: z.enum(ROLES), at: z.string().max(40) })
     .safeParse(Object.fromEntries(form))
   if (!parsed.success) throw new Error('invalid')
   const userId = memberFromToken(parsed.data.token)
@@ -318,6 +334,8 @@ export async function decideRole(form: FormData) {
   const result = await db.transaction(async (tx) => {
     const [p] = await tx.select().from(roleProposals).where(eq(roleProposals.userId, userId)).for('update')
     if (!p) return null
+    // Genau der Vorschlag, den die Seite gezeigt hat (Rolle und Zeitpunkt) – sonst ist die Seite veraltet.
+    if (p.role !== parsed.data.role || p.createdAt.toISOString() !== parsed.data.at) throw new Error('stale')
     await tx.delete(roleProposals).where(eq(roleProposals.userId, userId))
     const expired = p.createdAt.getTime() < Date.now() - ROLE_PROPOSAL_DAYS * 86_400_000
     if (decision === 'reject' || expired) return { p, applied: false, from: null }
@@ -492,9 +510,11 @@ export async function deleteCircle(form: FormData): Promise<AdminResult> {
   const parsed = z.object({ id: z.uuid(), moveTo: z.uuid().optional().or(z.literal('')) }).safeParse(Object.fromEntries(form))
   if (!parsed.success) return nope(INVALID)
   const { id, moveTo } = parsed.data
+  let label = id
   const result = await db.transaction(async (tx) => {
     const [c] = await tx.select({ name: circles.name, slug: circles.slug, requireCw: circles.requireCw }).from(circles).where(eq(circles.id, id)).for('update')
     if (!c) return nope('Diesen Kreis gibt es nicht mehr.')
+    label = `${c.name} (${c.slug})`
     const [other] = await tx
       .select({ id: circles.id })
       .from(circles)
@@ -525,7 +545,7 @@ export async function deleteCircle(form: FormData): Promise<AdminResult> {
     return done(`Kreis «${c.name}» gelöscht${parts.length ? `, ${parts.join(', ')}` : ''}.`)
   })
   if (!result.ok) return result
-  await audit(admin.userId, 'circle:delete', admin.userId, id)
+  await audit(admin.userId, 'circle:delete', admin.userId, label)
   updateTag('help')
   changed('circles')
   return result
@@ -535,7 +555,7 @@ const helpSchema = z.object({
   id: z.uuid().optional().or(z.literal('')),
   name: str(80),
   phone: z.string().trim().max(20).regex(/^[0-9+ ()\/-]*$/).optional(),
-  url: z.url({ protocol: /^https?$/ }).optional().or(z.literal('')),
+  url: z.url({ protocol: /^https$/ }).optional().or(z.literal('')),
   hours: str(80),
   audience: str(120),
   sort: z.coerce.number().int().min(0).max(999),
@@ -597,13 +617,17 @@ export async function saveTerm(form: FormData) {
       id: z.uuid().optional().or(z.literal('')),
     })
     .parse(Object.fromEntries(form))
-  if (d.id && d.remove) await db.update(crisisTerms).set({ active: false }).where(eq(crisisTerms.id, d.id))
-  else
-    await db
-      .insert(crisisTerms)
-      .values({ term: d.term.toLowerCase(), level: d.level, language: d.language })
-      .onConflictDoUpdate({ target: [crisisTerms.language, crisisTerms.term], set: { level: d.level, active: true } })
-  await audit(admin.userId, 'crisis-terms:update', admin.userId, d.term)
+  if (d.id && d.remove) {
+    const off = await db.update(crisisTerms).set({ active: false }).where(eq(crisisTerms.id, d.id)).returning({ id: crisisTerms.id })
+    if (off.length) await audit(admin.userId, 'crisis-terms:remove', admin.userId, d.term)
+    updateTag('crisis-terms')
+    return
+  }
+  await db
+    .insert(crisisTerms)
+    .values({ term: d.term.toLowerCase(), level: d.level, language: d.language })
+    .onConflictDoUpdate({ target: [crisisTerms.language, crisisTerms.term], set: { level: d.level, active: true } })
+  await audit(admin.userId, 'crisis-terms:update', admin.userId, `${d.term} (${d.level}, ${d.language})`)
   updateTag('crisis-terms')
 }
 

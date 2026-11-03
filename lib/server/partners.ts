@@ -43,7 +43,11 @@ export async function processLogo(input: Buffer) {
   const meta = await sharp(input, { limitInputPixels: 40_000_000 }).metadata()
   if (!meta.format || !FORMATS.has(meta.format)) throw new Error('format')
   const svg = meta.format === 'svg'
-  const { data, info } = await sharp(input, { limitInputPixels: 40_000_000, density: svg ? 300 : undefined, animated: false })
+  // SVG so dicht rastern, dass etwa 1600 px lange Seite herauskommt – fest 300 dpi sprengte bei grossen Zeichenflächen
+  // die Pixelgrenze («liess sich nicht lesen»), bei kleinen würde es unscharf.
+  const side = Math.max(meta.width ?? 0, meta.height ?? 0) || 400
+  const density = svg ? Math.max(24, Math.min(600, Math.round((72 * 1600) / side))) : undefined
+  const { data, info } = await sharp(input, { limitInputPixels: 40_000_000, density, animated: false })
     .rotate()
     .resize({ width: 800, height: 400, fit: 'inside', withoutEnlargement: !svg })
     .webp({ quality: 90, alphaQuality: 100, effort: 5 })

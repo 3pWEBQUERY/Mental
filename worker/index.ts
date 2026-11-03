@@ -16,6 +16,7 @@ import { applyRetention } from './jobs/retention'
 import { nudgeListeners } from './jobs/listeners'
 import { sendPush } from './jobs/push'
 import { safeMessage } from '../lib/log-safe'
+import { reencryptAtRest } from '../lib/reencrypt'
 
 const TZ = 'Europe/Zurich'
 
@@ -96,7 +97,13 @@ async function main() {
   const heartbeat = setInterval(() => void beat(), 30_000)
 
   console.log('[worker] bereit')
+  // Nach einem Schlüsselwechsel: zweiter Durchlauf, wenn die alten Web-Replikas weg sind (sie schrieben bis zuletzt
+  // mit dem alten Schlüssel). Ohne Schlüssel oder schon erledigt kostet das eine Abfrage.
+  const reencrypt = setTimeout(() => {
+    void reencryptAtRest((msg) => console.log(msg)).catch((e) => console.error('[encrypt] Worker-Durchlauf fehlgeschlagen:', safeMessage(e)))
+  }, 5 * 60_000)
   const stop = async () => {
+    clearTimeout(reencrypt)
     console.log('[worker] fährt herunter …')
     clearInterval(heartbeat)
     await boss.stop({ graceful: true, timeout: 20_000 })

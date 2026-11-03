@@ -78,8 +78,8 @@ export async function feed(view: string, circle: string | null, cursor: string |
   const safeView: FeedView = view === 'unheard' || view === 'brave' ? view : 'all'
   const followed = circle === 'meine'
   let circleId: string | null = null
-  if (circle && !followed) {
-    const [c] = await db.select({ id: circlesTable.id }).from(circlesTable).where(eq(circlesTable.slug, circle))
+  if (circle && !followed && typeof circle === 'string') {
+    const [c] = await db.select({ id: circlesTable.id }).from(circlesTable).where(and(eq(circlesTable.slug, circle), eq(circlesTable.isActive, true)))
     circleId = c?.id ?? null
   }
   return getFeed({ viewerId: v.userId, view: safeView, circleId, followed, cursor })

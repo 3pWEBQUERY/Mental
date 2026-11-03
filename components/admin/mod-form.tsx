@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { useFormStatus } from 'react-dom'
+import { askConfirm } from '@/components/confirm'
 import { toast } from '@/lib/client/bus'
 
 type Action = (form: FormData) => void | Promise<void>
@@ -13,8 +14,22 @@ type Action = (form: FormData) => void | Promise<void>
  * - während die Aktion läuft, sind alle Knöpfe gesperrt – ein Doppelklick löst sie nicht zweimal aus;
  * - schlägt sie fehl (z. B. abgelaufener Link), erscheint eine Meldung statt der Fehlerseite.
  */
-export function ModForm({ action, children, className, label }: { action: Action; children: ReactNode; className?: string; label?: string }) {
+export function ModForm({
+  action,
+  children,
+  className,
+  label,
+  confirm,
+}: {
+  action: Action
+  children: ReactNode
+  className?: string
+  label?: string
+  /** Rückfrage vor einzelnen Knöpfen, nach ihrem value (z. B. { ban: { message, label } }). */
+  confirm?: Record<string, { message: string; label: string }>
+}) {
   const router = useRouter()
+  const confirmed = useRef(false)
   // Veralteter Eintrag (schon erledigt, Link abgelaufen, Inhalt gelöscht): ruhige Meldung und neu laden statt Fehlerseite.
   const run = async (form: FormData) => {
     try {
@@ -25,7 +40,27 @@ export function ModForm({ action, children, className, label }: { action: Action
     }
   }
   return (
-    <form action={run} className={className} aria-label={label} onKeyDown={blockEnter}>
+    <form
+      action={run}
+      className={className}
+      aria-label={label}
+      onKeyDown={blockEnter}
+      onSubmit={async (e) => {
+        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
+        const ask = submitter?.value ? confirm?.[submitter.value] : undefined
+        if (!ask || confirmed.current) {
+          confirmed.current = false
+          return
+        }
+        // Erst fragen, dann mit demselben Knopf erneut abschicken.
+        e.preventDefault()
+        const form = e.currentTarget
+        if (await askConfirm(ask.message, ask.label)) {
+          confirmed.current = true
+          form.requestSubmit(submitter)
+        }
+      }}
+    >
       <Lock>{children}</Lock>
     </form>
   )

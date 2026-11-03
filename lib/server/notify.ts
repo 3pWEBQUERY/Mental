@@ -14,7 +14,7 @@ async function ping(userId: string) {
   await db.execute(sql`SELECT pg_notify(${NOTIFY_CHANNEL}, ${userId})`)
 }
 
-const excerpt = (body: string) => (body.length > 90 ? `${body.slice(0, 88).trimEnd()} …` : body)
+export const excerpt = (body: string) => (body.length > 90 ? `${body.slice(0, 88).trimEnd()} …` : body)
 
 export async function notifyReply(ownerId: string, postId: string, postBody: string) {
   await db.insert(notifications).values({ userId: ownerId, kind: 'reply', postId, payload: { excerpt: excerpt(postBody) } })

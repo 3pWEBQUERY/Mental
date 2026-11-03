@@ -18,7 +18,7 @@ export default async function TermsAdmin() {
     <div className="stack">
       <h1 className="page-title">{m.admin.nav.terms}</h1>
       <ModForm action={saveTerm} className="card inline-form">
-        <input className="input" name="term" placeholder="Begriff oder Wendung (ganze Wörter; Akzente egal)" aria-label="Begriff" required />
+        <input className="input" name="term" placeholder="Begriff oder Wendung (ganze Wörter; mit * am Ende ein Wortanfang, z. B. suizid*)" aria-label="Begriff" maxLength={80} required />
         <select className="input" name="language" aria-label="Sprache" style={{ flex: '0 0 130px', minWidth: 130 }}>
           <option value="de">Deutsch</option>
           <option value="fr">Französisch</option>

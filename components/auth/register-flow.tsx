@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { checkPassword, checkUsername, prepareRecoveryKey, register, setInitialDisplayName } from '@/app/(auth)/actions'
 import { forgetPrivate } from '@/lib/client/private-storage'
@@ -37,7 +36,6 @@ function pickTwo(): [number, number] {
 }
 
 export function RegisterFlow() {
-  const router = useRouter()
   const [step, setStep] = useState(0)
   const [welcome, setWelcome] = useState(0)
   const [rules, setRules] = useState(false)
@@ -139,7 +137,8 @@ export function RegisterFlow() {
     setBusy(false)
     // Die genaue Meldung zeigen (z. B. «keine Telefonnummer im Anzeigenamen»), nicht nur «Fehler».
     if (!res.ok) return setError(res.error)
-    router.replace('/start')
+    // Ganzer Seitenaufbau statt Client-Navigation: kein Zustand einer vorherigen Sitzung im Tab.
+    window.location.replace('/start')
   }
 
   const errorEl = error ? (

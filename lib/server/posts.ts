@@ -212,7 +212,9 @@ function unheardWhere(viewerId: string): SQL {
     gt(posts.createdAt, new Date(Date.now() - LIMITS.unheardMaxAgeMs)),
   )!
 }
-const unheardOrder = [sql`(${posts.crisisLevel} = 'concern') DESC`, asc(posts.createdAt), asc(posts.id)]
+/** Sorge zuerst – auch freigegebene akute Gedanken (crisis_level bleibt «acute»), sie sind die dringendsten. */
+const worry = sql`${posts.crisisLevel} IN ('concern', 'acute')`
+const unheardOrder = [sql`(${worry}) DESC`, asc(posts.createdAt), asc(posts.id)]
 
 export async function getFeed(opts: {
   viewerId: string
@@ -245,7 +247,7 @@ export async function getFeed(opts: {
       // Der Cursor kennt nur Millisekunden, Postgres speichert Mikrosekunden – darum auf ms gekürzt vergleichen.
       const ms = sql`date_trunc('milliseconds', ${posts.createdAt})`
       const later = or(sql`${ms} > ${t}`, and(sql`${ms} = ${t}`, gt(posts.id, c.i)))!
-      const concern = sql`${posts.crisisLevel} = 'concern'`
+      const concern = worry
       after.push(c.k ? or(and(concern, later)!, sql`NOT (${concern})`)! : and(sql`NOT (${concern})`, later)!)
     }
     const rows = await baseQuery()
@@ -258,7 +260,7 @@ export async function getFeed(opts: {
     const last = page.at(-1)
     return {
       posts: await hydrate(page, viewerId),
-      nextCursor: more && last ? encode({ t: last.createdAt.toISOString(), i: last.id, k: last.crisisLevel === 'concern', n }) : null,
+      nextCursor: more && last ? encode({ t: last.createdAt.toISOString(), i: last.id, k: last.crisisLevel === 'concern' || last.crisisLevel === 'acute', n }) : null,
       caughtUp: n >= LIMITS.feedDailyCap,
     }
   }
@@ -267,7 +269,9 @@ export async function getFeed(opts: {
   if (view === 'brave') where.push(eq(posts.need, 'brave'))
   if (c.t && c.i) {
     const t = new Date(c.t)
-    where.push(or(lt(posts.createdAt, t), and(eq(posts.createdAt, t), lt(posts.id, c.i)))!)
+    // Wie bei «Braucht Zuspruch»: auf Millisekunden gekürzt vergleichen, sonst fällt ein Gedanke aus derselben ms weg.
+    const ms = sql`date_trunc('milliseconds', ${posts.createdAt})`
+    where.push(or(sql`${ms} < ${t}`, and(sql`${ms} = ${t}`, lt(posts.id, c.i)))!)
   }
   const injectedBefore = c.u ?? []
   if (injectedBefore.length) where.push(notInArray(posts.id, injectedBefore))

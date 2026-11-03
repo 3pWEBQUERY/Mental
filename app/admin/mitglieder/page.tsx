@@ -27,7 +27,10 @@ const openReports = sql<number>`(
  */
 export default async function MembersPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; seite?: string }> }) {
   await requireModerator('mod')
-  const sp = await searchParams
+  const raw = await searchParams
+  // Doppelte Parameter (?q=a&q=b) kommen als Liste – nur den ersten nehmen statt abzustürzen.
+  const one = (v: unknown) => (Array.isArray(v) ? v[0] : v) as string | undefined
+  const sp = { status: one(raw.status), q: one(raw.q), seite: one(raw.seite) }
   const t = m.admin.members
   const a = m.admin.account
   const filter: Filter = FILTERS.includes(sp.status as Filter) ? (sp.status as Filter) : 'all'
@@ -43,7 +46,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   else if (filter !== 'all') where.push(eq(users.status, filter))
   if (q) {
     // Mitglieds-ID: für alle passenden Konten berechnen (kleine Zahl Konten – bei Bedarf später eine Spalte).
-    const ids = (await db.select({ id: users.id }).from(users).where(where.length ? and(...where) : undefined))
+    const ids = (await db.select({ id: users.id }).from(users).where(where.length ? and(...where) : undefined).orderBy(desc(users.createdAt)))
       .filter((u) => memberRef(u.id).slice(2).startsWith(q))
       .map((u) => u.id)
       .slice(0, 200)

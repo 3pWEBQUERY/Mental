@@ -57,6 +57,14 @@ export function encUnseal<T>(sealed: string | undefined, purpose: string): T | n
   }
 }
 
+/**
+ * Kennung eines Teammitglieds in Audit-Log und Fallübernahme – bewusst eine andere als memberRef: Sonst liesse sich
+ * im Moderationsbereich verknüpfen, welche anonymen Gedanken von welcher Kollegin stammen.
+ */
+export function staffRef(userId: string) {
+  return `T-${hmac(userId, 'staff-ref').slice(0, 6).toUpperCase()}`
+}
+
 /** Interne, nicht rückführbare Mitglieds-ID für Moderator:innen – nie der Benutzername. */
 export function memberRef(userId: string) {
   return `M-${hmac(userId, 'member-ref').slice(0, 8).toUpperCase()}`
