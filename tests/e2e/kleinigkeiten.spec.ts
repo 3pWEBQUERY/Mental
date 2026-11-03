@@ -54,7 +54,7 @@ test('Antwortzähler zählt Antworten von Konten in Löschung nicht mit', async 
   await card.getByRole('button', { name: 'Antwort senden' }).click()
   await expect(card.getByText('Ich höre dich.')).toBeVisible()
   const count = async () => (await sql<{ n: number }>(`SELECT reply_count AS n FROM posts WHERE body = $1`, [text]))[0]!.n
-  expect(await count()).toBe(1)
+  await expect.poll(count).toBe(1)
   await b.goto('/einstellungen')
   await b.getByLabel('Mit Passwort bestätigen').fill(PASSWORD)
   await b.getByRole('button', { name: 'Konto löschen' }).click()

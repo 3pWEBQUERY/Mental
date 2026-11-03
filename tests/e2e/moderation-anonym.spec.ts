@@ -91,6 +91,8 @@ test('«Gutgetan» zeigt keine Antworten, die die Moderation ausgeblendet hat', 
   await card.getByLabel('Antwort schreiben').fill(reply)
   await card.getByRole('button', { name: 'Antwort senden' }).click()
   await expect(card.getByText(reply)).toBeVisible()
+  // Optimistisch angezeigt – erst warten, bis die Antwort gespeichert ist.
+  await expect.poll(async () => (await one<{ n: number }>(`SELECT count(*)::int AS n FROM replies WHERE body = $1`, [reply])).n).toBe(1)
   await sql(`UPDATE replies SET helpful = true WHERE body = $1`, [reply])
   await a.goto('/ich?tab=gutgetan')
   await expect(a.getByText(reply)).toBeVisible()
