@@ -31,13 +31,13 @@ import { ANON_HANDLE, LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS }
 import { alertAcute } from '@/lib/acute-alert'
 import { openText, sealText } from '@/lib/at-rest'
 import { hardDeletePost } from '@/lib/post-delete'
-import { syncReplyCount } from '@/lib/reply-count'
+import { syncReplyCount, syncReplyCountsBetween } from '@/lib/reply-count'
 import { detectCrisis } from '@/lib/crisis'
 import { toPublicReply, type PublicPost, type PublicReply } from '@/lib/dto'
 import { enqueue, QUEUES } from '@/lib/jobs'
 import { randomSeed } from '@/lib/server/crypto'
 import { hit } from '@/lib/server/rate-limit'
-import { notifyReply, notifySupport } from '@/lib/server/notify'
+import { excerpt, notifyReply, notifySupport } from '@/lib/server/notify'
 import { getFeed, getPostById, type FeedPage, type FeedView } from '@/lib/server/posts'
 import { getViewer, type Viewer } from '@/lib/server/session'
 import { getCrisisTerms } from '@/lib/server/terms'
@@ -107,6 +107,16 @@ async function visiblePost(viewerId: string, postId: string) {
   return blocked ? null : p
 }
 
+/** Blockiert in eine der beiden Richtungen? (Für anonyme Gedanken: still annehmen, aber nichts melden.) */
+async function blockedBetween(a: string, b: string) {
+  const [x] = await db
+    .select({ x: blocks.blockerId })
+    .from(blocks)
+    .where(sql`(${blocks.blockerId} = ${a} AND ${blocks.blockedId} = ${b}) OR (${blocks.blockerId} = ${b} AND ${blocks.blockedId} = ${a})`)
+    .limit(1)
+  return Boolean(x)
+}
+
 /* ------------------------------------------------------------- Gedanken */
 
 const postSchema = z.object({
@@ -131,6 +141,9 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
   const d = parsed.data
 
   const isNew = Date.now() - v.createdAt.getTime() < LIMITS.newAccountMs
+  // Atomarer Zähler zusätzlich zur Zählung: Gleichzeitig abgeschickte Gedanken (z. B. über /api/v1) kommen
+  // sonst alle an der Grenze vorbei, weil jeder vor dem Speichern der anderen zählt.
+  if (await limited(`post-day:${v.userId}`, isNew ? LIMITS.postsPerDayNew : LIMITS.postsPerDay, DAY)) return fail(m.composer.limit)
   const [{ n } = { n: 0 }] = await db
     .select({ n: count() })
     .from(posts)
@@ -208,10 +221,16 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     .from(posts)
     .where(and(eq(posts.id, d.id), eq(posts.userId, v.userId), isNull(posts.deletedAt)))
   if (!p) return fail(m.common.error)
+  // Ausgeblendet oder entfernt (Moderation, drei Meldungen): nicht mehr bearbeitbar – sonst würde aus «ausgeblendet»
+  // über einen Krisenhinweis wieder «wartet», und eine Freigabe machte den Gedanken sichtbar.
+  if (p.status !== 'visible' && p.status !== 'pending') return fail(m.composer.editExpired)
   if (Date.now() - p.createdAt.getTime() > LIMITS.editWindowMs) return fail(m.composer.editExpired)
   // Mehr als ein paar Korrekturen braucht niemand – ohne Grenze liesse sich die Moderation mit Alarmen fluten.
   if (await limited(`edit:${v.userId}`, 20, 60 * 60_000)) return fail(m.common.rateLimited)
-  const [circle] = await db.select({ id: circles.id, requireCw: circles.requireCw }).from(circles).where(eq(circles.slug, d.circle))
+  const [circle] = await db
+    .select({ id: circles.id, requireCw: circles.requireCw })
+    .from(circles)
+    .where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
   if (!circle) return fail(m.common.error)
 
   const level = detectCrisis(d.body, await getCrisisTerms())
@@ -230,9 +249,16 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
       contentWarning: d.contentWarning || circle.requireCw || Boolean(modCw),
       editedAt: new Date(),
       crisisLevel: level,
+      // Neuer Text = neue Prüfung: Fällt das Einreihen aus, holt das Sicherheitsnetz (requeueUnmoderated) ihn nach.
+      moderatedAt: null,
       ...(level === 'acute' ? { status: 'pending' as const } : {}),
     })
     .where(eq(posts.id, d.id))
+  // Auszug in den Benachrichtigungen der Verfasserin mitziehen – z. B. wenn sie eine Telefonnummer herausgenommen hat.
+  await db
+    .update(notifications)
+    .set({ payload: sql`${notifications.payload} || ${JSON.stringify({ excerpt: excerpt(d.body) })}::jsonb` })
+    .where(and(eq(notifications.postId, d.id), eq(notifications.userId, v.userId), sql`${notifications.payload} ? 'excerpt'`))
   // Ein offener Krisenhinweis zu diesem Gedanken genügt: weitere Bearbeitungen erzeugen weder Meldung noch Alarm.
   if (level === 'acute' && !(await openAcuteReport(d.id))) {
     await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
@@ -274,8 +300,9 @@ export async function toggleSupport(postId: string, kind: string): Promise<Ok<{ 
     .where(and(eq(support.postId, postId), eq(support.userId, v.userId), eq(support.kind, k.data)))
     .returning({ k: support.kind })
   if (removed.length) return { ok: true, sent: false }
-  await db.insert(support).values({ postId, userId: v.userId, kind: k.data }).onConflictDoNothing()
-  await notifySupport(p.userId, postId, k.data, p.body)
+  // Nur melden, wenn wirklich neu eingefügt (Doppelklick, zwei Tabs) – und nie von blockierten Konten.
+  const added = await db.insert(support).values({ postId, userId: v.userId, kind: k.data }).onConflictDoNothing().returning({ k: support.kind })
+  if (added.length && !(await blockedBetween(v.userId, p.userId))) await notifySupport(p.userId, postId, k.data, p.body)
   await touchPresence(v.userId, p.circleId)
   return { ok: true, sent: true }
 }
@@ -292,6 +319,8 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
   if (p.closed) return fail(m.replies.closed)
 
   const isNew = Date.now() - v.createdAt.getTime() < LIMITS.newAccountMs
+  // Atomar wie bei Gedanken: gleichzeitige Antworten kommen nicht an der Tagesgrenze vorbei.
+  if (await limited(`reply-day:${v.userId}`, isNew ? LIMITS.repliesPerDayNew : LIMITS.repliesPerDay, DAY)) return fail(m.common.rateLimited)
   const [{ n } = { n: 0 }] = await db
     .select({ n: count() })
     .from(replies)
@@ -330,7 +359,8 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
     await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }
   await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', safeMessage(e)))
-  if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
+  // Blockiert (bei anonymen Gedanken still angenommen): keine Glocke, kein Push – die Antwort sieht die Verfasserin ohnehin nicht.
+  if (!isAuthor && status === 'visible' && !(await blockedBetween(v.userId, p.userId))) await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
   return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId, p.visibility === 'anonymous'), acute: level === 'acute' }
 }
@@ -405,12 +435,20 @@ export async function toggleBookmark(postId: string): Promise<Ok<{ bookmarked: b
   return { ok: true, bookmarked: true }
 }
 
+/** Nur sichtbare, nicht gelöschte Inhalte lassen sich melden – sonst landen leere oder verborgene Fälle in der Warteschlange. */
 async function targetOwner(type: 'post' | 'reply', id: string) {
   if (type === 'post') {
-    const [p] = await db.select({ u: posts.userId }).from(posts).where(eq(posts.id, id))
+    const [p] = await db
+      .select({ u: posts.userId })
+      .from(posts)
+      .where(and(eq(posts.id, id), isNull(posts.deletedAt), eq(posts.status, 'visible')))
     return p?.u ?? null
   }
-  const [r] = await db.select({ u: replies.userId }).from(replies).where(eq(replies.id, id))
+  const [r] = await db
+    .select({ u: replies.userId })
+    .from(replies)
+    .innerJoin(posts, eq(posts.id, replies.postId))
+    .where(and(eq(replies.id, id), isNull(replies.deletedAt), eq(replies.status, 'visible'), isNull(posts.deletedAt)))
   return r?.u ?? null
 }
 
@@ -488,7 +526,10 @@ export async function blockAuthor(input: { type: 'post' | 'reply'; id: string })
           .where(eq(replies.id, id))
   if (!t?.owner || t.owner === v.userId) return fail(m.common.error)
   if (t.anonymous) await db.insert(postHides).values({ userId: v.userId, postId: t.postId }).onConflictDoNothing()
-  else await db.insert(blocks).values({ blockerId: v.userId, blockedId: t.owner }).onConflictDoNothing()
+  else {
+    await db.insert(blocks).values({ blockerId: v.userId, blockedId: t.owner }).onConflictDoNothing()
+    await syncReplyCountsBetween(v.userId, t.owner)
+  }
   return { ok: true }
 }
 
@@ -636,13 +677,15 @@ export async function loadFeed(view: FeedView, circleSlug: string | null, cursor
   const v = await getViewer()
   if (!v) return null
   const safeView: FeedView = view === 'unheard' || view === 'brave' ? view : 'all'
+  // «Meine Kreise» auch auf den weiteren Seiten (sonst kämen ab Seite 2 alle Kreise).
+  const followed = circleSlug === 'meine'
   let circleId: string | null = null
-  if (circleSlug) {
+  if (circleSlug && !followed && typeof circleSlug === 'string') {
     // Inaktive Kreise sind nicht mehr erreichbar – auch nicht über einen alten Link.
     const [c] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, circleSlug), eq(circles.isActive, true)))
     circleId = c?.id ?? null
   }
-  return getFeed({ viewerId: v.userId, view: safeView, circleId, cursor })
+  return getFeed({ viewerId: v.userId, view: safeView, circleId, followed, cursor })
 }
 
 /** «Ein Gedanke wartet»: der nächste unbeantwortete Gedanke – genau einer, ohne Liste und ohne Zahlen. */
@@ -750,8 +793,8 @@ export async function presenceCounts(): Promise<Record<string, number | null>> {
 
 export async function touchCircle(slug: string) {
   const v = await getViewer()
-  if (!v) return
-  const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, slug))
+  if (!v || typeof slug !== 'string' || slug.length > 40) return
+  const [c] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, slug), eq(circles.isActive, true)))
   if (c) await touchPresence(v.userId, c.id)
 }
 

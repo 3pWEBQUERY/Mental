@@ -31,6 +31,6 @@ export async function alertAcute() {
     // Nachts ohne Bereitschaft kein Push: Um 7 Uhr erinnert der Monitor an alles, was noch wartet.
     if (!push) continue
     // Pro Person höchstens ein wartender Push – mehrere Treffer kurz hintereinander läuten nicht mehrfach.
-    await enqueue(QUEUES.push, { userId: s.id, alert: true }, { singletonKey: `acute:${s.id}` })
+    await enqueue(QUEUES.push, { userId: s.id, alert: true }, { singletonKey: `acute:${s.id}`, singletonSeconds: 120 })
   }
 }

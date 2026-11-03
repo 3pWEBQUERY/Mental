@@ -66,7 +66,8 @@ export function getBoss(role: 'web' | 'worker' = 'web'): Promise<PgBoss> {
 export async function enqueue<K extends keyof JobData>(
   name: K,
   data: JobData[K],
-  options: { singletonKey?: string; startAfter?: Date | number; priority?: number } = {},
+  /** singletonKey wirkt bei der Standard-Warteschlange nur zusammen mit singletonSeconds (pg-boss 12). */
+  options: { singletonKey?: string; singletonSeconds?: number; startAfter?: Date | number; priority?: number } = {},
 ) {
   const boss = await getBoss()
   return boss.send(name, data, { retryLimit: 3, retryBackoff: true, ...options })

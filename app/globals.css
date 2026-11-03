@@ -834,6 +834,8 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
   * { animation: none !important; transition: none !important; }
 }
 :root[data-veiled] body { filter: blur(18px); }
+/* Offene Dialoge liegen in der obersten Ebene – der Filter am body erreicht sie nicht, darum eigens verwischen. */
+:root[data-veiled] dialog[open] { filter: blur(18px); }
 :root[data-motion='off'] * { animation: none !important; transition: none !important; }
 /* «Reduziert»: keine Bewegung (Einblenden, Hochrutschen), Farb- und Zustandswechsel bleiben, nur sofort. */
 :root[data-motion='reduced'] * { animation: none !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

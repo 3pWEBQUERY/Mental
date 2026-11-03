@@ -35,6 +35,7 @@ import { circleColor } from '../app/circles'
 import { attempt } from '@/lib/client/attempt'
 import { RadioGroup } from '../radio-group'
 import { BREATH_MINUTES } from '@/lib/breath'
+import { forgetPrivate } from '@/lib/client/private-storage'
 
 const s = lazy('settings')
 
@@ -570,6 +571,8 @@ export function SettingsView({ data }: { data: SettingsData }) {
             if (!(await askConfirm(s.deleteHint, s.deleteButton))) return
             const r = await deleteAccount(delPw).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!r.ok) return setDelErr(r.error)
+            // Entwurf, Offline-Notfallplan und Push-Abo vom Gerät nehmen – sonst blieben sie nach der Löschung stehen.
+            forgetPrivate()
             window.location.replace('/')
           }}
         >

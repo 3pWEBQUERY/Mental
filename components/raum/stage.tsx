@@ -64,6 +64,16 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   const api = useRef<OrbApi | null>(null)
   const fallbackTimer = useRef<number>(0)
   const started = useRef(0)
+  /** Wer führt die laufende Übung – die Kugel oder (ohne/noch ohne WebGL) nur der Text? Stoppen muss dort ansetzen. */
+  const engine = useRef<'orb' | 'text' | null>(null)
+  // Raum verlassen (Seite gewechselt): Text-Schleife beenden – sonst meldete sie später auf einer anderen Seite «fertig».
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(fallbackTimer.current)
+      engine.current = null
+    },
+    [],
+  )
 
   useEffect(() => on('pulse', () => api.current?.pulse()), [])
   useEffect(() => on('breathe', () => startBreath()))
@@ -117,6 +127,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   }
 
   function finish(done: boolean) {
+    engine.current = null
     cancelAnimationFrame(fallbackTimer.current)
     setBreathing(false)
     setLeft(null)
@@ -142,9 +153,11 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
     }
     const current = planRef.current
     if (api.current) {
+      engine.current = 'orb'
       api.current.breathe(tick, finish, current)
       return
     }
+    engine.current = 'text'
     // Ohne Animation führt nur der Text.
     const loop = () => {
       const at = breathAt(current, (performance.now() - started.current) / 1000)
@@ -156,7 +169,7 @@ export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: st
   }
 
   function stopBreath() {
-    if (api.current) api.current.stopBreath()
+    if (engine.current === 'orb' && api.current) api.current.stopBreath()
     else finish(false)
   }
 

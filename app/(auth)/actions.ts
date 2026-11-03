@@ -21,7 +21,7 @@ import { isValidUsername, looksLikeRealName, normalizeUsername } from '@/lib/use
 import { syncReplyCountsOfAuthor } from '@/lib/reply-count'
 import { m } from '@/messages'
 
-export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; field?: string }
+export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; field?: string; pow?: true }
 
 const MIN = 60_000
 const fail = (error: string, field?: string) => ({ ok: false as const, error, field })
@@ -145,13 +145,20 @@ async function afterLogin(userId: string, status: string) {
  * Sperre nach Fehlversuchen – pro Benutzername UND Herkunft (IP-Hash). Sonst könnte jede fremde Person ein Konto
  * mit fünf falschen Passwörtern beliebig oft aussperren; auf einer Krisenplattform heisst das: Wer gerade Hilfe
  * sucht, kommt nicht ins eigene Konto. Gegen verteiltes Raten von vielen Adressen gilt zusätzlich eine hohe
- * Schwelle pro Benutzername.
+ * Schwelle pro Benutzername – sie sperrt aber nie das richtige Passwort, sondern verlangt danach für jeden
+ * Versuch eine unsichtbare Rechenaufgabe (ALTCHA): Raten wird teuer, die Person selbst kommt trotzdem herein.
  */
 const FAILS_PER_ORIGIN = 5
 const FAILS_PER_USERNAME = 50
+/** Versuche je Herkunft und Konto, gezählt VOR der Prüfung – gleichzeitig abgeschickte Versuche zählen alle. */
+const TRIES_PER_ORIGIN = 10
 
 async function isLocked(username: string, ip: string) {
-  return (await peek(`login-lock:${username}:${ip}`, LOCK_MS)) > 0 || (await peek(`login-lock:${username}`, LOCK_MS)) > 0
+  return (await peek(`login-lock:${username}:${ip}`, LOCK_MS)) > 0
+}
+
+async function underAttack(username: string) {
+  return (await peek(`login-lock:${username}`, LOCK_MS)) > 0
 }
 
 /** Zählt einen Fehlversuch; true, wenn damit gesperrt ist. */
@@ -165,12 +172,16 @@ async function countFailure(username: string, ip: string) {
   return !origin.ok || !total.ok
 }
 
-export async function login(input: { username: string; password: string }): Promise<Result<{ notice: string | null }>> {
+export async function login(input: { username: string; password: string; pow?: string }): Promise<Result<{ notice: string | null }>> {
   const username = normalizeUsername(String(input?.username ?? ''))
   const password = String(input?.password ?? '')
   const ip = await ipHash()
   if (!(await hit(`login-ip:${ip}`, 30, LOCK_MS)).ok) return fail(m.common.rateLimited)
+  // Kein gültiger Benutzername: gleich ablehnen (gleiche Dauer), ohne Zähler mit beliebig langen Schlüsseln.
+  if (!isValidUsername(username)) return (await burnTime(password), fail(m.auth.invalid))
   if (await isLocked(username, ip)) return fail(m.auth.locked)
+  if (!(await hit(`login-try:${username}:${ip}`, TRIES_PER_ORIGIN, LOCK_MS)).ok) return fail(m.auth.locked)
+  if ((await underAttack(username)) && !(await verifyPow(input?.pow))) return { ok: false, error: m.auth.checking, pow: true }
 
   const [u] = await db
     .select({ id: users.id, hash: users.passwordHash, status: users.status })
@@ -184,7 +195,7 @@ export async function login(input: { username: string; password: string }): Prom
     return fail(m.auth.invalid)
   }
   if (u.status === 'banned') return fail(m.auth.banned)
-  await clear(`login-fail:${username}:${ip}`)
+  await Promise.all([clear(`login-fail:${username}:${ip}`), clear(`login-try:${username}:${ip}`)])
   const notice = await afterLogin(u.id, u.status)
   await createSession(u.id, 'password')
   return { ok: true, notice }
@@ -196,6 +207,7 @@ export async function passkeyLoginOptions() {
 }
 
 export async function passkeyLogin(response: AuthenticationResponseJSON): Promise<Result<{ notice: string | null }>> {
+  if (!(await hit(`pk-login-ip:${await ipHash()}`, 30, LOCK_MS)).ok) return fail(m.common.rateLimited)
   let verified: Awaited<ReturnType<typeof verifyAuthentication>> = null
   try {
     verified = await verifyAuthentication(response)
@@ -203,11 +215,12 @@ export async function passkeyLogin(response: AuthenticationResponseJSON): Promis
     verified = null
   }
   if (!verified) return fail(m.auth.passkeyFailed)
-  const { userId, legacy } = verified
-  const [u] = await db.select({ status: users.status }).from(users).where(eq(users.id, userId)).limit(1)
+  const { userId, legacy, userVerified } = verified
+  const [u] = await db.select({ status: users.status, role: users.role }).from(users).where(eq(users.id, userId)).limit(1)
   if (!u || u.status === 'banned') return fail(m.auth.banned)
   const notice = await afterLogin(userId, u.status)
-  await createSession(userId, 'passkey')
+  // Moderationsbereich nur mit bestätigtem Passkey (PIN oder Biometrie) – ein Sicherheitsschlüssel ohne PIN genügt nicht.
+  await createSession(userId, u.role !== 'member' && !userVerified ? 'password' : 'passkey')
   // Alter Passkey (frühere Domain): klappt nur über die Brücke – zu einem neuen raten.
   return { ok: true, notice: legacy ? [notice, m.auth.passkeyLegacyNotice].filter(Boolean).join(' ') : notice }
 }
@@ -225,6 +238,9 @@ export async function recover(input: { username: string; key: string; password: 
   const password = String(input.password ?? '')
   const ip = await ipHash()
   if (!(await hit(`recover-ip:${ip}`, 10, 60 * MIN)).ok) return fail(m.common.rateLimited)
+  if (!isValidUsername(username)) return (await burnTime(key), fail(m.auth.recoverInvalid))
+  // Nur die Sperre dieser Herkunft: Der Schlüssel (12 Wörter) ist nicht erratbar – die Sperre über alle Herkünfte
+  // würde nur Fremden erlauben, die Wiederherstellung zu blockieren.
   if (await isLocked(username, ip)) return fail(m.auth.locked)
 
   const pw = await checkPassword(password)
@@ -245,7 +261,13 @@ export async function recover(input: { username: string; key: string; password: 
   // Neues Passwort, neuer Schlüssel, alle anderen Sitzungen enden.
   const words = generateRecoveryKey()
   const [passwordHash, recoveryHash] = await Promise.all([hashSecret(password), hashSecret(words.join(' '))])
-  await db.update(users).set({ passwordHash, recoveryHash, recoveredAt: new Date() }).where(eq(users.id, u.id))
+  // Nur wenn der Schlüssel noch derselbe ist: Zwei gleichzeitige Wiederherstellungen dürfen nicht beide gelingen.
+  const [changed] = await db
+    .update(users)
+    .set({ passwordHash, recoveryHash, recoveredAt: new Date() })
+    .where(and(eq(users.id, u.id), eq(users.recoveryHash, u.recoveryHash)))
+    .returning({ id: users.id })
+  if (!changed) return fail(m.auth.recoverInvalid)
   // Passkeys entfernen: Wer sich fremden Zugang über Passwort oder Schlüssel verschafft und einen eigenen Passkey
   // angelegt hat, behält ihn sonst über die Wiederherstellung hinaus.
   await db.delete(passkeys).where(eq(passkeys.userId, u.id))

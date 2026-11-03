@@ -91,6 +91,8 @@ test('«Gutgetan» zeigt keine Antworten, die die Moderation ausgeblendet hat', 
   await card.getByLabel('Antwort schreiben').fill(reply)
   await card.getByRole('button', { name: 'Antwort senden' }).click()
   await expect(card.getByText(reply)).toBeVisible()
+  // Optimistisch angezeigt – erst warten, bis die Antwort gespeichert ist.
+  await expect.poll(async () => (await one<{ n: number }>(`SELECT count(*)::int AS n FROM replies WHERE body = $1`, [reply])).n).toBe(1)
   await sql(`UPDATE replies SET helpful = true WHERE body = $1`, [reply])
   await a.goto('/ich?tab=gutgetan')
   await expect(a.getByText(reply)).toBeVisible()
@@ -122,4 +124,22 @@ test('Tagebuch: PIN vergessen → mit Passwort löschen und neu beginnen', async
   await expect(page.getByText('Wähle eine Tagebuch-PIN')).toBeVisible()
   await page.reload()
   await expect(page.getByText('Wähle eine Tagebuch-PIN')).toBeVisible()
+})
+
+test('Zurückgehaltener Krisen-Gedanke: «Verwerfen» gibt ihn frei – er bleibt nicht für immer «wartet»', async ({ browser }) => {
+  const a = await (await browser.newContext()).newPage()
+  await register(a)
+  const text = `Ein Gedanke zum Zurückhalten ${Date.now()}`
+  await share(a, text)
+  await expect.poll(async () => (await sql<{ n: number }>(`SELECT count(*)::int AS n FROM posts WHERE body = $1`, [text]))[0]!.n).toBe(1)
+  const p = await one<{ id: string }>(`SELECT id FROM posts WHERE body = $1`, [text])
+  await sql(`UPDATE posts SET status = 'pending', crisis_level = 'acute' WHERE id = $1`, [p.id])
+  await sql(`INSERT INTO reports (id, target_type, target_id, reason, priority) VALUES (gen_random_uuid(), 'post', $1, 'auto_acute', 0)`, [p.id])
+  const mod = await moderator(browser)
+  await mod.goto('/admin')
+  const item = mod.locator('.queue-item', { hasText: text })
+  await item.getByRole('button', { name: 'Verwerfen' }).click()
+  await expect(item).toHaveCount(0)
+  await expect.poll(async () => (await one<{ status: string }>(`SELECT status FROM posts WHERE id = $1`, [p.id])).status).toBe('visible')
+  expect((await one<{ n: number }>(`SELECT count(*)::int AS n FROM reports WHERE target_id = $1 AND status = 'open'`, [p.id])).n).toBe(0)
 })

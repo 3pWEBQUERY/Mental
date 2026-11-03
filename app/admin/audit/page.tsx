@@ -3,7 +3,7 @@ import { db } from '@/db'
 import { moderationActions } from '@/db/schema'
 import Link from 'next/link'
 import { memberToken, requireModerator } from '@/lib/server/admin'
-import { memberRef } from '@/lib/server/crypto'
+import { memberRef, staffRef } from '@/lib/server/crypto'
 import { formatDate } from '@/lib/time'
 import { auditLabel } from '@/lib/audit-label'
 import { m } from '@/messages'
@@ -29,7 +29,7 @@ export default async function AuditPage() {
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{formatDate(r.createdAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
-              <td>{r.moderatorId ? memberRef(r.moderatorId) : 'System'}</td>
+              <td>{r.moderatorId ? staffRef(r.moderatorId) : 'System'}</td>
               <td>{auditLabel(r.action)}</td>
               <td>
                 {m.admin.targetType[r.targetType as 'post' | 'reply' | 'user'] ?? r.targetType}{' '}

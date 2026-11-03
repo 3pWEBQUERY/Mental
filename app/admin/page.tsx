@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { caseClaims, posts, replies, reports, roleProposals, users } from '@/db/schema'
 import { canModerate, memberToken, requireModerator } from '@/lib/server/admin'
-import { memberRef } from '@/lib/server/crypto'
+import { memberRef, staffRef } from '@/lib/server/crypto'
 import { formatDate, relativeTime } from '@/lib/time'
 import { m } from '@/messages'
 import { Sensitive } from '@/components/admin/sensitive'
@@ -202,7 +202,7 @@ export default async function QueuePage() {
               {(() => {
                 const c = claims.find((x) => x.targetType === g.type && x.targetId === g.id && now - x.claimedAt.getTime() < CLAIM_MS)
                 if (c && c.userId === mod.userId) return <p className="claim mine">{m.admin.claim.mine}</p>
-                if (c) return <p className="claim">{m.admin.claim.other(memberRef(c.userId), relativeTime(c.claimedAt))}</p>
+                if (c) return <p className="claim">{m.admin.claim.other(staffRef(c.userId), relativeTime(c.claimedAt))}</p>
                 return (
                   <ModForm action={claimCase}>
                     <input type="hidden" name="targetType" value={g.type} />
@@ -211,7 +211,7 @@ export default async function QueuePage() {
                   </ModForm>
                 )
               })()}
-              <ModForm action={moderate} className="inline-form">
+              <ModForm action={moderate} className="inline-form" confirm={{ ban: { message: m.admin.account.banConfirm(authorRef), label: a.ban } }}>
                 <input type="hidden" name="targetType" value={g.type} />
                 <input type="hidden" name="targetId" value={g.id} />
                 <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} list="mod-templates" />
@@ -235,9 +235,12 @@ export default async function QueuePage() {
                 )}
                 {isMod && (
                   <>
-                    <button className="btn ghost small" name="action" value="warn">
-                      {a.warn}
-                    </button>
+                    {/* Moderationskonten verwarnen nur Admins (Server prüft dasselbe). */}
+                    {(!content.userId || !staffIds.has(content.userId) || canModerate(mod, 'admin')) && (
+                      <button className="btn ghost small" name="action" value="warn">
+                        {a.warn}
+                      </button>
+                    )}
                     {content.userId && staffIds.has(content.userId) ? (
                       <span className="fine">{m.admin.staffNoBan}</span>
                     ) : (

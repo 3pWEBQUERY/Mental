@@ -17,6 +17,10 @@ export const DEFAULT_CRISIS_TERMS: CrisisTerm[] = [
   { term: 'mir das leben nehmen', level: 'acute' },
   { term: 'suizid', level: 'acute' },
   { term: 'selbstmord', level: 'acute' },
+  // Wortanfänge (*): Zusammensetzungen wie «Suizidgedanken», «suizidal», «Selbstmordgedanken», «lebensmüder».
+  { term: 'suizid*', level: 'acute' },
+  { term: 'selbstmord*', level: 'acute' },
+  { term: 'lebensmued*', level: 'acute' },
   { term: 'alles beenden', level: 'acute' },
   { term: 'nicht mehr aufwachen', level: 'acute' },
   { term: 'abschiedsbrief', level: 'acute' },
@@ -29,6 +33,7 @@ export const DEFAULT_CRISIS_TERMS: CrisisTerm[] = [
   { term: 'mi umbringe', level: 'acute' },
   { term: 'mich verletzen', level: 'concern' },
   { term: 'selbstverletzung', level: 'concern' },
+  { term: 'selbstverletz*', level: 'concern' },
   { term: 'ritzen', level: 'concern' },
   { term: 'kein sinn mehr', level: 'concern' },
   { term: 'keinen sinn mehr', level: 'concern' },
@@ -61,6 +66,7 @@ export const DEFAULT_CRISIS_TERMS_FR: CrisisTerm[] = [
   { term: 'suicide', level: 'acute' },
   { term: 'suicidaire', level: 'acute' },
   { term: 'suicidaires', level: 'acute' },
+  { term: 'suicid*', level: 'acute' },
   { term: 'mettre fin a mes jours', level: 'acute' },
   { term: 'mettre fin a ma vie', level: 'acute' },
   { term: 'en finir avec la vie', level: 'acute' },
@@ -110,6 +116,7 @@ export const DEFAULT_CRISIS_TERMS_IT: CrisisTerm[] = [
   { term: 'suicidarmi', level: 'acute' },
   { term: 'suicidio', level: 'acute' },
   { term: 'pensieri suicidi', level: 'acute' },
+  { term: 'suicid*', level: 'acute' },
   { term: 'voglio uccidermi', level: 'acute' },
   { term: 'voglio ammazzarmi', level: 'acute' },
   { term: 'non svegliarmi piu', level: 'acute' },
@@ -139,12 +146,22 @@ export const ALL_DEFAULT_CRISIS_TERMS: CrisisTerm[] = [...DEFAULT_CRISIS_TERMS, 
 const RANK: Record<CrisisLevel, number> = { none: 0, concern: 1, acute: 2 }
 
 /** Stufe 1: läuft beim Tippen im Browser. Blockiert nie, zeigt nur einen ruhigen Hinweis. */
+/**
+ * Ganze Wörter («suizid» trifft nicht «suizidal»). Mit * am Ende ein Wortanfang: «suizid*» trifft «Suizidgedanken»,
+ * «suizidal» – nötig für deutsche Zusammensetzungen.
+ */
+function needleOf(term: string) {
+  const prefix = term.trim().endsWith('*')
+  const n = normalize(prefix ? term.trim().slice(0, -1) : term)
+  return prefix ? n.trimEnd() : n
+}
+
 export function detectCrisis(text: string, terms: readonly CrisisTerm[] = ALL_DEFAULT_CRISIS_TERMS): CrisisLevel {
   if (!text.trim()) return 'none'
   const hay = normalize(text)
   let level: CrisisLevel = 'none'
   for (const t of terms) {
-    const needle = normalize(t.term)
+    const needle = needleOf(t.term)
     if (needle.trim() && hay.includes(needle) && RANK[t.level] > RANK[level]) {
       level = t.level
       if (level === 'acute') break

@@ -13,6 +13,7 @@ import { db } from '@/db'
 import { passkeys } from '@/db/schema'
 import { seal, unseal } from './crypto'
 import { env } from './env'
+import { hit } from './rate-limit'
 
 const CHALLENGE_COOKIE = 'lichtung_wa'
 const PURPOSE = 'webauthn'
@@ -31,6 +32,8 @@ async function takeChallenge() {
   const jar = await cookies()
   const value = unseal<{ challenge: string; userId?: string }>(jar.get(CHALLENGE_COOKIE)?.value, PURPOSE)
   jar.delete(CHALLENGE_COOKIE)
+  // Jede Aufgabe nur einmal – auch wenn jemand das Cookie aufbewahrt und erneut mitschickt.
+  if (value && !(await hit(`wa-used:${value.challenge}`, 1, 5 * 60_000)).ok) return null
   return value
 }
 
@@ -104,7 +107,7 @@ export async function authenticationOptions() {
 }
 
 /** Gibt die user_id zurück, wenn der Passkey stimmt – und ob er noch zu einer früheren Domain gehört. */
-export async function verifyAuthentication(response: AuthenticationResponseJSON): Promise<{ userId: string; legacy: boolean } | null> {
+export async function verifyAuthentication(response: AuthenticationResponseJSON): Promise<{ userId: string; legacy: boolean; userVerified: boolean } | null> {
   const stored = await takeChallenge()
   if (!stored) return null
   const [pk] = await db.select().from(passkeys).where(eq(passkeys.credentialId, response.id)).limit(1)
@@ -129,5 +132,5 @@ export async function verifyAuthentication(response: AuthenticationResponseJSON)
     .update(passkeys)
     .set({ counter: result.authenticationInfo.newCounter, lastUsedAt: new Date(), rpId })
     .where(eq(passkeys.id, pk.id))
-  return { userId: pk.userId, legacy: rpId !== env.rpId }
+  return { userId: pk.userId, legacy: rpId !== env.rpId, userVerified: result.authenticationInfo.userVerified }
 }

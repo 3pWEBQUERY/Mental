@@ -96,3 +96,14 @@ describe('Krisenerkennung auf Italienisch', () => {
     expect(detectCrisis('Le domeniche sono le più difficili.')).toBe('none')
   })
 })
+
+describe('Krisenerkennung: Wortanfänge (*) für Zusammensetzungen', () => {
+  it('trifft Suizidgedanken, suizidal, Selbstmordgedanken – auf Deutsch, Französisch, Italienisch', () => {
+    for (const t of ['Ich habe ständig Suizidgedanken', 'bin suizidal', 'Selbstmordgedanken jeden Abend', 'ich bin so lebensmüde', 'des pensées suicidaires', 'penso al suicidio']) expect(detectCrisis(t)).toBe('acute')
+    expect(detectCrisis('Selbstverletzendes Verhalten')).toBe('concern')
+  })
+  it('bleibt bei ganzen Wörtern, wo kein * steht', () => {
+    expect(detectCrisis('ich will verschwinden')).toBe('concern')
+    expect(detectCrisis('verschwindend gering')).toBe('none')
+  })
+})

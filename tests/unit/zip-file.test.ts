@@ -22,3 +22,7 @@ test('writeZip: gestreamtes ZIP mit komprimierten und unveränderten Dateien', a
   expect(files['bilder/3.webp']!.length).toBe(big.length)
   expect(files['bilder/2.webp']![12345]).toBe(big[12345])
 })
+
+test('writeZip: Schreibfehler wird als Fehler gemeldet, nicht als Absturz', async () => {
+  await expect(writeZip('/nicht/vorhanden/a.zip', async (add) => add('a.txt', strToU8('x'), true))).rejects.toThrow()
+})

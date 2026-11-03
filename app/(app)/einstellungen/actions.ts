@@ -9,7 +9,7 @@ import { LIMITS } from '@/lib/constants'
 import { displayNameProblem } from '@/lib/display-name'
 import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
 import { enqueue, QUEUES } from '@/lib/jobs'
-import { syncReplyCountsOfAuthor } from '@/lib/reply-count'
+import { syncReplyCountsBetween, syncReplyCountsOfAuthor } from '@/lib/reply-count'
 import { hmac, memberRef } from '@/lib/server/crypto'
 import { notifyAdmins, notifySystem } from '@/lib/server/notify'
 import { hashSecret, isPwned, verifySecret } from '@/lib/server/password'
@@ -98,6 +98,9 @@ export async function changePassword(input: { current: string; next: string }): 
   if (await isPwned(input.next)) return fail(m.register.passwordPwned)
   await db.update(users).set({ passwordHash: await hashSecret(input.next) }).where(eq(users.id, v.userId))
   await endOtherSessions(v.userId, v.sessionId)
+  // Hinweis in der Glocke (und per Push): Wer nur das Passwort erbeutet hat, soll nicht unbemerkt bleiben.
+  await notifySystem([v.userId], (t) => t.security.passwordChanged)
+  if (v.role !== 'member') await notifyAdmins((t) => t.security.staffPasswordChanged(memberRef(v.userId)), v.userId)
   return { ok: true }
 }
 
@@ -106,6 +109,7 @@ export async function regenerateRecoveryKey(password: string): Promise<R<{ words
   if (!(await checkPassword(v.userId, password))) return fail(m.auth.invalid)
   const words = generateRecoveryKey()
   await db.update(users).set({ recoveryHash: await hashSecret(words.join(' ')) }).where(eq(users.id, v.userId))
+  await notifySystem([v.userId], (t) => t.security.recoveryKeyChanged)
   return { ok: true, words }
 }
 
@@ -186,6 +190,7 @@ export async function unblock(ref: string): Promise<R> {
   const member = members.find((b) => blockRef(v.userId, b.blockedId) === ref)
   if (member) {
     await db.delete(blocks).where(and(eq(blocks.blockerId, v.userId), eq(blocks.blockedId, member.blockedId)))
+    await syncReplyCountsBetween(v.userId, member.blockedId)
     return { ok: true }
   }
   const post = hidden.find((h) => blockRef(v.userId, h.postId, 'post') === ref)

@@ -182,7 +182,7 @@ export async function purgeAccount({ userId, reason = 'deleted' }: { userId: str
   const [u] = await db.select().from(users).where(eq(users.id, userId))
   if (!u) return
   // Beantragte Löschung: auch wenn das Konto inzwischen gesperrt wurde – die Löschung hat Vorrang.
-  if (reason === 'deleted' && ((u.status !== 'deleting' && u.status !== 'banned') || !u.deleteAfter || u.deleteAfter > new Date())) return
+  if (reason === 'deleted' && ((u.status !== 'deleting' && u.status !== 'banned') || !u.deleteAfter || u.deleteAfter.getTime() > Date.now() + 60_000)) return // 1 min Spielraum für Uhrabweichung zwischen Worker und DB
 
   if (bucketConfigured()) {
     const media = await db.select({ key: postMedia.bucketKey }).from(postMedia).where(eq(postMedia.userId, userId))
@@ -195,7 +195,8 @@ export async function purgeAccount({ userId, reason = 'deleted' }: { userId: str
   }
   const repliedTo = (await db.selectDistinct({ postId: replies.postId }).from(replies).where(eq(replies.userId, userId))).map((r) => r.postId)
   await db.transaction(async (tx) => {
-    await tx.update(replies).set({ body: '', deletedAt: new Date() }).where(eq(replies.userId, userId))
+    // Auch Anzeigename und Form der Antwort entfernen – «Antwort gelöscht» braucht beides nicht mehr.
+    await tx.update(replies).set({ body: '', deletedAt: new Date(), authorHandle: '', glyphSeed: 0 }).where(eq(replies.userId, userId))
     await syncReplyCount(repliedTo, tx)
     // Offene Meldungen zu allem, was mit dem Konto verschwindet (eigene Gedanken samt Antworten darauf, eigene
     // Antworten, das Konto selbst), schliessen – sonst blieben sie unsichtbar offen und verdrängten neue Fälle.

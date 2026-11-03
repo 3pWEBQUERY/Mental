@@ -2,7 +2,7 @@ import { and, count, desc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { moderationActions, posts, replies, roleProposals, users } from '@/db/schema'
 import { canModerate, memberFromToken, memberToken, requireModerator, ROLE_PROPOSAL_DAYS } from '@/lib/server/admin'
-import { memberRef } from '@/lib/server/crypto'
+import { memberRef, staffRef } from '@/lib/server/crypto'
 import { formatDate } from '@/lib/time'
 import { m } from '@/messages'
 import { AdminForm } from '@/components/admin/admin-form'
@@ -184,6 +184,8 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               ) : (
                 <ModForm action={decideRole} className="inline-form">
                   <input type="hidden" name="token" value={tok} />
+                  <input type="hidden" name="role" value={proposal.role} />
+                  <input type="hidden" name="at" value={proposal.createdAt.toISOString()} />
                   {proposal.proposedBy !== mod.userId && (
                     <button className="btn small" name="decision" value="accept">
                       {m.admin.roles.accept}
@@ -233,7 +235,7 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
             {history.map((h) => (
               <tr key={h.id}>
                 <td>{formatDate(h.createdAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                <td>{h.moderatorId ? memberRef(h.moderatorId) : 'System'}</td>
+                <td>{h.moderatorId ? staffRef(h.moderatorId) : 'System'}</td>
                 <td>{auditLabel(h.action)}</td>
                 <td>{m.admin.targetType[h.targetType]}</td>
                 <td>{h.reason ?? '—'}</td>

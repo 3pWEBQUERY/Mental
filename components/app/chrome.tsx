@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { getSafetyPlan } from '@/app/(app)/(raum)/ich/actions'
 import { listNotifications, markNotificationsRead, type ClientNotification } from '@/app/(app)/actions'
@@ -25,6 +25,7 @@ import { AppealInline } from './appeal'
 import { Onboarding } from './onboarding'
 import { MobileNav } from './mobile-nav'
 import { useModerationAway } from './use-moderation-away'
+import { showCarriedNotice } from '@/lib/client/notice'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -59,6 +60,8 @@ export function AppChrome({
     } catch {}
   }, [viewer.theme, viewer.fontSize, viewer.motion, viewer.discreet])
   useEffect(() => on('help', () => setHelpOpen(true)), [])
+  // Hinweis aus der Anmeldung (z. B. «Löschung abgebrochen») – die Seite wurde dafür neu geladen.
+  useEffect(showCarriedNotice, [])
   useEffect(
     () =>
       on('notifications', async () => {
@@ -230,11 +233,14 @@ export function AppChrome({
 
 /** /start?atmen=1 startet die Atemübung, ?teilen=1 öffnet den Composer (z. B. aus der PWA). */
 function ComposeOnQuery({ router }: { router: ReturnType<typeof useRouter> }) {
+  // Auch nach einer Navigation im Browser (z. B. «Atmen» auf /einstellungen → /start?atmen=1), nicht nur beim Laden:
+  // Das Layout bleibt stehen, darum hängt die Wirkung am Pfad.
+  const path = usePathname()
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     if (q.has('atmen')) setTimeout(() => emit('breathe'), 400)
     if (q.has('teilen')) emit('compose')
     if (q.has('atmen') || q.has('teilen')) router.replace(window.location.pathname)
-  }, [router])
+  }, [router, path])
   return null
 }

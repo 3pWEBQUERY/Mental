@@ -19,10 +19,11 @@ export async function POST(request: Request) {
   if (!v || !canModerate(v, 'admin') || !hasStrongAuth(v)) return json(403, { error: 'Nur für Admins mit Passkey.' })
   const site = request.headers.get('sec-fetch-site')
   const origin = request.headers.get('origin')
-  if ((site && site !== 'same-origin') || (origin && new URL(origin).host !== request.headers.get('host')))
+  if ((site && site !== 'same-origin') || (origin !== null && !sameHost(origin, request.headers.get('host'))))
     return json(403, { error: 'Nur von der eigenen Seite.' })
-  const length = Number(request.headers.get('content-length') ?? 0)
-  if (length > LOGO_MAX_BYTES + 64 * 1024) return json(413, { error: 'Die Datei ist zu gross (höchstens 3 MB).' })
+  // Ohne Content-Length (chunked) nicht annehmen – sonst läse formData() beliebig viel in den Speicher.
+  const length = Number(request.headers.get('content-length') ?? NaN)
+  if (!Number.isFinite(length) || length > LOGO_MAX_BYTES + 64 * 1024) return json(413, { error: 'Die Datei ist zu gross (höchstens 3 MB).' })
 
   let form: FormData
   try {
@@ -58,4 +59,13 @@ export async function POST(request: Request) {
     id: result.id,
     message: result.partner ? `Logo hochgeladen und «${result.partner}» zugewiesen.` : `«${name}» hochgeladen (${logo.width}×${logo.height}).`,
   })
+}
+
+/** Origin «null» oder unlesbar zählt als fremd (403 statt Serverfehler). */
+function sameHost(origin: string, host: string | null) {
+  try {
+    return new URL(origin).host === host
+  } catch {
+    return false
+  }
 }

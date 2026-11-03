@@ -580,6 +580,8 @@ export default function Orb({
     })
 
     return () => {
+      // Läuft gerade eine Atemübung, beendet sie hier – sonst bliebe der Raum nach dem Zurückkehren im Atmen hängen.
+      stopBreath(false)
       cancelAnimationFrame(raf)
       io.disconnect()
       ro.disconnect()
