@@ -598,6 +598,8 @@ export const fr: Messages = {
     imprint: 'Impressum',
     help: 'Aide',
     transparency: 'Transparence',
+    social: 'Jiaia sur les réseaux sociaux',
+    socialLink: (name: string) => `Jiaia sur ${name} (nouvelle fenêtre)`,
   },
   transparency: {
     title: 'Transparence',

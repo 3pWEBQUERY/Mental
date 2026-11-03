@@ -1,3 +1,4 @@
+import type { Viewport } from 'next'
 import { connection } from 'next/server'
 import { LandingHero } from '@/components/landing/hero'
 import { PublicShell } from '@/components/ui'
@@ -5,6 +6,9 @@ import { m } from '@/messages'
 
 // Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
 export const instant = false
+
+/** Der Hero ist immer Nacht: Statusleiste und Browser-Leisten dunkel statt hell (wie der Himmel ganz oben). */
+export const viewport: Viewport = { themeColor: '#050a16' }
 
 /** Landing-Page in der gewählten Sprache (pro Anfrage). Eingeloggte leitet der Proxy direkt auf /start. */
 export default async function Landing() {
