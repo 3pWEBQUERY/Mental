@@ -47,6 +47,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     listener: s.listener ?? false,
     nightModeration: nightStaffed(),
     breathSound: s.breathSound ?? false,
+    breathPattern: s.breathPattern ?? 'calm',
+    breathMinutes: s.breathMinutes ?? 1,
     collapseWarnings: s.collapseWarnings ?? true,
     hidePresence: s.hidePresence ?? false,
     circles: circles.map((c) => localizeCircle(c)),

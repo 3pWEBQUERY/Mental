@@ -34,6 +34,7 @@ import { PanicButton } from '../panic'
 import { circleColor } from '../app/circles'
 import { attempt } from '@/lib/client/attempt'
 import { RadioGroup } from '../radio-group'
+import { BREATH_MINUTES } from '@/lib/breath'
 
 const s = lazy('settings')
 
@@ -105,7 +106,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
     start(async () => {
       const r = await updateSettings(patch).catch(() => ({ ok: false as const, error: m.common.error }))
       if (!r.ok) toast(r.error)
-      else if ('motion' in patch || 'breathSound' in patch || 'hidePresence' in patch || 'collapseWarnings' in patch) router.refresh()
+      else if ('motion' in patch || 'breathSound' in patch || 'breathPattern' in patch || 'breathMinutes' in patch || 'hidePresence' in patch || 'collapseWarnings' in patch) router.refresh()
     })
   }
 
@@ -436,6 +437,18 @@ export function SettingsView({ data }: { data: SettingsData }) {
           <span className="field-label">{s.motion}</span>
           <Segment value={prefs.motion ?? 'on'} options={s.motionOptions} onChange={(v) => setPref({ motion: v })} label={s.motion} />
           <Toggle checked={prefs.breathSound ?? false} onChange={(v) => setPref({ breathSound: v })} label={s.breathSound} />
+          <span className="field-label">{s.breathPattern}</span>
+          <Segment value={prefs.breathPattern ?? 'calm'} options={m.stage.patternNames} onChange={(v) => setPref({ breathPattern: v })} label={s.breathPattern} />
+          <p className="fine">{m.stage.patternHints[prefs.breathPattern ?? 'calm']}</p>
+          <span className="field-label">{s.breathMinutes}</span>
+          <RadioGroup
+            fluid
+            className="segment"
+            label={s.breathMinutes}
+            value={prefs.breathMinutes ?? 1}
+            onChange={(v) => setPref({ breathMinutes: v })}
+            options={BREATH_MINUTES.map((n) => ({ value: n, label: m.stage.minutesOption(n) }))}
+          />
         </div>
       </Section>
 

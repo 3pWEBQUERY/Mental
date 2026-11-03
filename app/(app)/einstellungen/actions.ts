@@ -57,6 +57,8 @@ const settingsSchema = z
     fontSize: z.enum(['normal', 'large', 'xlarge']),
     motion: z.enum(['on', 'reduced', 'off']),
     breathSound: z.boolean(),
+    breathPattern: z.enum(['calm', 'box', 'relax']),
+    breathMinutes: z.union([z.literal(1), z.literal(3), z.literal(5)]),
     hidePresence: z.boolean(),
     collapseWarnings: z.boolean(),
     discreet: z.boolean(),
