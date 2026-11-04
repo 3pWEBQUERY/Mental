@@ -41,7 +41,8 @@ test('Konto löschen – ein Login innerhalb von 7 Tagen bricht die Löschung ab
   await page.waitForURL((u) => u.pathname === '/')
   await login(page, username)
   await page.waitForURL('**/start')
-  await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible()
+  // Nach der Anmeldung lädt /start ganz neu – unter Last dauert das ein paar Sekunden.
+  await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible({ timeout: 15_000 })
 })
 
 test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {

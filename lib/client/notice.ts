@@ -18,7 +18,7 @@ export function showCarriedNotice() {
     const text = sessionStorage.getItem(KEY)
     if (!text) return
     sessionStorage.removeItem(KEY)
-    // Kurz warten, bis die Toast-Anzeige bereit ist.
-    setTimeout(() => toast(text), 300)
+    // Ein Bild warten: Die Toast-Anzeige (Root-Layout) hört dann sicher schon zu.
+    requestAnimationFrame(() => toast(text))
   } catch {}
 }
