@@ -8,7 +8,7 @@ import { db, pool } from '../db'
 import { workerHeartbeats } from '../db/schema'
 import { getBoss, QUEUES, type JobData } from '../lib/jobs'
 import { exportAccount, purgeAccount, purgeDueAccounts, purgeInactiveAccounts } from './jobs/account'
-import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimits } from './jobs/cleanup'
+import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimits, sweepBucket } from './jobs/cleanup'
 import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media'
 import { moderateContent, requeueUnmoderated } from './jobs/moderation'
 import { expirePosts } from './jobs/posts'
@@ -71,6 +71,7 @@ async function main() {
     [QUEUES.cleanupRateLimits, '7 * * * *', cleanupRateLimits],
     [QUEUES.cleanupPresence, '*/20 * * * *', cleanupPresence],
     [QUEUES.cleanupExports, '23 * * * *', cleanupExports],
+    [QUEUES.sweepBucket, '37 5 * * *', sweepBucket],
     [QUEUES.cleanupNotifications, '41 3 * * *', cleanupNotifications],
     [QUEUES.purgeDeleted, '17 4 * * *', purgeDueAccounts],
     [QUEUES.purgeInactive, '29 4 * * 0', purgeInactiveAccounts],

@@ -16,6 +16,7 @@ export const QUEUES = {
   cleanupNotifications: 'cleanup-notifications',
   cleanupPresence: 'cleanup-presence',
   cleanupExports: 'cleanup-exports',
+  sweepBucket: 'sweep-bucket',
   purgeDeleted: 'purge-deleted-accounts',
   purgeInactive: 'purge-inactive-accounts',
   retention: 'apply-retention',

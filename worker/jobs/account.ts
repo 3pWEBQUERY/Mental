@@ -47,9 +47,30 @@ const EXPORT_HINT = {
 }
 
 /** ZIP mit allen Daten des Kontos (JSON + eigene Bilder), 24 Stunden über einen signierten Link abrufbar. */
+/** Ein einzelner unlesbarer Wert (z. B. Schlüssel fehlt) lässt nicht den ganzen Export scheitern. */
+function readable<T>(fn: () => T): T | '[nicht lesbar]' {
+  try {
+    return fn()
+  } catch {
+    return '[nicht lesbar]'
+  }
+}
+
+/**
+ * Kurze Störungen (Bucket, Datenbank) wiederholt der Export selbst – zweimal, mit Pause. Erst danach gilt er als
+ * fehlgeschlagen, und die Person kann ihn neu anfordern.
+ */
 export async function exportAccount({ exportId }: { exportId: string }) {
+  for (let attempt = 1; ; attempt++) {
+    const done = await exportOnce(exportId, attempt >= 3)
+    if (done) return
+    await new Promise((r) => setTimeout(r, attempt * 15_000))
+  }
+}
+
+async function exportOnce(exportId: string, last: boolean): Promise<boolean> {
   const [job] = await db.select().from(exports).where(eq(exports.id, exportId))
-  if (!job || job.status !== 'pending') return
+  if (!job || job.status !== 'pending') return true
   const userId = job.userId
   try {
     const [user] = await db
@@ -127,13 +148,13 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       zuspruchGesendet: given,
       merkliste: marks,
       kreise: prefs,
-      checkins: myCheckins.map((c) => ({ ...c, note: openText(userId, c.note) })),
+      checkins: myCheckins.map((c) => ({ ...c, note: readable(() => openText(userId, c.note)) })),
       atemuebungen: breaths,
       kleineSchritte: stepsDone,
       blockiert: blocked.length,
       tagebuch: { salt: journalSalt ?? null, pruefwert: journalCheck ?? null, eintraege: journal },
-      notfallplan: plan[0] ? { ...plan[0], plan: openJson(userId, plan[0].plan) } : null,
-      briefe: myLetters.map((l) => ({ ...l, body: openText(userId, l.body) })),
+      notfallplan: plan[0] ? { ...plan[0], plan: readable(() => openJson(userId, plan[0]!.plan)) } : null,
+      briefe: myLetters.map((l) => ({ ...l, body: readable(() => openText(userId, l.body)) })),
       meldungen: myReports,
       benachrichtigungen: myNotifications,
       sitzungen: mySessions,
@@ -168,9 +189,11 @@ export async function exportAccount({ exportId }: { exportId: string }) {
       await rm(dir, { recursive: true, force: true })
     }
   } catch (e) {
-    console.error('[export]', safeMessage(e))
+    console.error(`[export] ${last ? 'endgültig ' : ''}fehlgeschlagen:`, safeMessage(e))
+    if (!last) return false
     await db.update(exports).set({ status: 'failed' }).where(eq(exports.id, exportId))
   }
+  return true
 }
 
 /**

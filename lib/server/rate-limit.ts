@@ -37,5 +37,33 @@ export async function clear(key: string) {
  * der Aufräumjob löscht die Zeilen.
  */
 export async function ipHash(): Promise<string> {
-  return hmac(ipBucket(clientIp(await headers())), `ip:${zurichDay()}`).slice(0, 32)
+  return (await ipHashes()).today
+}
+
+/** Heutiger und gestriger Hash derselben Herkunft – damit Limits um Mitternacht nicht neu beginnen. */
+export type IpHashes = { today: string; yesterday: string }
+
+export async function ipHashes(): Promise<IpHashes> {
+  const bucket = ipBucket(clientIp(await headers()))
+  const yesterday = zurichDay(new Date(Date.now() - 24 * 60 * 60 * 1000))
+  return { today: hmac(bucket, `ip:${zurichDay()}`).slice(0, 32), yesterday: hmac(bucket, `ip:${yesterday}`).slice(0, 32) }
+}
+
+/**
+ * Limit je Herkunft über den Salzwechsel hinweg: gezählt wird unter dem heutigen Hash, angerechnet wird zusätzlich,
+ * was unter dem gestrigen im selben Fenster schon zusammengekommen ist.
+ */
+export async function hitIp(key: (ip: string) => string, ips: IpHashes, max: number, windowMs: number): Promise<LimitResult> {
+  const [now, before] = await Promise.all([hit(key(ips.today), max, windowMs), peek(key(ips.yesterday), windowMs)])
+  const count = now.count + before
+  return { ...now, count, ok: count <= max }
+}
+
+export async function peekIp(key: (ip: string) => string, ips: IpHashes, windowMs: number): Promise<number> {
+  const [a, b] = await Promise.all([peek(key(ips.today), windowMs), peek(key(ips.yesterday), windowMs)])
+  return a + b
+}
+
+export async function clearIp(key: (ip: string) => string, ips: IpHashes) {
+  await Promise.all([clear(key(ips.today)), clear(key(ips.yesterday))])
 }

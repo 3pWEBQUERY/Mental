@@ -33,7 +33,16 @@ export function DiscreetGuard() {
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('lichtung:prefs', syncTitle)
     syncTitle()
+    // Im Diskret-Modus legt Jiaia keine neuen Einträge im Verlauf an: Wechsel innerhalb der App ersetzen den
+    // aktuellen Eintrag. So bleibt nach dem Schnell-Ausblenden (das genau diesen Eintrag ersetzt) nichts von Jiaia
+    // im Zurück-Verlauf des Tabs.
+    const push = window.history.pushState
+    window.history.pushState = function (this: History, ...args: Parameters<History['pushState']>) {
+      if (d.dataset.discreet) return window.history.replaceState(...args)
+      return push.apply(this, args)
+    }
     return () => {
+      window.history.pushState = push
       mo.disconnect()
       window.removeEventListener('blur', veil)
       window.removeEventListener('focus', unveil)

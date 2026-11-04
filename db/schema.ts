@@ -53,7 +53,9 @@ export const exportStatusEnum = pgEnum('export_status', ['pending', 'ready', 'fa
 /* ---------------------------------------------------- Konto & Sitzungen */
 
 /** Login-Daten. Keine E-Mail, kein Geburtsdatum, keine IP. */
-export const users = pgTable('users', {
+export const users = pgTable(
+  'users',
+  {
   id: id(),
   username: citext('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
@@ -68,7 +70,11 @@ export const users = pgTable('users', {
   deleteAfter: ts('delete_after'),
   /** Letzte Wiederherstellung per Schlüssel: Moderationskonten legen danach 72 h keinen Passkey an. */
   recoveredAt: ts('recovered_at'),
-})
+  /** Mitglieds-ID (M-…, HMAC) für die Suche im Moderationsbereich – nicht rückrechenbar, nur schneller zu finden. */
+  memberRef: text('member_ref'),
+  },
+  (t) => [index('users_member_ref_idx').on(t.memberRef)],
+)
 
 export const passkeys = pgTable(
   'passkeys',

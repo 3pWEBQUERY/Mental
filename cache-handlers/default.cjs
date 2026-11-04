@@ -25,6 +25,8 @@ let client = null
 let connecting = false
 let attempt = 0
 let everConnected = false
+/** Erster Verbindungsversuch gescheitert – dann auch beim ersten Erfolg nachholen. */
+let firstFailed = false
 
 const enabled = () => Boolean(process.env.DATABASE_URL) && process.env.NEXT_PHASE !== 'phase-production-build'
 
@@ -49,6 +51,7 @@ function connect() {
     if (client === c) client = null
     connecting = false
     c.end().catch(() => {})
+    if (!everConnected) firstFailed = true
     console.error('[cache] Abgleich unterbrochen:', reason)
     const t = setTimeout(connect, Math.min(30_000, 1_000 * 2 ** attempt++))
     t.unref?.()
@@ -69,38 +72,61 @@ function connect() {
       () => {
         client = c
         connecting = false
+        const hadGap = everConnected || firstFailed
         attempt = 0
         ping = setInterval(() => void c.query('SELECT 1').catch((e) => lost(why(e))), 60_000)
         ping.unref?.()
         // Während der Lücke könnte eine Invalidierung verpasst worden sein: lieber einmal neu laden.
-        if (everConnected && seen.size) void local.updateTags([...seen])
+        // Auch beim ersten Verbinden, falls es zuerst scheiterte und schon etwas im Cache liegt.
+        if (seen.size && hadGap) void local.updateTags([...seen])
         everConnected = true
       },
       (e) => lost(why(e)),
     )
 }
 
+/** Einmalige eigene Verbindung – wenn die dauerhafte gerade weg ist oder beim Senden versagt. @param {string} payload */
+async function sendOnce(payload) {
+  const { Client } = require('pg')
+  const once = new Client({ connectionString: process.env.DATABASE_URL, query_timeout: 5_000, connectionTimeoutMillis: 5_000 })
+  await once.connect()
+  try {
+    await once.query('SELECT pg_notify($1, $2)', [CHANNEL, payload])
+  } finally {
+    await once.end().catch(() => {})
+  }
+}
+
 /** @param {string[]} tags @param {{ expire?: number } | undefined} durations */
 async function broadcast(tags, durations) {
   if (!enabled() || !tags.length) return
   const payload = JSON.stringify({ from: ME, tags, expire: durations?.expire })
-  if (payload.length > 7900) return
-  try {
-    if (client) {
-      await client.query('SELECT pg_notify($1, $2)', [CHANNEL, payload])
-      return
-    }
-    // Eigene Verbindung gerade weg: einmalig senden, damit die anderen es trotzdem erfahren.
-    const { Client } = require('pg')
-    const once = new Client({ connectionString: process.env.DATABASE_URL, query_timeout: 5_000, connectionTimeoutMillis: 5_000 })
-    await once.connect()
+  // NOTIFY erlaubt knapp 8000 Byte: zu viele Tags in Gruppen aufteilen statt still zu verwerfen.
+  if (payload.length > 7900) {
+    const half = Math.ceil(tags.length / 2)
+    if (tags.length < 2) return console.error('[cache] Invalidierung zu gross, nicht verteilt:', tags[0]?.slice(0, 80))
+    await broadcast(tags.slice(0, half), durations)
+    await broadcast(tags.slice(half), durations)
+    return
+  }
+  const c = client
+  if (c) {
     try {
-      await once.query('SELECT pg_notify($1, $2)', [CHANNEL, payload])
-    } finally {
-      await once.end().catch(() => {})
+      await c.query('SELECT pg_notify($1, $2)', [CHANNEL, payload])
+      return
+    } catch (e) {
+      // Halbtote Verbindung: sie als verloren markieren (Neuaufbau + Nachholen) und über eine frische senden.
+      console.error('[cache] Senden über die feste Verbindung fehlgeschlagen:', why(e))
+      c.emit('error', e)
     }
-  } catch (e) {
-    console.error('[cache] Invalidierung nicht verteilt:', why(e))
+  }
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await sendOnce(payload)
+    } catch (e) {
+      if (i === 1) console.error('[cache] Invalidierung nicht verteilt:', why(e))
+      else await new Promise((r) => setTimeout(r, 300))
+    }
   }
 }
 
