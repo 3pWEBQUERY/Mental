@@ -15,7 +15,8 @@ export function panic() {
   forgetPrivate()
   document.title = 'MeteoSchweiz'
   document.body.style.visibility = 'hidden'
-  // replace(): Jiaia verschwindet aus dem Zurück-Verlauf dieses Tabs.
+  // replace(): Dieser Eintrag verschwindet aus dem Zurück-Verlauf. Frühere Jiaia-Seiten bleiben dort – ausser im
+  // Diskret-Modus, der gar keine weiteren Einträge anlegt (components/discreet.tsx).
   window.location.replace(m.panic.target)
 }
 

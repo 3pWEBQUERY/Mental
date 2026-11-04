@@ -472,7 +472,7 @@ export const fr: Messages = {
     fontSize: 'Taille du texte',
     fontSizes: { normal: 'Normale', large: 'Grande', xlarge: 'Très grande' },
     discreet: 'Discret',
-    discreetHint: 'L’onglet s’appelle « Notes », et le contenu devient flou dès que tu quittes la fenêtre.',
+    discreetHint: 'L’onglet s’appelle « Notes », le contenu devient flou dès que tu quittes la fenêtre, et Jiaia ne laisse aucune trace dans l’historique.',
     discreetTitle: 'Notes',
     blockedEmpty: 'Tu n’as bloqué personne et rien masqué.',
     hiddenPost: 'Une pensée anonyme masquée',
@@ -492,7 +492,7 @@ export const fr: Messages = {
     deleteButton: 'Supprimer le compte',
     logout: 'Se déconnecter',
     panic: 'Masquer vite',
-    panicHint: 'Trois fois Esc ou ce bouton : Jiaia disparaît immédiatement et ta session dans cet onglet se termine.',
+    panicHint: 'Trois fois Esc ou ce bouton : Jiaia disparaît immédiatement et ta session dans cet onglet se termine. Avec « Discret », Jiaia ne reste pas non plus dans l’historique.',
   },
   auth: {
     login: 'Se connecter',

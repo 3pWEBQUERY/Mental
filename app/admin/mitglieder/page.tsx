@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import Link from 'next/link'
 import { db } from '@/db'
 import { users } from '@/db/schema'
@@ -39,18 +39,20 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
 
   const where: SQL[] = []
   if (filter === 'staff') where.push(ne(users.role, 'member'))
-  else if (filter === 'reported') where.push(sql`${openReports} > 0`)
+  // Gemeldete: einmal die Konten mit offenen Meldungen bestimmen (Index) statt die Zählung für jedes Konto.
+  else if (filter === 'reported')
+    where.push(sql`${users.id} IN (
+      SELECT p.user_id FROM reports r JOIN posts p ON p.id = r.target_id WHERE r.status = 'open' AND r.target_type = 'post'
+      UNION SELECT rp.user_id FROM reports r JOIN replies rp ON rp.id = r.target_id WHERE r.status = 'open' AND r.target_type = 'reply')`)
   // Abgelaufene Stummschaltungen zählen als aktiv (zurückgesetzt wird erst beim nächsten Besuch des Mitglieds).
   else if (filter === 'muted') where.push(and(eq(users.status, 'muted'), sql`(${users.mutedUntil} IS NULL OR ${users.mutedUntil} > now())`)!)
   else if (filter === 'active') where.push(or(eq(users.status, 'active'), and(eq(users.status, 'muted'), sql`${users.mutedUntil} <= now()`))!)
   else if (filter !== 'all') where.push(eq(users.status, filter))
   if (q) {
-    // Mitglieds-ID: für alle passenden Konten berechnen (kleine Zahl Konten – bei Bedarf später eine Spalte).
-    const ids = (await db.select({ id: users.id }).from(users).where(where.length ? and(...where) : undefined).orderBy(desc(users.createdAt)))
-      .filter((u) => memberRef(u.id).slice(2).startsWith(q))
-      .map((u) => u.id)
-      .slice(0, 200)
-    where.push(ids.length ? inArray(users.id, ids) : sql`false`)
+    // Mitglieds-ID steht als Spalte (users.member_ref) – ältere Konten bekommen sie hier nachgetragen.
+    await backfillMemberRefs()
+    if (!/^[0-9A-F]{1,8}$/.test(q)) where.push(sql`false`)
+    else where.push(sql`${users.memberRef} LIKE ${`M-${q}%`}`)
   }
 
   const rows = await db
@@ -172,4 +174,16 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
       )}
     </div>
   )
+}
+
+/** Konten ohne gespeicherte Mitglieds-ID (vor Migration 0026 angelegt) nachtragen – in Blöcken, einmalig. */
+async function backfillMemberRefs() {
+  for (;;) {
+    const rows = await db.select({ id: users.id }).from(users).where(isNull(users.memberRef)).limit(500)
+    if (!rows.length) return
+    await db.execute(sql`UPDATE users AS u SET member_ref = v.ref FROM (VALUES ${sql.join(
+      rows.map((r) => sql`(${r.id}::uuid, ${memberRef(r.id)})`),
+      sql`, `,
+    )}) AS v(id, ref) WHERE u.id = v.id`)
+  }
 }

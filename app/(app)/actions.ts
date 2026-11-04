@@ -771,11 +771,12 @@ export async function markNotificationsRead(): Promise<void> {
 export async function unreadState(): Promise<{ unread: number; supportSinceLastVisit: boolean }> {
   const v = await getViewer()
   if (!v) return { unread: 0, supportSinceLastVisit: false }
-  const rows = await db
-    .select({ kind: notifications.kind })
+  // Zählen statt alle Zeilen laden – Moderierende sammeln viele Betriebs- und Alarmmeldungen.
+  const [r] = await db
+    .select({ n: count(), support: sql<boolean>`bool_or(${notifications.kind} = 'support')` })
     .from(notifications)
     .where(and(eq(notifications.userId, v.userId), isNull(notifications.readAt)))
-  return { unread: rows.length, supportSinceLastVisit: rows.some((r) => r.kind === 'support') }
+  return { unread: r?.n ?? 0, supportSinceLastVisit: Boolean(r?.support) }
 }
 
 /** Für die Kreis-Liste: Mitglieder der letzten 15 Minuten, auf 5 gerundet, unter 5 «ein paar». */

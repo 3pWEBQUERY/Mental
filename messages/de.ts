@@ -469,7 +469,7 @@ export const de = {
     fontSize: 'Schriftgrösse',
     fontSizes: { normal: 'Normal', large: 'Gross', xlarge: 'Sehr gross' },
     discreet: 'Diskret',
-    discreetHint: 'Der Tab heisst «Notizen», und der Inhalt verschwimmt, sobald du das Fenster verlässt.',
+    discreetHint: 'Der Tab heisst «Notizen», der Inhalt verschwimmt, sobald du das Fenster verlässt, und Jiaia legt keine Einträge im Verlauf an.',
     discreetTitle: 'Notizen',
     blockedEmpty: 'Du hast niemanden blockiert und nichts ausgeblendet.',
     hiddenPost: 'Ein ausgeblendeter anonymer Gedanke',
@@ -489,7 +489,7 @@ export const de = {
     deleteButton: 'Konto löschen',
     logout: 'Abmelden',
     panic: 'Schnell ausblenden',
-    panicHint: 'Dreimal Esc oder dieser Knopf: Jiaia verschwindet sofort und deine Sitzung im Tab endet.',
+    panicHint: 'Dreimal Esc oder dieser Knopf: Jiaia verschwindet sofort und deine Sitzung im Tab endet. Mit «Diskret» bleibt Jiaia danach auch nicht im Zurück-Verlauf.',
   },
   auth: {
     login: 'Anmelden',

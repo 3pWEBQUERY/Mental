@@ -27,3 +27,16 @@ test('Offene Endpunkte: Worker-Zustand ohne Zahlen, Präsenz nur angemeldet, kei
   await page.reload()
   await expect(page.getByRole('button', { name: 'Abmelden', exact: true })).toBeVisible()
 })
+
+test('Diskret-Modus: Wechsel innerhalb der App legen keine Einträge im Verlauf an', async ({ page }) => {
+  await register(page)
+  await page.goto('/einstellungen')
+  await page.locator('label.switch', { hasText: 'Diskret' }).first().click()
+  await expect(page.locator('html')).toHaveAttribute('data-discreet', '1')
+  const before = await page.evaluate(() => history.length)
+  await page.locator('nav.rail a[href="/ich"]').click()
+  await page.waitForURL('**/ich')
+  await page.locator('nav.rail a[href="/start"]').first().click()
+  await page.waitForURL('**/start')
+  expect(await page.evaluate(() => history.length)).toBe(before)
+})

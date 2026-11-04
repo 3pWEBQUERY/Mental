@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, count, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { notifications } from '@/db/schema'
 import { subscribe } from '@/lib/server/listener'
@@ -27,11 +27,11 @@ export async function GET(request: Request) {
     async start(controller) {
       const send = (event: string, data: unknown) => controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
       const push = async () => {
-        const rows = await db
-          .select({ kind: notifications.kind })
+        const [r] = await db
+          .select({ n: count(), support: sql<boolean>`bool_or(${notifications.kind} = 'support')` })
           .from(notifications)
           .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)))
-        send('notification', { unread: rows.length, support: rows.some((r) => r.kind === 'support') })
+        send('notification', { unread: r?.n ?? 0, support: Boolean(r?.support) })
       }
       controller.enqueue(enc.encode('retry: 15000\n\n'))
       const unsubscribe = await subscribe(userId, () => void push().catch(() => {}))

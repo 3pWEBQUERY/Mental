@@ -172,6 +172,18 @@ export function PostCard({
   const visibleReplies = replies.filter((r) => !r.hiddenByAuthor || post.isMine || r.isMine)
   const rc = replies.filter((r) => !r.deleted && !r.isAuthor).length
 
+  // Änderungen immer auf den neuesten Stand anwenden: Zwei schnelle Klicks (zwei Arten Zuspruch) laufen parallel –
+  // mit dem `post` vom Klickzeitpunkt überschriebe die zweite Antwort die erste.
+  const latest = useRef(post)
+  useEffect(() => {
+    latest.current = post
+  }, [post])
+  const apply = (fn: (p: PublicPost) => PublicPost) => {
+    const next = fn(latest.current)
+    latest.current = next
+    onChange(next)
+  }
+
   // Zuspruch füllt den Knopf als Tropfen (Three.js), vom Klickpunkt aus.
   const drops = useDrops<HTMLDivElement>(post.isMine ? [] : mySupport, '--sage')
 
@@ -183,7 +195,7 @@ export function PostCard({
       if (!res.ok) return toast(res.error)
       // Nach dem await gehört ein Update nicht mehr automatisch zur Transition – ohne erneutes startTransition
       // fiele der optimistische Zustand kurz zurück, bevor das Ergebnis ankommt (sichtbares Flackern).
-      startTransition(() => onChange({ ...post, mySupport: res.sent ? [...post.mySupport, k] : post.mySupport.filter((x) => x !== k) }))
+      startTransition(() => apply((p) => ({ ...p, mySupport: res.sent ? [...p.mySupport.filter((x) => x !== k), k] : p.mySupport.filter((x) => x !== k) })))
       if (res.sent) {
         pulse()
         toast(m.support.sent)
@@ -226,7 +238,7 @@ export function PostCard({
       }
       // Innerhalb der Transition: Sonst endet die optimistische Antwort nicht im selben Moment, in dem die echte
       // ankommt – für einen Augenblick stünde sie doppelt da.
-      startTransition(() => onChange({ ...post, replies: [...post.replies, res.reply], replyCount: post.replyCount + (post.isMine ? 0 : 1) }))
+      startTransition(() => apply((p) => ({ ...p, replies: [...p.replies, res.reply], replyCount: p.replyCount + (p.isMine ? 0 : 1) })))
       pulse()
       // Krisensprache in der eigenen Antwort: derselbe Vollbild-Hinweis wie nach einem Gedanken.
       if (res.acute) setAcute(true)
@@ -239,7 +251,7 @@ export function PostCard({
     const value = kind === 'helpful' ? !r.helpful : !r.hiddenByAuthor
     const res = await (kind === 'helpful' ? markHelpful(r.id, value) : hideReply(r.id, value)).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) return toast(res.error)
-    onChange({ ...post, replies: post.replies.map((x) => (x.id === r.id ? { ...x, [kind === 'helpful' ? 'helpful' : 'hiddenByAuthor']: value } : x)) })
+    apply((p) => ({ ...p, replies: p.replies.map((x) => (x.id === r.id ? { ...x, [kind === 'helpful' ? 'helpful' : 'hiddenByAuthor']: value } : x)) }))
     if (kind === 'helpful' && value) toast(m.replies.helpfulMarked)
   }
 
@@ -247,7 +259,7 @@ export function PostCard({
     if (!(await askConfirm(m.replies.deleteConfirm, m.replies.delete))) return
     const res = await deleteReply(r.id).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) return toast(res.error)
-    onChange({ ...post, replies: post.replies.map((x) => (x.id === r.id ? { ...x, deleted: true, body: null } : x)) })
+    apply((p) => ({ ...p, replies: p.replies.map((x) => (x.id === r.id ? { ...x, deleted: true, body: null } : x)) }))
     toast(m.replies.deleted)
   }
 
@@ -259,7 +271,7 @@ export function PostCard({
     const res = await blockAuthor({ type: 'reply', id: r.id }).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) return toast(res.error)
     if (anon) onRemove(post.id)
-    else onChange({ ...post, replies: post.replies.filter((x) => x.id !== r.id) })
+    else apply((p) => ({ ...p, replies: p.replies.filter((x) => x.id !== r.id) }))
     toast(anon ? f.hiddenAnonymous : f.blocked)
   }
 
@@ -270,7 +282,7 @@ export function PostCard({
         {
           label: post.closed ? f.openThread : f.closeThread,
           onSelect: async () => {
-            if (await attempt(() => setClosed(post.id, !post.closed))) onChange({ ...post, closed: !post.closed })
+            if (await attempt(() => setClosed(post.id, !post.closed))) apply((p) => ({ ...p, closed: !post.closed }))
           },
         },
         {
@@ -291,7 +303,7 @@ export function PostCard({
           onSelect: async () => {
             const res = await toggleBookmark(post.id).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!res.ok) return toast(res.error)
-            onChange({ ...post, bookmarked: res.bookmarked })
+            apply((p) => ({ ...p, bookmarked: res.bookmarked }))
             if (res.bookmarked) toast(f.bookmarked)
           },
         },

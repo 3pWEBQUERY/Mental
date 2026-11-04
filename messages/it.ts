@@ -472,7 +472,7 @@ export const it: Messages = {
     fontSize: 'Dimensione del testo',
     fontSizes: { normal: 'Normale', large: 'Grande', xlarge: 'Molto grande' },
     discreet: 'Discreto',
-    discreetHint: 'La scheda si chiama «Note» e il contenuto si sfoca appena lasci la finestra.',
+    discreetHint: 'La scheda si chiama «Note», il contenuto si sfoca appena lasci la finestra e Jiaia non lascia voci nella cronologia.',
     discreetTitle: 'Note',
     blockedEmpty: 'Non hai bloccato nessuno e non hai nascosto niente.',
     hiddenPost: 'Un pensiero anonimo nascosto',
@@ -492,7 +492,7 @@ export const it: Messages = {
     deleteButton: 'Elimina account',
     logout: 'Esci',
     panic: 'Nascondi subito',
-    panicHint: 'Tre volte Esc o questo pulsante: Jiaia sparisce subito e la tua sessione in questa scheda termina.',
+    panicHint: 'Tre volte Esc o questo pulsante: Jiaia sparisce subito e la tua sessione in questa scheda termina. Con «Discreto» Jiaia non resta nemmeno nella cronologia.',
   },
   auth: {
     login: 'Accedi',
