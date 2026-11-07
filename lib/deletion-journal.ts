@@ -8,14 +8,19 @@ import { safeMessage } from './log-safe'
  * Gespeichert wird nur Art, ID und Zeitpunkt – kein Inhalt. Einträge werden nach 60 Tagen entfernt
  * (länger als jede Backup-Aufbewahrung).
  */
-export type DeletionKind = 'post' | 'account'
+/**
+ * post / reply / letter / journal: die ID des Eintrags. journal-reset / safety-plan / account / account-request /
+ * account-cancel: die Konto-ID. account-request trägt das Löschdatum (deleteAfter) mit.
+ */
+export type DeletionKind = 'post' | 'reply' | 'letter' | 'journal' | 'journal-reset' | 'safety-plan' | 'account' | 'account-request' | 'account-cancel'
 export const JOURNAL_PREFIX = 'deletions/'
 
-export async function journalDeletion(kind: DeletionKind, id: string) {
+export async function journalDeletion(kind: DeletionKind, id: string, extra?: { deleteAfter?: string }) {
   if (!bucketConfigured()) return
   const at = new Date()
-  const key = `${JOURNAL_PREFIX}${at.toISOString().slice(0, 10)}/${kind}-${id}.json`
-  await putObject(key, Buffer.from(JSON.stringify({ kind, id, at: at.toISOString() })), 'application/json').catch((e) =>
+  // Zeitstempel im Namen: Ein Konto kann Löschung beantragen, abbrechen und neu beantragen – alles zählt, in Reihenfolge.
+  const key = `${JOURNAL_PREFIX}${at.toISOString().slice(0, 10)}/${at.getTime()}-${kind}-${id}.json`
+  await putObject(key, Buffer.from(JSON.stringify({ kind, id, at: at.toISOString(), ...extra })), 'application/json').catch((e) =>
     console.error('[journal] Eintrag fehlgeschlagen:', safeMessage(e)),
   )
 }

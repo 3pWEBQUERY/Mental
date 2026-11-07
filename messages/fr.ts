@@ -822,6 +822,7 @@ export const fr: Messages = {
       logout: 'Déconnecté partout', unmute: 'Mise en sourdine levée', unban: 'Blocage levé',
       appeal_accept: 'Recours accepté', appeal_reject: 'Recours refusé',
       image_approve: 'Image approuvée', image_reject: 'Image refusée',
+      role_bootstrap: 'Admin via réglage de démarrage',
       role_propose: 'Rôle proposé', role_accept: 'Rôle confirmé', role_reject: 'Proposition de rôle refusée',
       'circle:create': 'Cercle créé', 'circle:update': 'Cercle modifié', 'circle:delete': 'Cercle supprimé',
       'help:create': 'Numéro d’aide créé', 'help:update': 'Numéro d’aide modifié', 'help:delete': 'Numéro d’aide supprimé',

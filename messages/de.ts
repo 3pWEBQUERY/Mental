@@ -820,6 +820,7 @@ export const de = {
       logout: 'Überall abgemeldet', unmute: 'Stummschaltung aufgehoben', unban: 'Sperre aufgehoben',
       appeal_accept: 'Einspruch angenommen', appeal_reject: 'Einspruch abgelehnt',
       image_approve: 'Bild freigegeben', image_reject: 'Bild abgelehnt',
+      role_bootstrap: 'Admin per Start-Einstellung',
       role_propose: 'Rolle vorgeschlagen', role_accept: 'Rolle bestätigt', role_reject: 'Rollen-Vorschlag abgelehnt',
       'circle:create': 'Kreis angelegt', 'circle:update': 'Kreis geändert', 'circle:delete': 'Kreis gelöscht',
       'help:create': 'Hilfe-Nummer angelegt', 'help:update': 'Hilfe-Nummer geändert', 'help:delete': 'Hilfe-Nummer gelöscht',

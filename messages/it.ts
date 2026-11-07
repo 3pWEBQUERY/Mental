@@ -822,6 +822,7 @@ export const it: Messages = {
       logout: 'Disconnesso ovunque', unmute: 'Silenziamento revocato', unban: 'Blocco revocato',
       appeal_accept: 'Ricorso accolto', appeal_reject: 'Ricorso respinto',
       image_approve: 'Immagine approvata', image_reject: 'Immagine rifiutata',
+      role_bootstrap: 'Admin tramite impostazione iniziale',
       role_propose: 'Ruolo proposto', role_accept: 'Ruolo confermato', role_reject: 'Proposta di ruolo respinta',
       'circle:create': 'Cerchio creato', 'circle:update': 'Cerchio modificato', 'circle:delete': 'Cerchio eliminato',
       'help:create': 'Numero d’aiuto creato', 'help:update': 'Numero d’aiuto modificato', 'help:delete': 'Numero d’aiuto eliminato',

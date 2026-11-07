@@ -44,6 +44,7 @@ import { getCrisisTerms } from '@/lib/server/terms'
 import { zurichDay } from '@/lib/time'
 import { m } from '@/messages'
 import { safeMessage } from '@/lib/log-safe'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 type Fail = { ok: false; error: string }
 type Ok<T> = { ok: true } & T
@@ -157,7 +158,8 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
   if (!circle) return fail(m.common.error)
 
   // Stufe 2, sofort und lokal: «acute» ist bis zur Prüfung nur für die Autorin sichtbar.
-  const level = detectCrisis(d.body, await getCrisisTerms())
+  // Die Bildbeschreibung sehen alle – sie wird wie der Text geprüft.
+  const level = detectCrisis(`${d.body}\n${d.mediaAlt ?? ''}`, await getCrisisTerms())
   const anonymous = d.visibility === 'anonymous'
   const [row] = await db
     .insert(posts)
@@ -233,7 +235,8 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     .where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
   if (!circle) return fail(m.common.error)
 
-  const level = detectCrisis(d.body, await getCrisisTerms())
+  const [media] = await db.select({ alt: postMedia.alt }).from(postMedia).where(eq(postMedia.postId, d.id)).limit(1)
+  const level = detectCrisis(`${d.body}\n${media?.alt ?? ''}`, await getCrisisTerms())
   // Einen Inhaltshinweis der Moderation kann die Verfasserin beim Bearbeiten nicht wieder abschalten.
   const [modCw] = await db
     .select({ id: moderationActions.id })
@@ -416,6 +419,7 @@ export async function deleteReply(replyId: string): Promise<Ok<object> | Fail> {
     await syncReplyCount(r.postId, tx)
     return true
   })
+  if (done) await journalDeletion('reply', id.data)
   return done ? { ok: true } : fail(m.common.error)
 }
 

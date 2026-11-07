@@ -107,3 +107,14 @@ describe('Krisenerkennung: Wortanfänge (*) für Zusammensetzungen', () => {
     expect(detectCrisis('verschwindend gering')).toBe('none')
   })
 })
+
+describe('Krisenerkennung: Umlaute in jeder Schreibweise', () => {
+  it('erkennt zerlegte Umlaute (NFD, aus PDF/macOS) und Schreibweisen ohne Umlaut', () => {
+    expect(detectCrisis('ich bin so lebensmüde'.normalize('NFD'))).toBe('acute')
+    expect(detectCrisis('Ich möchte sterben'.normalize('NFD'))).toBe('acute')
+    expect(detectCrisis('ich mochte sterben')).toBe('acute')
+    expect(detectCrisis('total lebensmude')).toBe('acute')
+    expect(detectCrisis('von der brucke springen')).toBe('acute')
+    expect(detectCrisis('Ich bin müde heute')).toBe('none')
+  })
+})

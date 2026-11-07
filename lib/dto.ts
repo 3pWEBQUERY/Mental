@@ -145,6 +145,7 @@ export function toPublicPost(
 ): PublicPost {
   const isMine = p.userId === ctx.viewerId
   const now = ctx.now ?? Date.now()
+  const shown = ctx.replies.filter((r) => !r.hiddenByAuthor || r.userId === ctx.viewerId || isMine)
   return {
     id: p.id,
     // Anonym: in der Sprache der lesenden Person, nie in der gespeicherten (die verriete die Sprache der Verfasserin).
@@ -159,7 +160,9 @@ export function toPublicPost(
     createdAt: p.createdAt.toISOString(),
     editedAt: p.editedAt?.toISOString() ?? null,
     expiresAt: isMine ? (p.expiresAt?.toISOString() ?? null) : null,
-    replyCount: p.replyCount,
+    // Die gespeicherte Zahl nur für die Verfasserin. Andere bekommen nur, was sie ohnehin sehen – sonst verriete die
+    // Zahl über Blockierungen, wer hinter einem anonymen Gedanken steht («Keine öffentlichen Zahlen»).
+    replyCount: isMine ? p.replyCount : shown.filter((r) => !r.isAuthor && !r.deletedAt).length,
     closed: p.closed,
     isMine,
     canEdit: isMine && now - p.createdAt.getTime() < LIMITS.editWindowMs,
@@ -170,8 +173,6 @@ export function toPublicPost(
     mySupport: isMine ? [] : ctx.mySupport,
     bookmarked: ctx.bookmarked,
     media: ctx.media,
-    replies: ctx.replies
-      .filter((r) => !r.hiddenByAuthor || r.userId === ctx.viewerId || isMine)
-      .map((r) => toPublicReply(r, ctx.viewerId, p.userId, p.visibility === 'anonymous')),
+    replies: shown.map((r) => toPublicReply(r, ctx.viewerId, p.userId, p.visibility === 'anonymous')),
   }
 }

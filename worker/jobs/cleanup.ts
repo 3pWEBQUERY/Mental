@@ -42,18 +42,24 @@ export async function sweepBucket() {
 
   const idOf = (key: string, prefix: string) => key.slice(prefix.length).split('.')[0]!
   const mediaIds = [...new Set([...quarantine.map((o) => idOf(o.key, 'quarantine/')), ...media.map((o) => idOf(o.key, 'media/'))])].filter((id) => UUID.test(id))
-  const alive = new Set<string>()
+  // Original (quarantine/…) nur, solange das Bild noch nicht bereinigt ist – danach ist es überflüssig und trägt
+  // womöglich noch EXIF/GPS. Bereinigte Fassungen (media/…) solange das Bild nicht abgelehnt ist.
+  const rawAlive = new Set<string>()
+  const cleanAlive = new Set<string>()
   for (let i = 0; i < mediaIds.length; i += 500) {
     const chunk = mediaIds.slice(i, i + 500)
-    const rows = await db.execute<{ id: string }>(sql`SELECT id FROM post_media WHERE id = ANY(${chunk}::uuid[]) AND status <> 'rejected'`)
-    for (const r of rows.rows) alive.add(r.id)
+    const rows = await db.execute<{ id: string; status: string }>(sql`SELECT id, status FROM post_media WHERE id = ANY(${chunk}::uuid[])`)
+    for (const r of rows.rows) {
+      if (r.status === 'quarantine') rawAlive.add(r.id)
+      if (r.status !== 'rejected') cleanAlive.add(r.id)
+    }
   }
   const exportKeys = new Set(
     (await db.execute<{ bucket_key: string }>(sql`SELECT bucket_key FROM exports WHERE bucket_key IS NOT NULL`)).rows.map((r) => r.bucket_key),
   )
   const orphans = [
-    ...quarantine.filter((o) => !alive.has(idOf(o.key, 'quarantine/'))),
-    ...media.filter((o) => !alive.has(idOf(o.key, 'media/'))),
+    ...quarantine.filter((o) => !rawAlive.has(idOf(o.key, 'quarantine/'))),
+    ...media.filter((o) => !cleanAlive.has(idOf(o.key, 'media/'))),
     ...exportFiles.filter((o) => !exportKeys.has(o.key)),
   ]
   let failed = 0

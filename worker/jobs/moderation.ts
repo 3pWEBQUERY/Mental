@@ -1,6 +1,6 @@
 import { and, eq, gt, isNull, lt, sql } from 'drizzle-orm'
 import { db } from '../../db'
-import { crisisTerms, posts, replies, reports } from '../../db/schema'
+import { crisisTerms, postMedia, posts, replies, reports } from '../../db/schema'
 import { ALL_DEFAULT_CRISIS_TERMS, maxLevel } from '../../lib/crisis'
 import { classify } from '../../lib/moderation'
 import { syncReplyCount } from '../../lib/reply-count'
@@ -36,7 +36,9 @@ export async function moderateContent({ targetType, targetId }: { targetType: 'p
     .where(eq(table.id, targetId))
   if (!row || row.deletedAt || !row.body) return
 
-  const result = await classify(row.body, await terms())
+  // Bildbeschreibung mitprüfen: Sie ist für alle sichtbar (Krise, persönliche Daten, Abwertung).
+  const [media] = targetType === 'post' ? await db.select({ alt: postMedia.alt }).from(postMedia).where(eq(postMedia.postId, targetId)).limit(1) : []
+  const result = await classify(media?.alt ? `${row.body}\n${media.alt}` : row.body, await terms())
   const level = maxLevel(row.crisisLevel, result.crisis)
   if (level !== row.crisisLevel) {
     await db

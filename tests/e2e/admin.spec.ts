@@ -31,7 +31,7 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
   // Normales Konto, frische Sitzung: Passkey anlegen geht.
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
 
   // Wird das Konto zum Moderationskonto, reicht die Passwort-Sitzung für einen weiteren Passkey nicht mehr.
   execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
@@ -49,7 +49,7 @@ test('Domainwechsel: Passkeys der alten Domain zählen weiter – Passwort allei
   const { username } = await register(page)
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
   execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
   // Der vorhandene Passkey gehört zu einer anderen (alten) Domain – hier funktioniert er nicht mehr.
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -88,7 +88,7 @@ test('Domainwechsel: Anmeldung mit altem Passkey versucht die frühere Domain un
   const { username } = await register(page)
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   try {
     await pool.query(`UPDATE passkeys SET rp_id = 'alte-adresse.up.railway.app' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [username])
