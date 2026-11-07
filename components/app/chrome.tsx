@@ -190,7 +190,9 @@ export function AppChrome({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="notif-title">
                     {!n.read && <span className="sr-only">{m.notifications.unread}: </span>}
-                    {n.kind === 'reply'
+                    {n.followUp
+                      ? m.followUp.title
+                      : n.kind === 'reply'
                       ? m.notifications.reply
                       : n.kind === 'support'
                         ? m.notifications.support(n.count)
@@ -202,6 +204,27 @@ export function AppChrome({
                     <>
                       <p>{n.message}</p>
                       {n.appealable && <AppealInline />}
+                      {n.followUp && (
+                        <div className="row-actions" style={{ marginTop: 8 }}>
+                          <button type="button" className="btn small" onClick={() => (setNotifOpen(false), setHelpOpen(true))}>
+                            {m.followUp.help}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn ghost small"
+                            onClick={async () => {
+                              setNotifOpen(false)
+                              setPlan((await attempt(() => getSafetyPlan())) ?? null)
+                              setPlanOpen(true)
+                            }}
+                          >
+                            {m.followUp.plan}
+                          </button>
+                          <Link className="btn ghost small" href="/start?atmen=1" onClick={() => setNotifOpen(false)}>
+                            {m.followUp.breathe}
+                          </Link>
+                        </div>
+                      )}
                     </>
                   ) : n.postDeleted ? (
                     <p>{m.feed.deletedPost}</p>

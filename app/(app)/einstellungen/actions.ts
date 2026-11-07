@@ -64,6 +64,7 @@ const settingsSchema = z
     collapseWarnings: z.boolean(),
     discreet: z.boolean(),
     listener: z.boolean(),
+    followUp: z.boolean(),
     locale: z.enum(['de', 'fr', 'it']),
   })
   .partial()

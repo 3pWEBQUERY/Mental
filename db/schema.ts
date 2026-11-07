@@ -147,6 +147,8 @@ export type Settings = {
   onboard?: boolean
   /** «Zuhören, wenn es still bleibt»: Hinweis auf Gedanken, die lange ohne Antwort sind. */
   listener?: boolean
+  /** Nachfrage am Tag nach einem schweren Moment (Standard: an). */
+  followUp?: boolean
 }
 
 /** Öffentliche Seite eines Kontos – der Anzeigename ist nicht unique. */
@@ -160,6 +162,8 @@ export const profiles = pgTable('profiles', {
   settings: jsonb('settings').$type<Settings>().notNull().default({}),
   /** Letzter Hinweis «Ein Gedanke wartet» an diese zuhörende Person – höchstens einer pro Tag. */
   listenerNudgedAt: ts('listener_nudged_at'),
+  /** Zuletzt «Wie geht es dir heute?» nach einem akuten Krisen-Treffer (worker/jobs/follow-up.ts). */
+  followUpAt: ts('follow_up_at'),
 })
 
 /* --------------------------------------------------------------- Kreise */
@@ -408,6 +412,8 @@ export type NotificationPayload = {
   kinds?: Partial<Record<'hear' | 'same' | 'strong', number>>
   excerpt?: string
   message?: string
+  /** Nachfrage nach einem schweren Moment: zeigt Knöpfe zu Hilfe und Notfallplan. */
+  followUp?: boolean
   /** Moderationsmassnahme, gegen die Einspruch möglich ist (ausblenden, verwarnen, stummschalten). */
   appealable?: boolean
 }

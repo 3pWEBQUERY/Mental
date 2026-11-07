@@ -463,6 +463,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             <Toggle checked={push === 'on'} onChange={(v) => void togglePush(v)} label={s.push} hint={s.pushHint} />
           )}
           <Toggle checked={prefs.listener ?? false} onChange={(v) => setPref({ listener: v })} label={s.listener} hint={s.listenerHint} />
+          <Toggle checked={prefs.followUp ?? true} onChange={(v) => setPref({ followUp: v })} label={s.followUp} hint={s.followUpHint} />
           <div>
             <span className="field-label">{s.quiet}</span>
             <div className="row-actions">

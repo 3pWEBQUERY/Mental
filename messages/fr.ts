@@ -456,6 +456,8 @@ export const fr: Messages = {
     pushHint: 'Le texte reste toujours neutre : « Jiaia : quelqu’un t’a répondu ». Jamais le contenu.',
     listener: 'Écouter quand personne ne répond',
     listenerHint: 'Si une pensée reste 6 heures sans réponse, Jiaia peut te prévenir – au maximum une fois par jour, seulement dans la cloche. Personne ne sait à qui la demande a été faite.',
+    followUp: 'Prendre des nouvelles après un moment difficile',
+    followUpHint: 'Si Jiaia reconnaît dans ton texte des mots de crise aiguë, il te demande une fois, le lendemain et en douceur, comment tu vas – avec les numéros d’aide. Personne d’autre ne voit ce message.',
     pushOn: 'Le push est actif sur cet appareil.',
     pushOff: 'Le push est désactivé.',
     pushUnsupported: 'Ce navigateur ne prend pas en charge les notifications push. Sur iPhone, ça marche si Jiaia est ajouté à l’écran d’accueil.',
@@ -796,6 +798,15 @@ export const fr: Messages = {
     discreetBody: 'Touche pour ouvrir.',
     acuteTitle: 'Jiaia · Modération',
     acuteBody: 'Un signalement urgent attend.',
+    followUp: 'Comment vas-tu aujourd’hui ?',
+  },
+  followUp: {
+    title: 'Comment vas-tu aujourd’hui ?',
+    message:
+      'Hier, c’était un moment difficile. Nous voulions simplement te demander comment tu vas aujourd’hui. Si ça redevient trop lourd : La Main Tendue est joignable au 143 jour et nuit, et pour les jeunes Pro Juventute au 147. Tu n’as pas à porter ça seul·e.',
+    help: 'Numéros d’aide',
+    plan: 'Mon plan de crise',
+    breathe: 'Respirer un instant',
   },
   listener: {
     nudge: 'Une pensée attend une réponse depuis quelques heures. Si tu as de la force en ce moment : aimerais-tu écouter ?',
