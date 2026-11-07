@@ -141,6 +141,7 @@ test('Nachfrage nach einem schweren Moment: am Tag danach einmal, mit Hilfe – 
     await other.goto('/einstellungen')
     await other.locator('label.switch', { hasText: 'Nachfrage nach einem schweren Moment' }).click()
     await expect.poll(async () => (await q<{ v: string | null }>(`SELECT p.settings->>'followUp' AS v FROM profiles p JOIN users u ON u.id = p.user_id WHERE u.username = $1`, [second.username]))[0]!.v).toBe('false')
+    await other.goto('/start')
     await share(other, `Ich will nicht mehr leben ${Date.now()}`)
     await other.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
     await expect.poll(async () => (await q<{ n: number }>(`SELECT count(*)::int AS n FROM posts p JOIN users u ON u.id = p.user_id WHERE u.username = $1 AND p.crisis_level = 'acute'`, [second.username]))[0]!.n).toBe(1)
