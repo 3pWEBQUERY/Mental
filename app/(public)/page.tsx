@@ -2,8 +2,11 @@ import type { Viewport } from 'next'
 import { connection } from 'next/server'
 import { LandingHero } from '@/components/landing/hero'
 import { PublicShell } from '@/components/ui'
+import { PostCard } from '@/components/blog/cards'
+import { getPostsFor } from '@/lib/server/blog'
 import { getPartners } from '@/lib/server/partners'
-import { m } from '@/messages'
+import { currentLocale, m } from '@/messages'
+import Link from 'next/link'
 
 // Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
 export const instant = false
@@ -15,7 +18,8 @@ export const viewport: Viewport = { themeColor: '#050a16' }
 export default async function Landing() {
   await connection()
   const l = m.landing
-  const partners = await getPartners()
+  const [partners, posts] = await Promise.all([getPartners(), getPostsFor(currentLocale())])
+  const latest = posts.slice(0, 3)
   return (
     <PublicShell hero={<LandingHero />}>
       <div className="landing">
@@ -32,6 +36,26 @@ export default async function Landing() {
             ))}
           </ul>
         </section>
+        {latest.length > 0 && (
+          <section aria-labelledby="blog-start" className="blog-teaser">
+            <div className="blog-teaser-head">
+              <h2 id="blog-start" className="section-label">
+                {m.blog.landingTitle}
+              </h2>
+              <Link href="/blog" className="blog-teaser-all">
+                {m.blog.landingAll}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+            </div>
+            <div className="blog-grid">
+              {latest.map((p) => (
+                <PostCard key={p.id} post={p} t={m} />
+              ))}
+            </div>
+          </section>
+        )}
         {partners.length > 0 && (
           <section aria-labelledby="partner" className="partners">
             <h2 id="partner" className="section-label">
