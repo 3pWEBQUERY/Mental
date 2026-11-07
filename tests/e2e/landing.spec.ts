@@ -94,3 +94,17 @@ test('Footer: runde Knöpfe zu den sozialen Medien, öffnen in neuem Fenster', a
   // Nur Konten mit Adresse erscheinen – keine toten Knöpfe.
   for (const a of await social.getByRole('link').all()) await expect(a).toHaveAttribute('href', /^https:\/\//)
 })
+
+test('Von der Startseite zur Hilfe ohne Neuladen: kein dunkler Himmel hinter der Hilfe, Schrift lesbar', async ({ page }) => {
+  await page.goto('/')
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(5, 10, 22)')
+  await page.locator('.public-top').getByRole('link', { name: 'Sofort Hilfe' }).click()
+  await page.waitForURL('**/hilfe')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Sofort')
+  // Die Startseite bleibt versteckt im Dokument (React Activity) – ihr Himmel darf die Hilfe nicht einfärben.
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(239, 236, 228)')
+  // Zurück: wieder der dunkle Himmel.
+  await page.goBack()
+  await page.waitForURL((u) => u.pathname === '/')
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(5, 10, 22)')
+})
