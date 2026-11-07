@@ -5,6 +5,7 @@ import { refresh, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
+  blocks,
   caseClaims,
   circles,
   crisisTerms,
@@ -62,6 +63,16 @@ export async function moderate(form: FormData) {
       ? await db.select({ userId: posts.userId, postId: posts.id, status: posts.status }).from(posts).where(eq(posts.id, targetId))
       : await db.select({ userId: replies.userId, postId: replies.postId, status: replies.status }).from(replies).where(eq(replies.id, targetId))
   if (!target) throw new Error('not found')
+  // Nie über eigene Inhalte entscheiden (auch nicht über Meldungen dazu) – das macht jemand anderes im Team.
+  if (target.userId === mod.userId) throw new Error('own content')
+  // Veraltete Seite: Hat eine Kollegin den Fall inzwischen erledigt, überschreibt ein später Klick ihre Entscheidung
+  // nicht (z. B. «Freigeben» nach ihrem «Ausblenden»). Die Meldung im Formular lädt die Seite neu.
+  const [open] = await db
+    .select({ id: reports.id })
+    .from(reports)
+    .where(and(eq(reports.targetType, targetType), eq(reports.targetId, targetId), eq(reports.status, 'open')))
+    .limit(1)
+  if (!open && target.status !== 'pending') throw new Error('already handled')
   // Zurückgehaltener Inhalt (akuter Krisen-Treffer): «Verwerfen» heisst «kein Problem» – also freigeben. Sonst bliebe er
   // für immer «wartet auf Prüfung», unsichtbar und aus der Warteschlange verschwunden.
   const held = target.status === 'pending'
@@ -102,7 +113,18 @@ export async function moderate(form: FormData) {
           .select({ userId: posts.userId, body: posts.body })
           .from(posts)
           .where(and(eq(posts.id, target.postId), isNull(posts.deletedAt)))
-        if (p) await notifyReply(p.userId, target.postId, p.body).catch((e) => console.error('[notify] Freigabe', safeMessage(e)))
+        // Wie beim direkten Antworten: Zwischen blockierten Konten keine Benachrichtigung (die Antwort sieht sie ja nicht).
+        const [blocked] =
+          p && target.userId
+            ? await db
+                .select({ x: blocks.blockerId })
+                .from(blocks)
+                .where(
+                  sql`(${blocks.blockerId} = ${p.userId} AND ${blocks.blockedId} = ${target.userId}) OR (${blocks.blockerId} = ${target.userId} AND ${blocks.blockedId} = ${p.userId})`,
+                )
+                .limit(1)
+            : []
+        if (p && !blocked) await notifyReply(p.userId, target.postId, p.body).catch((e) => console.error('[notify] Freigabe', safeMessage(e)))
       }
       break
     }
@@ -243,12 +265,14 @@ export async function resolveAppeal(form: FormData) {
   const { reportId, decision } = parsed.data
   const reason = parsed.data.reason?.trim() ?? ''
   const mod = await assertModerator('mod')
+  // Über den eigenen Einspruch entscheidet jemand anderes.
   const [r] = await db
     .update(reports)
     .set({ status: decision === 'accept' ? 'resolved' : 'dismissed', resolvedAt: new Date() })
-    .where(and(eq(reports.id, reportId), eq(reports.targetType, 'user'), eq(reports.status, 'open')))
+    .where(and(eq(reports.id, reportId), eq(reports.targetType, 'user'), eq(reports.status, 'open'), ne(reports.targetId, mod.userId)))
     .returning({ userId: reports.targetId })
-  if (!r) return refresh()
+  // Schon entschieden (veraltete Seite) oder der eigene Einspruch: Meldung im Formular, Seite lädt neu.
+  if (!r) throw new Error('already handled')
   await db.insert(moderationActions).values({
     moderatorId: mod.userId,
     targetType: 'user',
@@ -271,9 +295,12 @@ export async function restoreAccount(form: FormData) {
   const { action } = parsed.data
   const reason = parsed.data.reason?.trim() ?? ''
   const mod = await assertModerator(action === 'unban' ? 'admin' : 'mod')
+  // Lief vor der Sperre eine Löschung (deleteAfter bleibt bei der Sperre stehen), geht sie weiter – sonst wäre der
+  // Löschantrag der Person still verworfen.
+  if (userId === mod.userId) throw new Error('invalid')
   const [changed] = await db
     .update(users)
-    .set({ status: 'active', mutedUntil: null })
+    .set({ status: sql`CASE WHEN ${users.deleteAfter} IS NOT NULL THEN 'deleting'::user_status ELSE 'active'::user_status END`, mutedUntil: null })
     .where(and(eq(users.id, userId), eq(users.status, action === 'unban' ? 'banned' : 'muted')))
     .returning({ id: users.id })
   if (!changed) return refresh()

@@ -34,6 +34,30 @@ export function Journal({ state }: { state: { salt: string; check: { iv: string;
 
   useEffect(() => setSupported(cryptoAvailable()), [])
 
+  // Wieder abschliessen, sobald das Tagebuch nicht mehr zu sehen ist: beim Seitenwechsel in der App (React Activity
+  // hält die Seite sonst samt Schlüssel im Speicher – «Zurück» zeigte es ohne PIN), beim Verlassen der Seite
+  // (Back-Forward-Cache) und nach 5 Minuten in einem anderen Tab.
+  useEffect(() => {
+    const lock = () => {
+      setMaster(null)
+      setEntries([])
+      setDraft('')
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onVisibility = () => {
+      clearTimeout(timer)
+      if (document.visibilityState === 'hidden') timer = setTimeout(lock, 5 * 60_000)
+    }
+    window.addEventListener('pagehide', lock)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('pagehide', lock)
+      document.removeEventListener('visibilitychange', onVisibility)
+      lock()
+    }
+  }, [])
+
   async function create(e: FormEvent) {
     e.preventDefault()
     if (pin.length < 6) return setError(j.pinShort)

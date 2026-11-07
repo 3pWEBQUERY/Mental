@@ -76,7 +76,13 @@ export async function share(page: Page, text: string, opts: { anonymous?: boolea
     await page.locator('label.switch', { hasText: 'Ganz anonym teilen' }).click()
     await expect(toggle).toBeChecked({ checked: opts.anonymous })
   }
+  // Auf die Antwort des Servers warten: Der Gedanke erscheint sofort (optimistisch) – lädt ein zweites Konto direkt
+  // danach, wäre er sonst manchmal noch nicht gespeichert. Höchstens 10 s (z. B. wenn erst ein Hinweis bestätigt wird).
+  const saved = page
+    .waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined, { timeout: 10_000 })
+    .catch(() => null)
   await page.getByRole('button', { name: 'Teilen', exact: true }).click()
+  await saved
 }
 
 /**

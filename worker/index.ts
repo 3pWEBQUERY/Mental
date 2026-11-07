@@ -80,7 +80,10 @@ async function main() {
     [QUEUES.requeueModeration, '*/10 * * * *', requeueUnmoderated],
   ]
   for (const [name, schedule, fn] of cron) {
-    await boss.schedule(name, schedule, null, { tz: TZ })
+    // missed: 'once' – startet der Worker gerade zur geplanten Minute neu (Deploy), holt er den Lauf einmal nach.
+    // Sonst fielen z. B. die nächtlichen Löschungen einen ganzen Tag aus. Alle Jobs lesen den aktuellen Stand – ein
+    // Nachholen ist also immer richtig.
+    await boss.schedule(name, schedule, null, { tz: TZ, missed: 'once' })
     await boss.work(name, async () => {
       await fn()
     })

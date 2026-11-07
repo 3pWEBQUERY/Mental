@@ -87,6 +87,17 @@ export function Composer() {
   const [anonymous, setAnonymous] = useState(viewer.defaultVisibility === 'anonymous')
   const [cw, setCw] = useState(false)
   const [upload, setUpload] = useState<Upload>(null)
+  // Laufender Upload: Entfernt die Person das Bild währenddessen (oder wählt ein anderes), wird er abgebrochen und
+  // sein Ergebnis verworfen – sonst hinge das entfernte Foto am Ende doch am Gedanken.
+  const uploading = useRef<AbortController | null>(null)
+  const dropUpload = () => {
+    uploading.current?.abort()
+    uploading.current = null
+    setUpload((u) => {
+      if (u) URL.revokeObjectURL(u.preview)
+      return null
+    })
+  }
   const [alt, setAlt] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -156,20 +167,29 @@ export function Composer() {
     } catch (e) {
       return setError((e as Error).message)
     }
+    dropUpload()
+    const ctrl = new AbortController()
+    uploading.current = ctrl
     const preview = URL.createObjectURL(file)
     setUpload({ uploading: true, preview })
     try {
       const res = await fetch('/api/uploads', {
+        signal: ctrl.signal,
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ type: file.type, size: file.size }),
       })
       const data = (await res.json()) as { mediaId?: string; url?: string; error?: string }
       if (!res.ok || !data.url || !data.mediaId) throw new Error(data.error ?? m.common.error)
-      const put = await fetch(data.url, { method: 'PUT', body: file, headers: { 'content-type': file.type } })
+      const put = await fetch(data.url, { signal: ctrl.signal, method: 'PUT', body: file, headers: { 'content-type': file.type } })
       if (!put.ok) throw new Error(m.common.error)
+      if (uploading.current !== ctrl) return
+      uploading.current = null
       setUpload({ mediaId: data.mediaId, preview })
     } catch (e) {
+      // Abgebrochen (Bild entfernt): still, die Vorschau ist schon weg.
+      if (uploading.current !== ctrl) return
+      uploading.current = null
       URL.revokeObjectURL(preview)
       setUpload(null)
       setError(e instanceof Error ? e.message : m.common.error)
@@ -180,8 +200,7 @@ export function Composer() {
     setText('')
     setCw(false)
     setLetGo(0)
-    if (upload) URL.revokeObjectURL(upload.preview)
-    setUpload(null)
+    dropUpload()
     setAlt('')
     setEdit(null)
     try {
@@ -343,7 +362,7 @@ export function Composer() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img className="thumb" src={upload.preview} alt="" />
                     <span className="fine">{'uploading' in upload ? c.imageUploading : ''}</span>
-                    <button type="button" className="opt" onClick={() => (URL.revokeObjectURL(upload.preview), setUpload(null))}>
+                    <button type="button" className="opt" onClick={dropUpload}>
                       {c.imageRemove}
                     </button>
                   </>

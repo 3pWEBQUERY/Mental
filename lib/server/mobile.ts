@@ -1,12 +1,12 @@
 import 'server-only'
-import { and, count, desc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, pushSubscriptions, replies, stepLog } from '@/db/schema'
 import { openText } from '@/lib/at-rest'
 import { localizeCircle } from '@/lib/localize'
 import { nightStaffed } from '@/lib/moderation-hours'
 import { currentLocale } from '@/messages'
-import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, type FeedView } from './posts'
+import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, notBlocked, type FeedView } from './posts'
 import { getViewer } from './session'
 import { getCircleHelp, getCircles, getCrisisTerms, getHelpResources } from './terms'
 
@@ -140,6 +140,8 @@ export async function saved() {
         isNull(posts.deletedAt),
         isNotNull(replies.body),
         sql`NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ${replies.userId} AND u.status = 'deleting')`,
+        // Blockiert (in eine Richtung): wie im Feed nicht mehr zeigen.
+        or(isNull(replies.userId), notBlocked(v.userId, replies.userId)),
       ),
     )
     .orderBy(desc(replies.createdAt))

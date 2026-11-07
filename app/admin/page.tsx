@@ -116,6 +116,9 @@ export default async function QueuePage() {
               <span>{relativeTime(ap.createdAt)}</span>
             </div>
             <blockquote>{ap.note || '—'}</blockquote>
+            {ap.targetId === mod.userId ? (
+              <p className="fine">{m.admin.ownCase}</p>
+            ) : (
             <ModForm action={resolveAppeal} className="inline-form">
               <input type="hidden" name="reportId" value={ap.id} />
               <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} />
@@ -126,6 +129,7 @@ export default async function QueuePage() {
                 {m.admin.appealReject}
               </button>
             </ModForm>
+            )}
           </li>
         ))}
       </ul>
@@ -211,6 +215,10 @@ export default async function QueuePage() {
                   </ModForm>
                 )
               })()}
+              {content.userId === mod.userId ? (
+                <p className="fine">{m.admin.ownCase}</p>
+              ) : (
+              <>
               {/* Die Rückfrage nur für Moderation: Sie trägt die Mitglieds-ID, und Peers bekämen sie sonst mit der Seite geliefert. */}
               <ModForm action={moderate} className="inline-form" confirm={isMod ? { ban: { message: m.admin.account.banConfirm(authorRef), label: a.ban } } : undefined}>
                 <input type="hidden" name="targetType" value={g.type} />
@@ -263,6 +271,8 @@ export default async function QueuePage() {
                   </>
                 )}
               </ModForm>
+              </>
+              )}
             </li>
           )
         })}

@@ -52,13 +52,18 @@ export function RegisterFlow() {
   const [error, setError] = useState('')
   const [pending, setPending] = useState('')
   const [busy, setBusy] = useState(false)
-  const pow = useRef<Promise<string | null> | null>(null)
+  // Die Bot-Prüfung gilt 10 Minuten (lib/server/altcha.ts): Wer länger liest, bekommt beim Abschicken eine frische.
+  const pow = useRef<{ at: number; payload: Promise<string | null> } | null>(null)
+  const freshPow = () => {
+    pow.current = { at: Date.now(), payload: solvePow() }
+    return pow.current.payload
+  }
   const heading = useRef<HTMLHeadingElement>(null)
   const passkey = usePasskeySetup()
 
   // Bot-Schutz rechnet unsichtbar im Hintergrund, während die Person liest.
   useEffect(() => {
-    pow.current = solvePow()
+    void freshPow()
     // Neues Konto auf diesem Gerät: Entwurf und Aufgedecktes einer vorigen Person entfernen.
     forgetPrivate()
   }, [])
@@ -111,20 +116,34 @@ export function RegisterFlow() {
     setError('')
     // Kein Fehler, sondern ein Zwischenstand – als Status, nicht als Alarm.
     setPending(r.botCheck)
-    const payload = await (pow.current ?? solvePow())
-    setPending('')
-    if (!payload) {
-      setBusy(false)
-      return setError(r.botFailed)
+    const send = async (fresh: boolean) => {
+      const payload = await (!fresh && pow.current && Date.now() - pow.current.at < 8 * 60_000 ? pow.current.payload : freshPow())
+      if (!payload) return { ok: false as const, error: r.botFailed, field: undefined }
+      return register({ username, password, sealedKey: key.sealed, ageConfirmed: true, rulesAccepted: true, pow: payload }).catch(() => ({
+        ok: false as const,
+        error: m.common.error,
+        field: undefined,
+      }))
     }
-    const res = await register({ username, password, sealedKey: key.sealed, ageConfirmed: true, rulesAccepted: true, pow: payload }).catch(
-      () => ({ ok: false as const, error: m.common.error, field: undefined }),
-    )
+    let res = await send(false)
+    // Prüfung inzwischen abgelaufen: einmal still mit einer frischen nachholen, statt «Seite neu laden» zu verlangen.
+    if (!res.ok && res.field === 'pow') res = await send(true)
+    setPending('')
+    if (!res.ok && res.field === 'key') {
+      // Die versiegelten Wörter gelten nur begrenzt: neue zeigen und erklären, statt eines allgemeinen Fehlers.
+      const prepared = await prepareRecoveryKey().catch(() => null)
+      setBusy(false)
+      if (!prepared) return setError(m.common.error)
+      setKey(prepared)
+      setAnswers(['', ''])
+      setConfirming(false)
+      return setError(res.error)
+    }
     setBusy(false)
     if (!res.ok) {
       setError(res.error)
       if (res.field === 'username') setStep(2)
-      pow.current = solvePow()
+      void freshPow()
       return
     }
     go(passkey.supported ? 5 : 6)

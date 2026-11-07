@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { and, count, desc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { TabBar } from '@/components/tab-bar'
 import { Loading } from '@/components/ui'
@@ -9,7 +9,7 @@ import { Letters, SafetyPlanEditor } from '@/components/me/for-me'
 import { Journal } from '@/components/me/journal'
 import { db } from '@/db'
 import { breathLog, checkins, posts, replies, stepLog } from '@/db/schema'
-import { getBookmarkedPosts, getMyPosts } from '@/lib/server/posts'
+import { getBookmarkedPosts, getMyPosts, notBlocked } from '@/lib/server/posts'
 import { requireViewer, type Viewer } from '@/lib/server/session'
 import { formatDate, zurichDay } from '@/lib/time'
 import { openText } from '@/lib/at-rest'
@@ -170,6 +170,8 @@ async function Saved({ v }: { v: Viewer }) {
         isNull(posts.deletedAt),
         isNotNull(replies.body),
         sql`NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ${replies.userId} AND u.status = 'deleting')`,
+        // Blockiert (in eine Richtung): wie im Feed nicht mehr zeigen.
+        or(isNull(replies.userId), notBlocked(v.userId, replies.userId)),
       ),
     )
     .orderBy(desc(replies.createdAt))
