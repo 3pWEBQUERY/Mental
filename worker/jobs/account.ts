@@ -246,10 +246,16 @@ export async function purgeDueAccounts() {
     .select({ id: users.id })
     .from(users)
     .where(and(inArray(users.status, ['deleting', 'banned']), isNotNull(users.deleteAfter), lt(users.deleteAfter, new Date())))
+  let failed = 0
   for (const { id } of due) {
     // Ein fehlerhaftes Konto darf die übrigen Löschungen nicht jeden Tag blockieren.
-    await purgeAccount({ userId: id }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e)))
+    await purgeAccount({ userId: id }).catch((e) => {
+      failed++
+      console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e))
+    })
   }
+  // Danach als Fehlschlag melden: Der Monitor (maintenance-failed) sagt es dem Team, statt dass es nur im Log steht.
+  if (failed) throw new Error(`${failed} von ${due.length} fälligen Löschungen fehlgeschlagen`)
 }
 
 /**
@@ -269,8 +275,13 @@ export async function purgeInactiveAccounts() {
         sql`NOT EXISTS (SELECT 1 FROM ${sessions} WHERE ${sessions.userId} = ${users.id} AND ${sessions.lastSeenAt} >= ${cutoff})`,
       ),
     )
+  let failed = 0
   for (const { id } of stale) {
-    await purgeAccount({ userId: id, reason: 'inactive' }).catch((e) => console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e)))
+    await purgeAccount({ userId: id, reason: 'inactive' }).catch((e) => {
+      failed++
+      console.error(`[purge] ${id} fehlgeschlagen:`, safeMessage(e))
+    })
   }
+  if (failed) throw new Error(`${failed} von ${stale.length} Löschungen wegen Inaktivität fehlgeschlagen`)
 }
 

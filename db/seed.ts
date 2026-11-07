@@ -92,19 +92,29 @@ async function once(key: string, fn: (tx: Parameters<Parameters<typeof db.transa
 }
 
 async function main() {
-  for (const [i, { fr, it, ...c }] of [...CIRCLES, ...NEW_CIRCLES].entries()) {
-    await db
-      .insert(circles)
-      .values({ ...c, sort: i, i18n: { fr, it } })
-      // Nur anlegen: Namen, Farben und Reihenfolge pflegt das Admin-Team, ein Deploy überschreibt sie nicht.
-      .onConflictDoNothing({ target: circles.slug })
-    // Bestehende Kreise bekommen die französische Fassung einmal dazu – eine gepflegte bleibt unangetastet.
-    await db.execute(
-      sql`UPDATE circles SET i18n = i18n || jsonb_build_object('fr', ${JSON.stringify(fr)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'fr')`,
-    )
-    await db.execute(
-      sql`UPDATE circles SET i18n = i18n || jsonb_build_object('it', ${JSON.stringify(it)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'it')`,
-    )
+  const defaults = [...CIRCLES, ...NEW_CIRCLES]
+  // Umstellung auf «einmal je Kreis»: Bestehende Datenbanken gelten als schon angelegt – ein Kreis oder eine
+  // Übersetzung, die das Admin-Team gelöscht hat, kommt dadurch nicht mit diesem Deploy noch einmal zurück.
+  await once('seed-v2-baseline', async (tx) => {
+    const [{ n } = { n: 0 }] = (await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM circles`)).rows
+    if (n === 0) return
+    await tx
+      .insert(seedMarks)
+      .values([...defaults.map((c) => ({ key: `circle:${c.slug}` })), { key: 'steps-i18n' }, { key: 'steps-default' }])
+      .onConflictDoNothing()
+  })
+  for (const [i, { fr, it, ...c }] of defaults.entries()) {
+    // Je Kreis genau einmal: Danach pflegt das Admin-Team Namen, Farben, Reihenfolge und Übersetzungen – auch Löschen
+    // gilt dauerhaft (früher legte jedes Deploy gelöschte Standard-Kreise und Übersetzungen wieder an).
+    await once(`circle:${c.slug}`, async (tx) => {
+      await tx
+        .insert(circles)
+        .values({ ...c, sort: i, i18n: { fr, it } })
+        .onConflictDoNothing({ target: circles.slug })
+      // Gab es den Kreis schon (ohne Übersetzung), bekommt er sie einmal dazu – eine gepflegte bleibt unangetastet.
+      await tx.execute(sql`UPDATE circles SET i18n = i18n || jsonb_build_object('fr', ${JSON.stringify(fr)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'fr')`)
+      await tx.execute(sql`UPDATE circles SET i18n = i18n || jsonb_build_object('it', ${JSON.stringify(it)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'it')`)
+    })
   }
 
   // Pro Sprache nur anlegen, solange es dort noch nichts gibt – danach pflegt das Admin-Team die Liste.
@@ -146,10 +156,12 @@ async function main() {
     ])
     .onConflictDoNothing()
 
-  const [{ n: stepCount } = { n: 0 }] = (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM steps`)).rows
-  if (stepCount === 0) {
-    const rows = await db.select({ id: circles.id, slug: circles.slug }).from(circles)
-    await db.insert(steps).values(
+  // Standard-Schritte einmal – löscht das Team später alle, bleibt die Liste leer.
+  await once('steps-default', async (tx) => {
+    const [{ n: stepCount } = { n: 0 }] = (await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM steps`)).rows
+    if (stepCount > 0) return
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    await tx.insert(steps).values(
       STEPS.map((s, i) => ({
         text: s.text,
         i18n: { fr: { text: s.fr }, it: { text: s.it } },
@@ -157,16 +169,19 @@ async function main() {
         circleId: s.circle ? (rows.find((r) => r.slug === s.circle)?.id ?? null) : null,
       })),
     )
-  }
-  // Bestehende Standard-Schritte (gleicher deutscher Text) bekommen die Übersetzung einmal dazu.
-  for (const s of STEPS) {
-    await db.execute(
-      sql`UPDATE steps SET i18n = i18n || jsonb_build_object('fr', jsonb_build_object('text', ${s.fr}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'fr')`,
-    )
-    await db.execute(
-      sql`UPDATE steps SET i18n = i18n || jsonb_build_object('it', jsonb_build_object('text', ${s.it}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'it')`,
-    )
-  }
+  })
+  // Bestehende Standard-Schritte (gleicher deutscher Text) bekommen die Übersetzung einmal dazu – nur einmal, damit
+  // eine bewusst entfernte Übersetzung entfernt bleibt.
+  await once('steps-i18n', async (tx) => {
+    for (const s of STEPS) {
+      await tx.execute(
+        sql`UPDATE steps SET i18n = i18n || jsonb_build_object('fr', jsonb_build_object('text', ${s.fr}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'fr')`,
+      )
+      await tx.execute(
+        sql`UPDATE steps SET i18n = i18n || jsonb_build_object('it', jsonb_build_object('text', ${s.it}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'it')`,
+      )
+    }
+  })
   // Trauer: Inhaltshinweis immer an (Entscheid Nov. 2026). Einmalig – schaltet das Team ihn aus, bleibt er aus.
   await once('trauer-cw-2026-11', async (tx) => {
     await tx.update(circles).set({ requireCw: true }).where(eq(circles.slug, 'trauer'))

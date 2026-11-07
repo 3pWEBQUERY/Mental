@@ -77,6 +77,23 @@ test('Admin: Mitglieder auflisten, suchen, stummschalten, sperren, überall abme
   await expect(admin.getByText('Massnahme ausgeführt.')).toBeVisible()
   expect(await status()).toBe('banned')
   await expect(admin.getByRole('button', { name: 'Sperre aufheben' })).toBeVisible()
+
+  // Lief vor der Sperre ein Löschantrag, geht er nach dem Aufheben weiter – statt still verworfen zu werden.
+  await sql(`UPDATE users SET delete_after = now() + interval '5 days' WHERE username = $1`, [username])
+  await admin.getByRole('button', { name: 'Sperre aufheben' }).click()
+  await expect.poll(status).toBe('deleting')
+})
+
+test('Moderation: über eigene Inhalte entscheidet jemand anderes', async ({ browser }) => {
+  const mod = await moderator(browser)
+  const text = `Ich will nicht mehr leben ${Date.now()}`
+  await share(mod, text)
+  await mod.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
+  await mod.goto('/admin')
+  const item = mod.locator('.queue-item', { hasText: text })
+  await expect(item).toBeVisible()
+  await expect(item).toContainText('darüber entscheidet jemand anderes im Team')
+  await expect(item.getByRole('button', { name: 'Freigeben' })).toHaveCount(0)
 })
 
 test('Admin: das eigene Konto lässt sich nicht sperren', async ({ browser }) => {

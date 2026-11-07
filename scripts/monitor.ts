@@ -19,6 +19,10 @@ const BACKLOG_MAX = 50
 /** Ältester bereiter Auftrag (Minuten), ab dem das Team Bescheid bekommt. */
 const STUCK_MIN = 15
 const WORK_QUEUES = ['process-image', 'moderate-content', 'send-push', 'export-account']
+/** Wiederkehrende Wartung – ein Fehlschlag hier betrifft Löschpflichten (DSG). */
+const MAINTENANCE_QUEUES = ['purge-account', 'purge-deleted-accounts', 'purge-inactive-accounts', 'apply-retention', 'sweep-bucket', 'expire-posts']
+/** Wartet ein akuter Fall weiter, erinnert der Monitor stündlich erneut – auch um 7 Uhr an Fälle von vor 22 Uhr. */
+const ACUTE_REMIND_MIN = 60
 /** Eine fehlgeschlagene Abfrage gilt als «alles gut» – aber nie still. */
 const logZero = (what: string) => (e: unknown) => {
   console.error(`[monitor] Abfrage ${what} fehlgeschlagen:`, safeMessage(e))
@@ -59,13 +63,27 @@ async function checks(): Promise<Check[]> {
     )
     .then((r) => r.rows[0]?.n ?? 0)
     .catch(logZero('failed'))
-  // Akute Krisen-Hinweise, die seit über 30 Minuten niemand angesehen hat.
+  // Akute Krisen-Hinweise, die seit über 30 Minuten niemand angesehen hat. Nur solche, deren Inhalt noch da ist: Ein
+  // verwaister Fall (Inhalt gelöscht) erscheint in keiner Warteschlange, niemand könnte ihn schliessen – und der
+  // Alarm bliebe für immer offen, ohne je wieder für einen neuen Fall zu läuten.
   const acuteWaiting = await db
     .execute<{ n: number }>(
-      sql`SELECT count(*)::int AS n FROM reports WHERE status = 'open' AND priority = 0 AND created_at < now() - interval '${sql.raw(String(ACUTE_SLA_MIN))} minutes'`,
+      sql`SELECT count(*)::int AS n FROM reports r WHERE r.status = 'open' AND r.priority = 0
+          AND r.created_at < now() - interval '${sql.raw(String(ACUTE_SLA_MIN))} minutes'
+          AND ((r.target_type = 'post' AND EXISTS (SELECT 1 FROM posts p WHERE p.id = r.target_id AND p.deleted_at IS NULL))
+            OR (r.target_type = 'reply' AND EXISTS (SELECT 1 FROM replies x WHERE x.id = r.target_id AND x.deleted_at IS NULL)))`,
     )
     .then((r) => r.rows[0]?.n ?? 0)
     .catch(logZero('acute'))
+  // Nächtliche Wartung (Löschfristen, Aufbewahrung, Aufräumen) in den letzten 26 Stunden endgültig fehlgeschlagen:
+  // Sonst bliebe eine beantragte Löschung still liegen, ohne dass es jemand im Team erfährt.
+  const maintenanceFailed = await db
+    .execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM pgboss.job WHERE state = 'failed' AND completed_on > now() - interval '26 hours'
+          AND name IN (${sql.join(MAINTENANCE_QUEUES.map((q) => sql`${q}`), sql`, `)})`,
+    )
+    .then((r) => r.rows[0]?.n ?? 0)
+    .catch(logZero('maintenance'))
   return [
     {
       key: 'acute-waiting',
@@ -90,6 +108,12 @@ async function checks(): Promise<Check[]> {
       down: failed > 0,
       alert: `${failed === 1 ? 'Ein Auftrag ist' : `${failed} Aufträge sind`} in der letzten Stunde endgültig fehlgeschlagen. Bitte in Railway die Logs des Service «worker» prüfen.`,
       recovered: 'Entwarnung: Keine fehlgeschlagenen Aufträge mehr in der letzten Stunde.',
+    },
+    {
+      key: 'maintenance-failed',
+      down: maintenanceFailed > 0,
+      alert: `Die nächtliche Wartung (Konto-Löschungen, Aufbewahrungsfristen oder Aufräumen) ist fehlgeschlagen. Beantragte Löschungen könnten liegen bleiben. Bitte in Railway die Logs des Service «worker» prüfen (Stichwort «[purge]»).`,
+      recovered: 'Entwarnung: Die nächtliche Wartung läuft wieder ohne Fehler.',
     },
     {
       key: 'queue-backlog',
@@ -135,6 +159,11 @@ async function main() {
       console.warn(`[monitor] Störung: ${c.key}`)
       await db.insert(monitorIncidents).values({ key: c.key }).onConflictDoNothing()
       await tell(c.alert, c.key === 'acute-waiting' ? '/admin' : undefined)
+    } else if (c.down && open && c.key === 'acute-waiting' && Date.now() - open.since.getTime() > ACUTE_REMIND_MIN * 60_000) {
+      // Ein einmaliger Alarm geht leicht unter (z. B. um 21:50, danach Nacht ohne Bereitschaft): erneut erinnern.
+      console.warn(`[monitor] Erinnerung: ${c.key}`)
+      await db.update(monitorIncidents).set({ since: new Date() }).where(eq(monitorIncidents.key, c.key))
+      await tell(c.alert, '/admin')
     } else if (!c.down && open) {
       console.log(`[monitor] behoben: ${c.key}`)
       await db.delete(monitorIncidents).where(eq(monitorIncidents.key, c.key))

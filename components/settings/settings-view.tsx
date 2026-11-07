@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from 'react'
-import { logout } from '@/app/(auth)/actions'
+import { LogoutButton } from '@/components/auth/logout-button'
 import { setCirclePref } from '@/app/(app)/actions'
 import {
   changePassword,
@@ -597,9 +597,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             {s.panicHint}
           </p>
           <div className="row-actions">
-            <form action={logout}>
-              <button className="btn ghost">{s.logout}</button>
-            </form>
+            <LogoutButton label={s.logout} />
             <PanicButton />
           </div>
           <p className="fine">

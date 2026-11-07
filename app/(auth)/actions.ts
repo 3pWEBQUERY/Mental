@@ -63,7 +63,8 @@ export async function checkPassword(password: string): Promise<Result> {
 /** Der Schlüssel wird hier erzeugt und versiegelt zurückgegeben – so kann niemand einen schwachen eigenen wählen. */
 export async function prepareRecoveryKey(): Promise<{ words: string[]; sealed: string }> {
   const words = generateRecoveryKey()
-  return { words, sealed: seal(words, 30 * MIN, 'recovery-key') }
+  // 2 Stunden: Aufschreiben, Kaffee holen, zurückkommen. Danach gibt es mit einer Erklärung neue Wörter (register-flow).
+  return { words, sealed: seal(words, 120 * MIN, 'recovery-key') }
 }
 
 const registerSchema = z.object({
@@ -81,7 +82,7 @@ export async function register(input: z.input<typeof registerSchema>): Promise<R
   const { password, sealedKey, pow } = parsed.data
   const username = normalizeUsername(parsed.data.username)
 
-  if (!(await verifyPow(pow))) return fail(m.register.botFailed)
+  if (!(await verifyPow(pow))) return fail(m.register.botFailed, 'pow')
   const ips = await ipHashes()
   // Vorab nur schauen (schnelle Absage); gezählt wird unten atomar, bevor das Konto entsteht.
   if ((await peekIp((ip) => `register:${ip}`, ips, 24 * 60 * MIN)) >= env.registrationsPerIpPerDay) return fail(m.register.tooMany)
@@ -90,7 +91,7 @@ export async function register(input: z.input<typeof registerSchema>): Promise<R
   const pw = await checkPassword(password)
   if (!pw.ok) return pw
   const words = unseal<string[]>(sealedKey, 'recovery-key')
-  if (!words) return fail(m.common.error)
+  if (!words) return fail(m.register.keyExpired, 'key')
 
   // Atomar zählen, bevor das Konto entsteht – parallele Anfragen kommen sonst alle an der Grenze vorbei.
   if (!(await hitIp((ip) => `register:${ip}`, ips, env.registrationsPerIpPerDay, 24 * 60 * MIN)).ok) return fail(m.register.tooMany)
@@ -236,6 +237,11 @@ export async function passkeyLogin(response: AuthenticationResponseJSON): Promis
 export async function logout() {
   await destroySession()
   redirect('/anmelden')
+}
+
+/** Abmelden ohne Weiterleitung: Der Browser lädt danach selbst ganz neu (components/auth/logout-button.tsx). */
+export async function signOut() {
+  await destroySession()
 }
 
 /* ------------------------------------------------------ Wiederherstellen */
