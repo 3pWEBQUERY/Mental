@@ -239,10 +239,6 @@ export async function logout() {
   redirect('/anmelden')
 }
 
-/** Abmelden ohne Weiterleitung: Der Browser lädt danach selbst ganz neu (components/auth/logout-button.tsx). */
-export async function signOut() {
-  await destroySession()
-}
 
 /* ------------------------------------------------------ Wiederherstellen */
 

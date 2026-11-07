@@ -45,6 +45,9 @@ export function proxy(request: NextRequest) {
   // Alte Railway-Adresse → die eigene Domain aus APP_URL (sobald APP_URL dorthin zeigt). Cookies und Passkeys
   // gelten pro Domain – so landen alle auf derselben.
   const canonical = process.env.APP_URL?.startsWith('https://') ? new URL(process.env.APP_URL) : null
+  // Weiterleitungen immer auf die öffentliche Adresse: Hinter dem Proxy von Railway kennt der Server sich selbst nur
+  // als localhost:8080 – daraus gebaute Ziele führten ins Leere.
+  const to = (path: string) => new URL(path, canonical?.origin ?? request.nextUrl.origin)
   const host = request.headers.get('host')
   // Ausnahme /.well-known/webauthn: Browser prüfen dort, ob alte Passkeys auf der neuen Domain gelten dürfen –
   // ohne Weiterleitung.
@@ -53,8 +56,8 @@ export function proxy(request: NextRequest) {
   }
   // Früher hiess der Feed /lichtung: alte Lesezeichen, Push-Nachrichten und installierte Apps landen dauerhaft auf /start.
   if (pathname === '/lichtung' || pathname.startsWith('/lichtung/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = `/start${pathname.slice('/lichtung'.length)}`
+    const url = to(`/start${pathname.slice('/lichtung'.length)}`)
+    url.search = request.nextUrl.search
     return NextResponse.redirect(url, 308)
   }
   const hasSession = request.cookies.has(SESSION_COOKIE)
@@ -62,16 +65,10 @@ export function proxy(request: NextRequest) {
   const isPage = request.method === 'GET'
 
   if (isPage && !hasSession && PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/anmelden'
-    url.search = ''
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(to('/anmelden'))
   }
   if (isPage && hasSession && (pathname === '/' || AUTH_ONLY.includes(pathname))) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/start'
-    url.search = ''
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(to('/start'))
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
