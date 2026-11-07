@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
+import { connection } from 'next/server'
 import { HelpList, PhoneScript, PublicShell } from '@/components/ui'
 import { TopicHelp } from '@/components/topic-help'
 import { getHelpResources } from '@/lib/server/terms'
 import { getMessages } from '@/messages'
 
-// Wie /hilfe vollständig vorgerendert: funktioniert ohne Anmeldung, ohne Datenbank und offline (Service Worker).
-export const ensureStatic = 'navigation'
+// Bei jeder Anfrage gerendert (Daten aus dem Zwischenspeicher, höchstens 2 s Datenbank, sonst die Notfall-Liste).
+// Vorgerendert hätte der erste Besuch nach einem Deploy die Fassung vom Build gezeigt – ohne Datenbank gebaut, also
+// ohne Chats und ohne «Nach Thema» – und erst beim Neuladen die richtige. Offline speichert der Service Worker die Seite.
+export const instant = false
 
 const fr = getMessages('fr')
 
@@ -13,6 +16,7 @@ export const metadata: Metadata = { title: fr.help.pageTitle, alternates: { lang
 
 /** Aide immédiate – die französische Hilfeseite für die Romandie. */
 export default async function AidePage() {
+  await connection()
   const resources = await getHelpResources('fr')
   return (
     <PublicShell active="help" t={fr} lang="fr-CH">

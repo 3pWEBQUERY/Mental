@@ -104,6 +104,9 @@ test('Englischer Browser: Landing, Anmeldung, Hilfe /help und Transparenz auf En
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-CH')
   await expect(page.locator('a[href="tel:143"]').first()).toBeVisible()
   await expect(page.locator('body')).toContainText('Helping Hand')
+  // Schon beim ersten Aufruf vollständig (früher: Fassung vom Build ohne Chats und Themen, erst nach Neuladen richtig).
+  await expect(page.getByRole('heading', { name: 'By topic' })).toBeVisible()
+  await expect(page.getByText('Die Dargebotene Hand chat')).toBeVisible()
   await page.goto('/transparenz')
   await expect(page.getByRole('heading', { name: 'What we promise' })).toBeVisible()
   // Wechsel auf Deutsch und zurück.

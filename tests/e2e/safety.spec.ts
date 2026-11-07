@@ -112,7 +112,7 @@ test('Aide immédiate: französische Hilfeseite ohne Anmeldung, verlinkt mit /hi
   await expect(aide.locator('main')).not.toContainText('Dargebotene Hand')
   await page.getByRole('group', { name: 'Langue' }).getByRole('link', { name: 'Deutsch' }).click()
   await page.waitForURL('**/hilfe')
-  await expect(page.locator('.public:not([lang]) a[href="tel:143"]').first()).toContainText('Die Dargebotene Hand')
+  await expect(page.locator('.public[lang="de-CH"] a[href="tel:143"]').first()).toContainText('Die Dargebotene Hand')
 })
 
 test('Krisensprache auf Französisch löst denselben Hinweis aus', async ({ page }) => {
