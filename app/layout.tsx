@@ -26,7 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
     description: m.meta.description,
     applicationName: m.brand,
     appleWebApp: { capable: true, title: m.brand, statusBarStyle: 'default' },
-    icons: { apple: '/icons/apple-touch-icon.png' },
+    // Tab- und App-Icons kommen aus den Dateien app/favicon.ico, app/icon.svg und app/apple-icon.png. Ein eigener
+    // «icons»-Eintrag hier ersetzte sie – dann fehlte im Tab das Logo.
     robots: { index: true, follow: true },
     referrer: 'no-referrer',
   }

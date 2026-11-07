@@ -108,3 +108,23 @@ test('Von der Startseite zur Hilfe ohne Neuladen: kein dunkler Himmel hinter der
   await page.waitForURL((u) => u.pathname === '/')
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(5, 10, 22)')
 })
+
+test('Footer: Instagram, X und TikTok; App-Store-Bereich darüber (nicht auf der Hilfe); Logo als Tab-Icon', async ({ page, request }) => {
+  await page.goto('/')
+  const social = page.locator('.public-foot .social')
+  await expect(social.locator('a[href="https://www.instagram.com/jiaia.app/"]')).toBeVisible()
+  await expect(social.locator('a[href="https://x.com/Jiaiadotapp"]')).toBeVisible()
+  await expect(social.locator('a[href="https://www.tiktok.com/@jiaia.app"]')).toBeVisible()
+  const store = page.getByRole('region', { name: 'Jiaia als App' })
+  await expect(store.getByRole('link', { name: /App Store/ })).toHaveAttribute('href', 'https://apps.apple.com/ch/app/jiaia/id6829498048')
+  // Der Bereich steht direkt über dem Footer.
+  expect(await page.evaluate(() => document.querySelector('.app-store')?.nextElementSibling?.className)).toContain('public-foot')
+  // Logo im Tab: favicon.ico und SVG-Icon sind verlinkt und abrufbar.
+  const icons = await page.locator('link[rel="icon"]').evaluateAll((ls) => ls.map((l) => (l as HTMLLinkElement).getAttribute('href')!))
+  expect(icons.some((h) => h.startsWith('/favicon.ico'))).toBe(true)
+  expect(icons.some((h) => h.startsWith('/icon.svg'))).toBe(true)
+  expect((await request.get('/favicon.ico')).headers()['content-type']).toContain('image/')
+  // Auf der Hilfe lenkt nichts von den Nummern ab.
+  await page.goto('/hilfe')
+  await expect(page.locator('.app-store')).toHaveCount(0)
+})
