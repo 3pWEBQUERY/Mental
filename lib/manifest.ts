@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getMessages, LOCALE_TAG, type Locale } from '@/messages'
 
-const HELP_PATH: Record<Locale, string> = { de: '/hilfe', fr: '/aide', it: '/aiuto' }
+const HELP_PATH: Record<Locale, string> = { de: '/hilfe', fr: '/aide', it: '/aiuto', en: '/help' }
 
 /** Web-App-Manifest in einer Sprache – Name, Beschreibung und Kurzbefehle der installierten App. */
 export function manifestFor(locale: Locale): MetadataRoute.Manifest {

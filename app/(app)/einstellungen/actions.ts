@@ -65,7 +65,7 @@ const settingsSchema = z
     discreet: z.boolean(),
     listener: z.boolean(),
     followUp: z.boolean(),
-    locale: z.enum(['de', 'fr', 'it']),
+    locale: z.enum(['de', 'fr', 'it', 'en']),
   })
   .partial()
 

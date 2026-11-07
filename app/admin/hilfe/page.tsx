@@ -13,11 +13,12 @@ const LANGS = [
   { code: 'de', name: 'Deutsch', page: '/hilfe' },
   { code: 'fr', name: 'Französisch', page: '/aide' },
   { code: 'it', name: 'Italienisch', page: '/aiuto' },
+  { code: 'en', name: 'Englisch', page: '/help' },
 ] as const
 
 /**
  * Hilfe-Nummern je Sprache: anlegen, bearbeiten, löschen. Sie erscheinen sofort unter «Sofort Hilfe» in der App,
- * auf /hilfe, /aide und /aiuto und in der iOS-App (cacheTag «help»). Ist eine Sprache leer, gelten dort die
+ * auf /hilfe, /aide, /aiuto und /help und in der iOS-App (cacheTag «help»). Ist eine Sprache leer, gelten dort die
  * eingebauten Standardnummern (lib/help.ts).
  */
 export default async function HelpAdmin() {
@@ -60,7 +61,7 @@ function HelpForm({ h, sort, circles }: { h: Help | null; sort: number; circles:
         <input className="input" name="url" type="url" defaultValue={h?.url ?? ''} placeholder="https://…" aria-label="Link" />
         <input className="input" name="hours" defaultValue={h?.hours} placeholder="Zeiten" aria-label="Zeiten" maxLength={80} required />
         <input className="input" name="audience" defaultValue={h?.audience} placeholder="Für wen" aria-label="Für wen" maxLength={120} required />
-        <select className="input" name="language" defaultValue={h?.language ?? 'de'} aria-label="Sprache (de: /hilfe, fr: /aide, it: /aiuto)" style={{ flex: '0 0 130px', minWidth: 130 }}>
+        <select className="input" name="language" defaultValue={h?.language ?? 'de'} aria-label="Sprache (de: /hilfe, fr: /aide, it: /aiuto, en: /help)" style={{ flex: '0 0 130px', minWidth: 130 }}>
           {LANGS.map((l) => (
             <option key={l.code} value={l.code}>
               {l.name}

@@ -67,7 +67,7 @@ function CircleForm({
         <textarea className="input" name="description" defaultValue={c?.description} placeholder="Beschreibung" aria-label="Beschreibung" style={{ minHeight: 70 }} maxLength={400} required />
         <textarea className="input" name="rules" defaultValue={c?.rules} placeholder="Hausregeln im Kreis" aria-label="Hausregeln" style={{ minHeight: 70 }} maxLength={400} required />
         <details>
-          <summary className="fine">Übersetzungen (Französisch, Italienisch){c?.i18n.fr || c?.i18n.it ? '' : ' – fehlt noch, es gilt der deutsche Text'}</summary>
+          <summary className="fine">Übersetzungen (Französisch, Italienisch, Englisch){c?.i18n.fr || c?.i18n.it || c?.i18n.en ? '' : ' – fehlt noch, es gilt der deutsche Text'}</summary>
           <div className="stack" style={{ gap: 8, marginTop: 8 }}>
             <div lang="fr" className="stack" style={{ gap: 8 }}>
               <input className="input" name="nameFr" defaultValue={c?.i18n.fr?.name} placeholder="Nom (français)" aria-label="Name auf Französisch" maxLength={40} />
@@ -78,6 +78,11 @@ function CircleForm({
               <input className="input" name="nameIt" defaultValue={c?.i18n.it?.name} placeholder="Nome (italiano)" aria-label="Name auf Italienisch" maxLength={40} />
               <textarea className="input" name="descriptionIt" defaultValue={c?.i18n.it?.description} placeholder="Descrizione (italiano)" aria-label="Beschreibung auf Italienisch" style={{ minHeight: 60 }} maxLength={400} />
               <textarea className="input" name="rulesIt" defaultValue={c?.i18n.it?.rules} placeholder="Regole del cerchio (italiano)" aria-label="Hausregeln auf Italienisch" style={{ minHeight: 60 }} maxLength={400} />
+            </div>
+            <div lang="en" className="stack" style={{ gap: 8 }}>
+              <input className="input" name="nameEn" defaultValue={c?.i18n.en?.name} placeholder="Name (English)" aria-label="Name auf Englisch" maxLength={40} />
+              <textarea className="input" name="descriptionEn" defaultValue={c?.i18n.en?.description} placeholder="Description (English)" aria-label="Beschreibung auf Englisch" style={{ minHeight: 60 }} maxLength={400} />
+              <textarea className="input" name="rulesEn" defaultValue={c?.i18n.en?.rules} placeholder="Circle rules (English)" aria-label="Hausregeln auf Englisch" style={{ minHeight: 60 }} maxLength={400} />
             </div>
           </div>
         </details>

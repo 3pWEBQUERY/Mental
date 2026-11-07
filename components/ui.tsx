@@ -85,7 +85,7 @@ export function PublicShell({
   lang?: string
 }) {
   const helpHref = t.help.href
-  const current = helpHref === '/aide' ? 'fr' : helpHref === '/aiuto' ? 'it' : 'de'
+  const current = helpHref === '/aide' ? 'fr' : helpHref === '/aiuto' ? 'it' : helpHref === '/help' ? 'en' : 'de'
   const header = (
     <header className={hero ? 'public-top on-hero' : 'public-top'}>
       <Link href="/" className="brand">

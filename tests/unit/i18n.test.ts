@@ -10,16 +10,18 @@ describe('Sprache aus Accept-Language', () => {
   it('nimmt die erste unterstützte Sprache nach Gewichtung', () => {
     expect(pickLocale('fr-CH,fr;q=0.9,de;q=0.8')).toBe('fr')
     expect(pickLocale('de-CH,fr;q=0.5')).toBe('de')
-    expect(pickLocale('en-US,en;q=0.9,fr;q=0.8,de;q=0.7')).toBe('fr')
+    expect(pickLocale('en-US,en;q=0.9,fr;q=0.8,de;q=0.7')).toBe('en')
+    expect(pickLocale('es-ES,fr;q=0.8,de;q=0.7')).toBe('fr')
     expect(pickLocale('de;q=0.4,fr;q=0.6')).toBe('fr')
   })
   it('fällt auf Deutsch zurück', () => {
     expect(pickLocale(null)).toBe('de')
-    expect(pickLocale('en-US,es;q=0.8')).toBe('de')
+    expect(pickLocale('es-ES,pt;q=0.8')).toBe('de')
   })
   it('erkennt Italienisch', () => {
     expect(pickLocale('it-CH,it;q=0.9,de;q=0.8')).toBe('it')
-    expect(pickLocale('en-US,it;q=0.8')).toBe('it')
+    expect(pickLocale('es-ES,it;q=0.8')).toBe('it')
+    expect(pickLocale('en-GB')).toBe('en')
   })
 })
 

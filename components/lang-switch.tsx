@@ -6,15 +6,16 @@ const LANGS = [
   { code: 'de', short: 'DE', name: 'Deutsch' },
   { code: 'fr', short: 'FR', name: 'Français' },
   { code: 'it', short: 'IT', name: 'Italiano' },
+  { code: 'en', short: 'EN', name: 'English' },
 ] as const
 
 /**
- * Sprachumschalter DE · FR · IT (Kopf der öffentlichen Seiten). Jeder Eintrag führt über /sprache, das die Wahl
+ * Sprachumschalter DE · FR · IT · EN (Kopf der öffentlichen Seiten). Jeder Eintrag führt über /sprache, das die Wahl
  * speichert und zurückkehrt. Jiaia sendet keinen Referer (Datenschutz) – darum hängt der Link die aktuelle Seite
  * selbst an. Ohne JavaScript: zurück zur Hauptseite bzw. zur Hilfeseite der neuen Sprache.
  * Die Sprachnamen stehen immer in ihrer eigenen Sprache.
  */
-export function LangSwitch({ current, label, fallback = '/' }: { current: 'de' | 'fr' | 'it'; label: string; fallback?: string }) {
+export function LangSwitch({ current, label, fallback = '/' }: { current: 'de' | 'fr' | 'it' | 'en'; label: string; fallback?: string }) {
   const [back, setBack] = useState(fallback)
   useEffect(() => setBack(window.location.pathname + window.location.search), [])
   return (

@@ -3,11 +3,12 @@
  * Idempotent – kann bei jedem Deployment laufen.
  */
 import { eq, sql } from 'drizzle-orm'
-import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
-import { DEFAULT_HELP, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
+import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_EN, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
+import { DEFAULT_HELP, DEFAULT_HELP_EN, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
 import { db, pool } from './index'
 import { circles, crisisTerms, helpResources, seedMarks, steps } from './schema'
 import { CIRCLE_HELP, NEW_CIRCLES, NEW_STEPS } from './seed-kreise'
+import { CIRCLE_HELP_EN, CIRCLES_EN, DEFAULT_HELP_CHATS_EN, STEPS_EN } from './seed-en'
 
 const CIRCLES = [
   {
@@ -144,7 +145,15 @@ async function main() {
         { name: 'Chat di Pro Juventute', phone: null, url: 'https://www.147.ch', hours: '24 ore su 24', audience: 'per bambini e giovani, anche via SMS', sort: 50 },
       ].map((h) => ({ ...h, language: 'it' })),
     )
+  }  if ((await helpCount('en')) === 0) {
+    await db.insert(helpResources).values(
+      [...DEFAULT_HELP_EN.map((h, i) => ({ ...h, sort: i * 10 })), ...DEFAULT_HELP_CHATS_EN.map((h, i) => ({ ...h, sort: 40 + i * 10 }))].map((h) => ({
+        ...h,
+        language: 'en',
+      })),
+    )
   }
+
 
   // Neue Standardbegriffe kommen dazu; entfernte bleiben als inaktiv bestehen und werden nicht reaktiviert.
   await db
@@ -153,6 +162,7 @@ async function main() {
       ...DEFAULT_CRISIS_TERMS.map((t) => ({ term: t.term, level: t.level, language: 'de' })),
       ...DEFAULT_CRISIS_TERMS_FR.map((t) => ({ term: t.term, level: t.level, language: 'fr' })),
       ...DEFAULT_CRISIS_TERMS_IT.map((t) => ({ term: t.term, level: t.level, language: 'it' })),
+      ...DEFAULT_CRISIS_TERMS_EN.map((t) => ({ term: t.term, level: t.level, language: 'en' })),
     ])
     .onConflictDoNothing()
 
@@ -203,6 +213,25 @@ async function main() {
             byLang[language].map((h, i) => ({ ...h, language, sort: 100 + i * 10, circleId: idOf.get(slug)! })),
           )
         : [],
+    )
+    if (help.length) await tx.insert(helpResources).values(help)
+  })
+
+  // Englisch (November 2026): Übersetzungen für die Standard-Kreise und -Schritte und die Hilfe je Kreis – einmal.
+  // Was das Team schon auf Englisch gepflegt hat, bleibt; danach gilt wieder nur noch der Admin-Bereich.
+  await once('english-2026-11', async (tx) => {
+    for (const [slug, en] of Object.entries(CIRCLES_EN)) {
+      await tx.execute(sql`UPDATE circles SET i18n = i18n || jsonb_build_object('en', ${JSON.stringify(en)}::jsonb) WHERE slug = ${slug} AND NOT (i18n ? 'en')`)
+    }
+    for (const [text, en] of Object.entries(STEPS_EN)) {
+      await tx.execute(
+        sql`UPDATE steps SET i18n = i18n || jsonb_build_object('en', jsonb_build_object('text', ${en}::text)) WHERE text = ${text} AND NOT (i18n ? 'en')`,
+      )
+    }
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    const idOf = new Map(rows.map((r) => [r.slug, r.id]))
+    const help = Object.entries(CIRCLE_HELP_EN).flatMap(([slug, list]) =>
+      idOf.has(slug) ? list.map((h, i) => ({ ...h, language: 'en', sort: 100 + i * 10, circleId: idOf.get(slug)! })) : [],
     )
     if (help.length) await tx.insert(helpResources).values(help)
   })

@@ -23,6 +23,7 @@ export default async function TermsAdmin() {
           <option value="de">Deutsch</option>
           <option value="fr">Französisch</option>
           <option value="it">Italienisch</option>
+          <option value="en">Englisch</option>
         </select>
         <select className="input" name="level" aria-label="Stufe" style={{ flex: '0 0 140px', minWidth: 140 }}>
           <option value="acute">akut</option>

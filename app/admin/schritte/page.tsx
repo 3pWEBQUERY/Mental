@@ -41,6 +41,7 @@ function StepForm({ s, sort, circles }: { s: Step | null; sort: number; circles:
         <input className="input" name="text" defaultValue={s?.text} placeholder="Ein konkreter, machbarer Vorschlag" aria-label="Text" maxLength={200} required style={{ flex: 3 }} />
         <input className="input" lang="fr" name="textFr" defaultValue={s?.i18n.fr?.text} placeholder="En français" aria-label="Text auf Französisch" maxLength={200} style={{ flex: 3 }} />
         <input className="input" lang="it" name="textIt" defaultValue={s?.i18n.it?.text} placeholder="In italiano" aria-label="Text auf Italienisch" maxLength={200} style={{ flex: 3 }} />
+        <input className="input" lang="en" name="textEn" defaultValue={s?.i18n.en?.text} placeholder="In English" aria-label="Text auf Englisch" maxLength={200} style={{ flex: 3 }} />
         <select className="input" name="circleId" defaultValue={s?.circleId ?? ''} aria-label="Kreis">
           <option value="">Alle Kreise</option>
           {circles.map((c) => (
