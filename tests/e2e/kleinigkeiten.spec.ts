@@ -70,13 +70,19 @@ test('Offline: Hilfeseite bleibt erreichbar und gestaltet', async ({ page, conte
     await navigator.serviceWorker.ready
   })
   // Warten, bis die Hilfeseiten samt CSS im Zwischenspeicher liegen.
+  // … und die Schriften, die nur in den Stylesheets stehen (url(../media/…)).
   await expect
-    .poll(async () => page.evaluate(async () => (await (await caches.open('jiaia-assets-v1')).keys()).length), { timeout: 20_000 })
+    .poll(
+      async () => page.evaluate(async () => (await (await caches.open('jiaia-assets-v2')).keys()).filter((r) => /\.woff2?$/.test(r.url)).length),
+      { timeout: 20_000 },
+    )
     .toBeGreaterThan(0)
   const online = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
   await context.setOffline(true)
   await page.goto('/hilfe')
   await expect(page.locator('a[href="tel:143"]').first()).toBeVisible()
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(online)
+  // Schrift offline geladen statt Ersatzschrift.
+  await expect.poll(() => page.evaluate(async () => (await document.fonts.ready, [...document.fonts].some((f) => f.status === 'loaded')))).toBe(true)
   await context.setOffline(false)
 })

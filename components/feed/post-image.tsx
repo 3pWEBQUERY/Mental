@@ -11,6 +11,13 @@ export function PostImage({ media }: { media: PublicMedia }) {
   const [loaded, setLoaded] = useState(false)
   const ratio = media.width && media.height ? media.height / media.width : 0.75
 
+  const img = useRef<HTMLImageElement>(null)
+  // Schon geladen, bevor React übernahm (Cache, schnelles Netz): onLoad kam zu früh – die Vorschau bliebe sonst
+  // für immer über dem Bild liegen.
+  useEffect(() => {
+    if (img.current?.complete && img.current.naturalWidth > 0) setLoaded(true)
+  }, [media.id])
+
   useEffect(() => {
     if (!media.blurhash || !canvas.current) return
     try {
@@ -37,6 +44,7 @@ export function PostImage({ media }: { media: PublicMedia }) {
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={img}
         src={`/api/media/${media.id}`}
         alt={media.alt || m.feed.image}
         width={media.width ?? undefined}
@@ -44,6 +52,8 @@ export function PostImage({ media }: { media: PublicMedia }) {
         loading="lazy"
         decoding="async"
         onLoad={() => setLoaded(true)}
+        // Kein Bild (abgelaufen, Netzfehler): die Vorschau nicht ewig stehen lassen.
+        onError={() => setLoaded(true)}
         referrerPolicy="no-referrer"
       />
     </div>

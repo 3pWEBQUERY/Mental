@@ -1,7 +1,7 @@
 /* Jiaia Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
 const CACHE = 'jiaia-v6'
 /** Stylesheets und Schriften der Hilfeseiten – damit sie offline nicht ungestaltet erscheinen. */
-const ASSETS = 'jiaia-assets-v1'
+const ASSETS = 'jiaia-assets-v2'
 const OFFLINE = ['/offline', '/hilfe', '/aide', '/aiuto']
 const KEEP = [CACHE, ASSETS]
 
@@ -25,6 +25,17 @@ async function refreshHelp() {
     } catch {}
   }
   if (!wanted.size) return
+  // Schriften stehen meist nicht im HTML, sondern nur in den Stylesheets (url(../media/…woff2)) – sonst fehlten sie
+  // offline, und die Hilfe erschiene in einer Ersatzschrift.
+  for (const css of [...wanted].filter((u) => u.endsWith('.css'))) {
+    try {
+      const text = await (await fetch(css, { credentials: 'omit' })).text()
+      for (const m of text.matchAll(/url\(\s*["']?([^"')]+\.woff2?)["']?\s*\)/g)) {
+        const font = new URL(m[1], self.location.origin + css)
+        if (font.origin === self.location.origin && font.pathname.startsWith('/_next/static/')) wanted.add(font.pathname)
+      }
+    } catch {}
+  }
   await Promise.all([...wanted].map((u) => assets.add(u).catch(() => {})))
   // Dateien früherer Builds aufräumen.
   for (const req of await assets.keys()) if (!wanted.has(new URL(req.url).pathname)) await assets.delete(req)

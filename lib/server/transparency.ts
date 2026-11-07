@@ -70,7 +70,9 @@ async function quarter(from: string, label: string): Promise<Quarter> {
         (SELECT count(*)::int FROM replies WHERE created_at ${range}) AS replies,
         (SELECT count(*)::int FROM posts p WHERE p.created_at ${pRange}
            AND p.status = 'visible'
-           AND EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.status = 'visible' AND r.created_at < p.created_at + interval '24 hours')) AS answered,
+           -- Nur Antworten anderer: Eine eigene Ergänzung der Verfasserin ist keine Antwort.
+           AND EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.status = 'visible' AND NOT r.is_author AND r.deleted_at IS NULL
+                       AND r.created_at < p.created_at + interval '24 hours')) AS answered,
         (SELECT count(*)::int FROM posts p WHERE p.created_at ${pRange}
            AND p.status = 'visible') AS visible`),
     rows<{ total: number; appeals: number }>(sql`
@@ -80,10 +82,14 @@ async function quarter(from: string, label: string): Promise<Quarter> {
       SELECT CASE WHEN reason IN ('auto_acute', 'auto_flag') THEN 'auto' ELSE reason::text END AS reason, count(*)::int AS n
       FROM reports WHERE target_type <> 'user' AND created_at ${range} GROUP BY 1 ORDER BY n DESC`),
     rows<{ n: number; median: number | null }>(sql`
-      SELECT count(*)::int AS n, percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM resolved_at - created_at) / 60) AS median
-      FROM reports WHERE priority = 0 AND resolved_at IS NOT NULL AND target_type <> 'user' AND created_at ${range}`),
+      -- Je Fall (Inhalt) einmal: die erste Meldung bis zur Erledigung – mehrere akute Meldungen zu einem Inhalt sind ein Fall.
+      SELECT count(*)::int AS n, percentile_cont(0.5) WITHIN GROUP (ORDER BY minutes) AS median FROM (
+        SELECT min(extract(epoch FROM resolved_at - created_at) / 60) AS minutes FROM reports
+        WHERE priority = 0 AND resolved_at IS NOT NULL AND target_type <> 'user' AND created_at ${range}
+        GROUP BY target_type, target_id) cases`),
+    // Je Inhalt einmal: Wird derselbe Gedanke zweimal ausgeblendet (z. B. nach einer Freigabe), ist das ein Fall.
     rows<{ action: string; n: number }>(sql`
-      SELECT action, count(*)::int AS n FROM moderation_actions
+      SELECT action, count(DISTINCT (target_type, target_id))::int AS n FROM moderation_actions
       WHERE created_at ${range} AND (target_type <> 'user' OR action = 'appeal_accept') GROUP BY action`),
     // Stummschaltungen und Sperren stehen doppelt im Protokoll (am Inhalt und am Konto) – gezählt wird nur die Konto-Zeile.
     rows<{ action: string; n: number }>(sql`

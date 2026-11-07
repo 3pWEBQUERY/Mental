@@ -11,15 +11,20 @@ export default async function StatsPage() {
   const [byPriority, byReason, overdue, unheard, appeals] = await Promise.all([
     q<{ priority: number; open: number; created: number; median: number | null }>(sql`
       SELECT priority,
-        count(*) FILTER (WHERE status = 'open')::int AS open,
-        count(*) FILTER (WHERE created_at > now() - interval '30 days')::int AS created,
+        -- Fälle wie in der Warteschlange (ein Inhalt = ein Eintrag), nicht einzelne Meldungen.
+        count(DISTINCT (target_type, target_id)) FILTER (WHERE status = 'open')::int AS open,
+        count(DISTINCT (target_type, target_id)) FILTER (WHERE created_at > now() - interval '30 days')::int AS created,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM resolved_at - created_at) / 60)
           FILTER (WHERE resolved_at IS NOT NULL AND created_at > now() - interval '30 days') AS median
       FROM reports WHERE target_type <> 'user' GROUP BY priority ORDER BY priority`),
     q<{ reason: string; n: number }>(sql`
       SELECT reason, count(*)::int AS n FROM reports
       WHERE created_at > now() - interval '30 days' AND target_type <> 'user' GROUP BY reason ORDER BY n DESC`),
-    q<{ n: number }>(sql`SELECT count(*)::int AS n FROM reports WHERE status = 'open' AND priority = 0 AND created_at < now() - interval '30 minutes'`),
+    // Wie der Monitor: je Inhalt einmal und nur, wenn der Inhalt noch besteht.
+    q<{ n: number }>(sql`SELECT count(DISTINCT (r.target_type, r.target_id))::int AS n FROM reports r WHERE r.status = 'open' AND r.priority = 0
+      AND r.created_at < now() - interval '30 minutes'
+      AND ((r.target_type = 'post' AND EXISTS (SELECT 1 FROM posts p WHERE p.id = r.target_id AND p.deleted_at IS NULL))
+        OR (r.target_type = 'reply' AND EXISTS (SELECT 1 FROM replies x WHERE x.id = r.target_id AND x.deleted_at IS NULL)))`),
     q<{ n: number; total: number }>(sql`
       SELECT count(*) FILTER (WHERE reply_count = 0)::int AS n, count(*)::int AS total FROM posts
       WHERE created_at BETWEEN now() - interval '30 days' AND now() - interval '24 hours' AND deleted_at IS NULL AND status = 'visible'`),
