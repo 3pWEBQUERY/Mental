@@ -21,6 +21,7 @@ import { displayNameProblem } from '@/lib/display-name'
 import { isValidUsername, looksLikeRealName, normalizeUsername } from '@/lib/username'
 import { syncReplyCountsOfAuthor } from '@/lib/reply-count'
 import { m } from '@/messages'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string; field?: string; pow?: true }
 
@@ -136,8 +137,10 @@ async function afterLogin(userId: string, status: string) {
     await db
       .update(users)
       .set({ status: sql`CASE WHEN ${users.mutedUntil} > now() THEN 'muted'::user_status ELSE 'active'::user_status END`, deleteAfter: null })
-      .where(and(eq(users.id, userId), isNotNull(users.deleteAfter)))
+      // Nur wenn noch «in Löschung»: Eine Sperre, die während der Anmeldung kam, darf das nicht aufheben.
+      .where(and(eq(users.id, userId), isNotNull(users.deleteAfter), eq(users.status, 'deleting')))
     await syncReplyCountsOfAuthor(userId)
+    await journalDeletion('account-cancel', userId)
     return m.auth.deletionCancelled
   }
   return null

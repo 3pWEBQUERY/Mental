@@ -17,6 +17,7 @@ import { hit } from '@/lib/server/rate-limit'
 import { generateRecoveryKey } from '@/lib/server/recovery'
 import { endOtherSessions, getViewer, SESSION_COOKIE } from '@/lib/server/session'
 import { m } from '@/messages'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 const fail = (error: string) => ({ ok: false as const, error })
@@ -274,6 +275,8 @@ export async function deleteAccount(password: string): Promise<R> {
   if (!(await checkPassword(v.userId, password))) return fail(m.auth.invalid)
   const deleteAfter = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   await db.update(users).set({ status: 'deleting', deleteAfter }).where(eq(users.id, v.userId))
+  // Auch der Antrag gehört ins Lösch-Journal: Nach einem Restore aus einem Backup bliebe das Konto sonst aktiv.
+  await journalDeletion('account-request', v.userId, { deleteAfter: deleteAfter.toISOString() })
   await syncReplyCountsOfAuthor(v.userId)
   await db.delete(sessions).where(eq(sessions.userId, v.userId))
   await enqueue(QUEUES.purgeAccount, { userId: v.userId }, { startAfter: deleteAfter, singletonKey: `purge:${v.userId}` })

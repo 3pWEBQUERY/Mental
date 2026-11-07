@@ -33,7 +33,10 @@ export default async function AuditPage() {
               <td>{auditLabel(r.action)}</td>
               <td>
                 {m.admin.targetType[r.targetType as 'post' | 'reply' | 'user'] ?? r.targetType}{' '}
-                {r.targetType === 'user' ? (
+                {/* Eigene Aktionen (z. B. Vorschlag zurückziehen): nur das Team-Kürzel, sonst stünde es neben der Mitglieds-ID. */}
+                {r.targetType === 'user' && r.targetId === r.moderatorId ? (
+                  staffRef(r.targetId)
+                ) : r.targetType === 'user' ? (
                   <Link href={`/admin/konto/${encodeURIComponent(memberToken(r.targetId))}`}>{memberRef(r.targetId)}</Link>
                 ) : (
                   r.targetId.slice(0, 8)

@@ -167,7 +167,8 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
               <p>
                 {m.admin.roles.pending(
                   t.roles[proposal.role],
-                  memberRef(proposal.proposedBy),
+                  // Wer vorschlägt, ist Team: Team-Kürzel wie im Protokoll, nicht die Mitglieds-ID.
+                  staffRef(proposal.proposedBy),
                   formatDate(proposal.createdAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
                 )}
               </p>

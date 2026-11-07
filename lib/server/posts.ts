@@ -187,7 +187,9 @@ type Cursor = { t?: string; i?: string; k?: boolean; u?: string[]; n: number }
 
 const encode = (c: Cursor) => Buffer.from(JSON.stringify(c)).toString('base64url')
 function decode(raw: string | null | undefined): Cursor {
-  if (!raw) return { n: 0 }
+  // Nur echte, kurze Texte: Ein Objekt mit grosser «length» (z. B. über /api/v1) liesse Buffer.from Gigabytes
+  // anlegen und den Server blockieren.
+  if (!raw || typeof raw !== 'string' || raw.length > 4096) return { n: 0 }
   try {
     const c = JSON.parse(Buffer.from(raw, 'base64url').toString()) as Cursor
     // Der Cursor kommt aus dem Browser: nur gültige Zeitstempel und IDs übernehmen (sonst Serverfehler).

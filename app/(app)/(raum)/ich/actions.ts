@@ -9,6 +9,7 @@ import { verifySecret } from '@/lib/server/password'
 import { hit } from '@/lib/server/rate-limit'
 import { getViewer } from '@/lib/server/session'
 import { m } from '@/messages'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 const b64 = z.string().regex(/^[A-Za-z0-9+/=]+$/)
 
@@ -53,6 +54,7 @@ export async function resetJournal(password: string): Promise<{ ok: true } | { o
       .set({ settings: sql`${profiles.settings} - 'journalSalt' - 'journalCheck'` })
       .where(eq(profiles.userId, v.userId))
   })
+  await journalDeletion('journal-reset', v.userId)
   return { ok: true }
 }
 
@@ -86,7 +88,8 @@ export async function addJournalEntry(input: { ciphertext: string; iv: string; s
 export async function deleteJournalEntry(id: string) {
   const v = await getViewer()
   if (!v || !z.uuid().safeParse(id).success) return false
-  await db.delete(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.userId, v.userId)))
+  const gone = await db.delete(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.userId, v.userId))).returning({ id: journalEntries.id })
+  if (gone.length) await journalDeletion('journal', id)
   return true
 }
 
@@ -111,6 +114,7 @@ export async function saveSafetyPlan(input: SafetyPlan): Promise<{ ok: true } | 
   // Ganz leer = kein Plan; so verschwindet er auch wieder aus dem Hilfe-Dialog.
   if (PLAN_KEYS.every((k) => !plan[k])) {
     await db.delete(safetyPlans).where(eq(safetyPlans.userId, v.userId))
+    await journalDeletion('safety-plan', v.userId)
     return { ok: true }
   }
   await db
@@ -146,5 +150,6 @@ export async function deleteLetter(id: string): Promise<boolean> {
   const v = await getViewer()
   if (!v || !z.uuid().safeParse(id).success) return false
   const done = await db.delete(letters).where(and(eq(letters.id, id), eq(letters.userId, v.userId))).returning({ id: letters.id })
+  if (done.length) await journalDeletion('letter', id)
   return done.length > 0
 }

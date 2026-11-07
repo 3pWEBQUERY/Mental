@@ -211,7 +211,8 @@ export default async function QueuePage() {
                   </ModForm>
                 )
               })()}
-              <ModForm action={moderate} className="inline-form" confirm={{ ban: { message: m.admin.account.banConfirm(authorRef), label: a.ban } }}>
+              {/* Die Rückfrage nur für Moderation: Sie trägt die Mitglieds-ID, und Peers bekämen sie sonst mit der Seite geliefert. */}
+              <ModForm action={moderate} className="inline-form" confirm={isMod ? { ban: { message: m.admin.account.banConfirm(authorRef), label: a.ban } } : undefined}>
                 <input type="hidden" name="targetType" value={g.type} />
                 <input type="hidden" name="targetId" value={g.id} />
                 <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} list="mod-templates" />

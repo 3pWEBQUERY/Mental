@@ -1,4 +1,4 @@
-import { normalize } from './text'
+import { foldUmlauts, normalize } from './text'
 
 export type CrisisLevel = 'none' | 'concern' | 'acute'
 export type CrisisTerm = { term: string; level: 'concern' | 'acute' }
@@ -159,10 +159,12 @@ function needleOf(term: string) {
 export function detectCrisis(text: string, terms: readonly CrisisTerm[] = ALL_DEFAULT_CRISIS_TERMS): CrisisLevel {
   if (!text.trim()) return 'none'
   const hay = normalize(text)
+  // Zweite Fassung ohne Umlaut-Schreibweisen: «lebensmude», «mochte sterben», «brucke».
+  const folded = foldUmlauts(hay)
   let level: CrisisLevel = 'none'
   for (const t of terms) {
     const needle = needleOf(t.term)
-    if (needle.trim() && hay.includes(needle) && RANK[t.level] > RANK[level]) {
+    if (needle.trim() && (hay.includes(needle) || folded.includes(foldUmlauts(needle))) && RANK[t.level] > RANK[level]) {
       level = t.level
       if (level === 'acute') break
     }
