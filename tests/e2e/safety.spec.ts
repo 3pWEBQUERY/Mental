@@ -63,7 +63,8 @@ test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
   await expect(async () => {
     await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
     await expect(page.locator('#composer-text')).toBeVisible({ timeout: 1_000 })
-  }).toPass({ timeout: 10_000 })
+    // Gegen Ende eines vollen Laufs (WebGL in Software) braucht das Hydrieren nach der Anmeldung manchmal über 10 s.
+  }).toPass({ timeout: 25_000 })
   await expect(page.locator('#composer-text')).toHaveValue('')
 })
 
