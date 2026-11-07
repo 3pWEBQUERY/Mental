@@ -620,6 +620,11 @@ export const de = {
     socialLink: (name: string) => `Jiaia auf ${name} (öffnet ein neues Fenster)`,
     partners: 'Unsere Partner',
     partnerLink: (name: string) => `${name} (öffnet ein neues Fenster)`,
+    appTitle: 'Jiaia als App',
+    appText: 'Jiaia gibt es auch für iPhone und iPad – mit allem, was du hier findest, immer zur Hand.',
+    appBadgeSmall: 'Laden im',
+    appBadgeBig: 'App Store',
+    appLink: 'Jiaia im App Store laden (öffnet ein neues Fenster)',
   },
   transparency: {
     title: 'Transparenz',

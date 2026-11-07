@@ -930,3 +930,18 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 .breath-hint { flex-basis: 100%; margin: 0; font-size: calc(12.5px * var(--fz)); color: var(--ink-3); max-width: 44ch; }
 .transparency-early { margin: 22px 0 8px; }
 .transparency-early h2 { margin-top: 0; }
+
+/* App Store: Bereich über dem Footer der öffentlichen Seiten */
+.app-store { padding: 36px clamp(16px, 4vw, 48px); border-top: 1px solid var(--line); }
+.app-store-inner { max-width: 980px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 18px 32px; flex-wrap: wrap; }
+.app-store h2 { font-family: var(--serif); font-weight: 400; font-size: calc(28px * var(--fz)); line-height: 1.15; color: var(--ink); }
+.app-store p { margin-top: 6px; color: var(--ink-2); max-width: 52ch; }
+/* Wie das Apple-Abzeichen: schwarz mit weisser Schrift – in beiden Farbschemata. Im Dunkeln mit hellem Rand. */
+.app-store-badge { display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 20px 8px 16px; border-radius: 12px; background: #000; color: #fff; text-decoration: none; border: 1px solid #a6a6a6; transition: transform 0.15s, background 0.2s; }
+.app-store-badge:hover { background: #1f1f1f; }
+.app-store-badge:active { transform: scale(0.98); }
+.app-store-badge svg { width: 28px; height: 28px; fill: currentColor; flex: none; }
+.app-store-badge span { display: grid; line-height: 1.1; text-align: left; }
+.app-store-badge small { font-size: calc(11px * var(--fz)); letter-spacing: 0.02em; }
+.app-store-badge b { font-size: calc(21px * var(--fz)); font-weight: 600; letter-spacing: -0.01em; }
+@media (max-width: 560px) { .app-store-inner { flex-direction: column; align-items: flex-start; } }
