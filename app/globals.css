@@ -542,7 +542,7 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .segment button[aria-checked='true'] { background: var(--ink); color: var(--paper); }
 
 /* Auth & öffentliche Seiten */
-.public { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+.public { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: var(--paper); }
 .public-top { display: flex; justify-content: space-between; align-items: center; padding: 22px clamp(16px, 4vw, 48px); gap: 12px; }
 .public-top .brand { display: flex; align-items: center; gap: 12px; }
 .public-top .brand .mark { margin: 0; width: auto; height: 36px; }
@@ -587,7 +587,10 @@ textarea.input { resize: vertical; min-height: 120px; line-height: 1.45; }
 .with-hero { position: relative; background: var(--paper); }
 /* Safari (ab iOS 26) färbt Statusleiste und Leisten nach dem Seitenhintergrund, nicht nach theme-color:
    Auf der Startseite darum dunkel wie der Himmel – der Inhalt darunter bleibt über .with-hero hell. */
-html:has(.with-hero), html:has(.with-hero) body { background: #050a16; }
+/* Nur solange die Startseite sichtbar ist: Next hält besuchte Seiten versteckt im Dokument (React Activity,
+   style="display: none !important"). Sonst färbte die versteckte Startseite nach einem Wechsel ohne Neuladen
+   z. B. /hilfe dunkelblau – mit heller Schrift darauf kaum lesbar. */
+html:has(.with-hero:not([style*='display: none'])), html:has(.with-hero:not([style*='display: none'])) body { background: #050a16; }
 .with-hero .public-main { padding: 0 0 60px; }
 .with-hero .landing { padding: 56px clamp(16px, 4vw, 48px) 0; }
 .public-top.on-hero {
