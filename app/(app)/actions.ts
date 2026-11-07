@@ -555,7 +555,11 @@ export async function saveCheckin(input: { mood: number; note?: string }): Promi
     .where(and(eq(checkins.userId, v.userId), gte(checkins.createdAt, hourStart)))
     .limit(1)
   if (current) {
-    await db.update(checkins).set({ mood: mood.data, note: sealText(v.userId, note) ?? current.note }).where(eq(checkins.id, current.id))
+    // Ohne Notiz-Angabe (nur Stimmung geändert) bleibt die Notiz; eine geleerte Notiz wird gelöscht, nicht behalten.
+    await db
+      .update(checkins)
+      .set({ mood: mood.data, note: input.note === undefined ? current.note : sealText(v.userId, note) })
+      .where(eq(checkins.id, current.id))
   } else {
     await db.insert(checkins).values({ userId: v.userId, mood: mood.data, note: sealText(v.userId, note) })
   }

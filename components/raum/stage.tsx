@@ -8,7 +8,7 @@ import { updateSettings } from '@/app/(app)/einstellungen/actions'
 import { BREATH_MINUTES, BREATH_PATTERN_IDS, breathAt, breathPlan, type BreathMinutes, type BreathPatternId, type BreathPhase } from '@/lib/breath'
 import { emit, on, toast } from '@/lib/client/bus'
 import { LIMITS, MOOD_HEAVY } from '@/lib/constants'
-import { formatDate } from '@/lib/time'
+import { formatDate, zurichHour } from '@/lib/time'
 import { m } from '@/messages'
 import { panic } from '../panic'
 import { Dialog } from '../dialog'
@@ -34,7 +34,38 @@ const Orb = dynamic(() => import('./orb'), { ssr: false, loading: OrbFallback })
 type Phase = BreathPhase
 type Mode = 'breath' | 'ground'
 
-export function Stage({ dateLabel, greeting }: { dateLabel: string; greeting: string }) {
+/** Datum und Gruss wie auf dem Server (layout.tsx) – im Browser neu berechnet, siehe useClock. */
+function clockLabels(now = new Date()) {
+  const h = zurichHour(now)
+  const g = m.stage.greeting
+  return { dateLabel: formatDate(now, { weekday: 'long', day: 'numeric', month: 'long' }), greeting: h < 11 ? g.morning : h < 18 ? g.day : g.evening }
+}
+
+/**
+ * Der Raum bleibt über Seitenwechsel stehen (und ein Tab oft über Nacht offen): Datum und Gruss würden sonst
+ * veralten – «Guten Morgen» am Abend, gestriges Datum. Jede Minute und beim Zurückkehren in den Tab neu.
+ */
+function useClock(initial: { dateLabel: string; greeting: string }) {
+  const [labels, setLabels] = useState(initial)
+  useEffect(() => {
+    const tick = () =>
+      setLabels((cur) => {
+        const next = clockLabels()
+        return next.dateLabel === cur.dateLabel && next.greeting === cur.greeting ? cur : next
+      })
+    const id = setInterval(tick, 60_000)
+    const onVisible = () => document.visibilityState === 'visible' && tick()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+  return labels
+}
+
+export function Stage(props: { dateLabel: string; greeting: string }) {
+  const { dateLabel, greeting } = useClock(props)
   const viewer = useViewer()
   const [mood, setMood] = useState<number | null>(viewer.lastMood)
   const [noteOpen, setNoteOpen] = useState(false)

@@ -42,7 +42,9 @@ export async function register(page: Page, displayName = 'Testperson', opts: { k
 /** Die Einführung beim ersten Besuch überspringen – und warten, bis der Server sich das gemerkt hat. */
 export async function skipOnboarding(page: Page) {
   const dialog = page.getByRole('dialog', { name: 'Willkommen' })
-  await expect(dialog).toBeVisible({ timeout: 10_000 })
+  // Der Dialog öffnet erst nach dem Hydrieren (+600 ms). Gegen Ende eines vollen Laufs (WebGL in Software, zwei
+  // Server) dauerte das vereinzelt über 10 s – ohne dass etwas fehlte.
+  await expect(dialog).toBeVisible({ timeout: 25_000 })
   const saved = page.waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined)
   await dialog.getByRole('button', { name: 'Überspringen' }).click()
   await expect(dialog).toBeHidden()

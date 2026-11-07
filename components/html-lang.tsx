@@ -19,6 +19,10 @@ export function HtmlLang() {
     const ui = cookie.includes(' lichtung_lang=fr;') ? 'fr' : cookie.includes(' lichtung_lang=it;') ? 'it' : 'de'
     const lang = seg === 'aide' ? 'fr' : seg === 'aiuto' ? 'it' : GERMAN_ONLY.includes(seg) ? 'de' : ui
     document.documentElement.lang = `${lang}-CH`
+    // Installierte App in der gewählten Sprache (Name, Beschreibung, Kurzbefehle) – das vorgerenderte Manifest ist
+    // deutsch, und Browser senden beim Abruf keinen Cookie.
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+    if (link) link.href = ui === 'de' ? '/manifest.webmanifest' : `/api/manifest/${ui}`
   }, [path])
   return null
 }

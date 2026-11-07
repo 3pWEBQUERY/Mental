@@ -29,9 +29,18 @@ function internalPath(raw: string): string {
   }
 }
 
+function refererPath(request: NextRequest): string {
+  try {
+    return new URL(request.headers.get('referer') ?? '/', request.url).pathname
+  } catch {
+    return '/'
+  }
+}
+
 export async function GET(request: NextRequest) {
   const l = request.nextUrl.searchParams.get('l')
-  const back = request.nextUrl.searchParams.get('zurueck') ?? new URL(request.headers.get('referer') ?? '/', request.url).pathname
+  // Ein kaputter Referer-Kopf («http://», Steuerzeichen) liess new URL() werfen – Serverfehler statt Sprachwechsel.
+  const back = request.nextUrl.searchParams.get('zurueck') ?? refererPath(request)
   let target = internalPath(back)
   if (!isLocale(l)) return NextResponse.redirect(new URL(target, env.appUrl))
 
