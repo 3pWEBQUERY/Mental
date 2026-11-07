@@ -12,6 +12,7 @@ import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimit
 import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media'
 import { moderateContent, requeueUnmoderated } from './jobs/moderation'
 import { expirePosts } from './jobs/posts'
+import { crisisFollowUp } from './jobs/follow-up'
 import { applyRetention } from './jobs/retention'
 import { nudgeListeners } from './jobs/listeners'
 import { sendPush } from './jobs/push'
@@ -78,6 +79,7 @@ async function main() {
     [QUEUES.retention, '53 4 * * *', applyRetention],
     [QUEUES.nudgeListeners, '*/30 * * * *', nudgeListeners],
     [QUEUES.requeueModeration, '*/10 * * * *', requeueUnmoderated],
+    [QUEUES.crisisFollowUp, '13 * * * *', () => crisisFollowUp()],
   ]
   for (const [name, schedule, fn] of cron) {
     // missed: 'once' – startet der Worker gerade zur geplanten Minute neu (Deploy), holt er den Lauf einmal nach.

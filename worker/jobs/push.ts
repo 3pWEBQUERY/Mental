@@ -24,7 +24,7 @@ function configure() {
  * Nur für «neue Antwort», nur nach Zustimmung, nie in den Ruhezeiten.
  * Der Text ist neutral – auf dem Sperrbildschirm erscheint nichts Persönliches.
  */
-export async function sendPush({ userId, postId, alert }: { userId: string; postId?: string; alert?: boolean }) {
+export async function sendPush({ userId, postId, alert, followUp }: { userId: string; postId?: string; alert?: boolean; followUp?: boolean }) {
   if (!configure()) return
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId))
   const hour = zurichHour()
@@ -36,8 +36,10 @@ export async function sendPush({ userId, postId, alert }: { userId: string; post
   const payload = alert
     ? JSON.stringify({ title: t.push.acuteTitle, body: t.push.acuteBody, url: '/admin', tag: 'lichtung-acute' })
     : discreet
-      ? JSON.stringify({ title: t.push.discreetTitle, body: t.push.discreetBody, url: `/start/gedanke/${postId}` })
-      : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
+      ? JSON.stringify({ title: t.push.discreetTitle, body: t.push.discreetBody, url: followUp ? '/start' : `/start/gedanke/${postId}` })
+      : followUp
+        ? JSON.stringify({ title: 'Jiaia', body: t.push.followUp, url: '/start', tag: 'lichtung-follow-up' })
+        : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
   for (const s of subs) {
     // Ältere Abos von vor der Prüfung: nur an echte Push-Dienste senden, alles andere entfernen.
     if (!isPushEndpoint(s.endpoint)) {

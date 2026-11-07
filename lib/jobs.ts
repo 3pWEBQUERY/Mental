@@ -22,13 +22,14 @@ export const QUEUES = {
   retention: 'apply-retention',
   nudgeListeners: 'nudge-listeners',
   requeueModeration: 'requeue-moderation',
+  crisisFollowUp: 'crisis-follow-up',
 } as const
 
 export type JobData = {
   'process-image': { mediaId: string }
   'moderate-content': { targetType: 'post' | 'reply'; targetId: string }
-  /** postId: neue Antwort · alert: akuter Krisen-Treffer an die Moderation (auch in den Ruhezeiten). */
-  'send-push': { userId: string; postId?: string; alert?: boolean }
+  /** postId: neue Antwort · alert: akuter Krisen-Treffer an die Moderation (auch in den Ruhezeiten) · followUp: Nachfrage am Tag danach. */
+  'send-push': { userId: string; postId?: string; alert?: boolean; followUp?: boolean }
   'export-account': { exportId: string }
   'purge-account': { userId: string }
 }

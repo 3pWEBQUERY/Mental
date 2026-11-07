@@ -456,6 +456,8 @@ export const it: Messages = {
     pushHint: 'Il testo è sempre neutro: «Jiaia: qualcuno ti ha risposto». Mai il contenuto.',
     listener: 'Ascoltare quando nessuno risponde',
     listenerHint: 'Se un pensiero resta 6 ore senza risposta, Jiaia può avvisarti – al massimo una volta al giorno, solo nella campanella. Nessuno sa a chi è stato chiesto.',
+    followUp: 'Chiedere come stai dopo un momento difficile',
+    followUpHint: 'Se Jiaia riconosce nel tuo testo parole di una crisi acuta, il giorno dopo ti chiede una volta, con calma, come stai – con i numeri di aiuto. Nessun altro vede questo messaggio.',
     pushOn: 'Il push è attivo su questo dispositivo.',
     pushOff: 'Il push è disattivato.',
     pushUnsupported: 'Questo browser non supporta le notifiche push. Su iPhone funziona se Jiaia è aggiunto alla schermata Home.',
@@ -796,6 +798,15 @@ export const it: Messages = {
     discreetBody: 'Tocca per aprire.',
     acuteTitle: 'Jiaia · Moderazione',
     acuteBody: 'Una segnalazione acuta è in attesa.',
+    followUp: 'Come stai oggi?',
+  },
+  followUp: {
+    title: 'Come stai oggi?',
+    message:
+      'Ieri è stato un momento difficile. Volevamo semplicemente chiederti come stai oggi. Se torna a essere troppo: Telefono Amico è raggiungibile al 143 giorno e notte, e per i giovani Pro Juventute al 147. Non devi portarlo da sola o da solo.',
+    help: 'Numeri di aiuto',
+    plan: 'Il mio piano di emergenza',
+    breathe: 'Respirare un momento',
   },
   listener: {
     nudge: 'Un pensiero aspetta una risposta da alcune ore. Se in questo momento hai energia: ti va di ascoltare?',

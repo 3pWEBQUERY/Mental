@@ -106,3 +106,48 @@ test('Zuhören, wenn es still bleibt: unbeantworteter Gedanke geht an Zuhörende
     await pool.end()
   }
 })
+
+test('Nachfrage nach einem schweren Moment: am Tag danach einmal, mit Hilfe – abschaltbar', async ({ page, browser }) => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  const q = async <T>(sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows as T[]
+  try {
+    const { username } = await register(page)
+    await share(page, `Ich will nicht mehr leben ${Date.now()}`)
+    await page.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
+    // Der Worker setzt die Stufe sonst erst bei der zweiten Prüfung – hier direkt, wie nach dem Teilen.
+    await expect.poll(async () => (await q<{ n: number }>(`SELECT count(*)::int AS n FROM posts p JOIN users u ON u.id = p.user_id WHERE u.username = $1 AND p.crisis_level = 'acute'`, [username]))[0]!.n).toBe(1)
+
+    // Noch am selben Tag: keine Nachfrage.
+    run('crisisFollowUp')
+    const followUps = async (name: string) =>
+      (await q<{ n: number }>(`SELECT count(*)::int AS n FROM notifications n JOIN users u ON u.id = n.user_id WHERE u.username = $1 AND n.payload->>'followUp' = 'true'`, [name]))[0]!.n
+    expect(await followUps(username)).toBe(0)
+
+    // Am nächsten Tag: genau eine – auch wenn der Job mehrmals läuft.
+    await q(`UPDATE posts SET created_at = now() - interval '20 hours' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [username])
+    run('crisisFollowUp')
+    run('crisisFollowUp')
+    expect(await followUps(username)).toBe(1)
+    await page.reload()
+    await page.getByRole('button', { name: /Benachrichtigungen/ }).click()
+    const item = page.getByRole('dialog').locator('li', { hasText: 'Wie geht es dir heute?' })
+    await expect(item).toContainText('143')
+    await item.getByRole('button', { name: 'Hilfe-Nummern' }).click()
+    await expect(page.getByRole('dialog', { name: 'Sofort Hilfe' })).toBeVisible()
+
+    // Abgeschaltet: keine Nachfrage.
+    const other = await (await browser.newContext()).newPage()
+    const second = await register(other)
+    await other.goto('/einstellungen')
+    await other.locator('label.switch', { hasText: 'Nachfrage nach einem schweren Moment' }).click()
+    await expect.poll(async () => (await q<{ v: string | null }>(`SELECT p.settings->>'followUp' AS v FROM profiles p JOIN users u ON u.id = p.user_id WHERE u.username = $1`, [second.username]))[0]!.v).toBe('false')
+    await share(other, `Ich will nicht mehr leben ${Date.now()}`)
+    await other.getByRole('button', { name: 'Ich bleibe noch in der App' }).click()
+    await expect.poll(async () => (await q<{ n: number }>(`SELECT count(*)::int AS n FROM posts p JOIN users u ON u.id = p.user_id WHERE u.username = $1 AND p.crisis_level = 'acute'`, [second.username]))[0]!.n).toBe(1)
+    await q(`UPDATE posts SET created_at = now() - interval '20 hours' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [second.username])
+    run('crisisFollowUp')
+    expect(await followUps(second.username)).toBe(0)
+  } finally {
+    await pool.end()
+  }
+})

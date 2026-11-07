@@ -48,6 +48,11 @@ export default function PrivacyPage() {
             Wenn du «Zuhören, wenn es still bleibt» einschaltest, merken wir uns, wann wir dich zuletzt auf einen wartenden Gedanken hingewiesen haben (höchstens
             einmal am Tag). Wer gefragt wurde, sieht niemand sonst.
           </li>
+          <li>
+            Erkennt Jiaia in einem deiner Texte Worte einer akuten Krise, fragen wir am nächsten Tag einmal nach, wie es dir geht – nur in deiner Glocke (und als
+            Push, wenn du Mitteilungen eingeschaltet hast). Dafür merken wir uns, wann wir zuletzt nachgefragt haben. Abschalten kannst du das unter Einstellungen →
+            Benachrichtigungen.
+          </li>
           <li>Gedanken, die du «loslassen» willst, löschen wir zum gewählten Zeitpunkt endgültig – samt Antworten.</li>
           <li>Sitzungen mit Gerätetyp und Datum, ohne IP-Adresse.</li>
           <li>IP-Adressen nur gesalzen gehasht für den Schutz vor Missbrauch. Nach 24 Stunden werden sie gelöscht.</li>

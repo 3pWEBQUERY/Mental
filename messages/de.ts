@@ -453,6 +453,8 @@ export const de = {
     pushHint: 'Der Text ist immer neutral: «Jiaia: Jemand hat dir geantwortet». Nie der Inhalt.',
     listener: 'Zuhören, wenn es still bleibt',
     listenerHint: 'Bleibt ein Gedanke 6 Stunden ohne Antwort, kann Jiaia dir Bescheid geben – höchstens einmal am Tag, nur in der Glocke. Niemand erfährt, wer gefragt wurde.',
+    followUp: 'Nachfrage nach einem schweren Moment',
+    followUpHint: 'Erkennt Jiaia in deinem Text Worte einer akuten Krise, fragt es am nächsten Tag einmal ruhig nach, wie es dir geht – mit den Hilfe-Nummern. Niemand sonst sieht diese Nachricht.',
     pushOn: 'Push ist auf diesem Gerät aktiv.',
     pushOff: 'Push ist aus.',
     pushUnsupported: 'Dieser Browser unterstützt keine Push-Nachrichten. Auf dem iPhone geht es, wenn Jiaia zum Home-Bildschirm hinzugefügt ist.',
@@ -794,6 +796,15 @@ export const de = {
     discreetBody: 'Tippe zum Öffnen.',
     acuteTitle: 'Jiaia · Moderation',
     acuteBody: 'Ein akuter Hinweis wartet.',
+    followUp: 'Wie geht es dir heute?',
+  },
+  followUp: {
+    title: 'Wie geht es dir heute?',
+    message:
+      'Gestern war ein schwerer Moment. Wir wollten einfach fragen, wie es dir heute geht. Wenn es wieder eng wird: Die Dargebotene Hand ist unter 143 rund um die Uhr da, für Junge auch Pro Juventute unter 147. Du musst das nicht allein tragen.',
+    help: 'Hilfe-Nummern',
+    plan: 'Mein Notfallplan',
+    breathe: 'Kurz atmen',
   },
   listener: {
     nudge: 'Ein Gedanke wartet seit einigen Stunden auf eine Antwort. Wenn du gerade Kraft hast: Magst du zuhören?',

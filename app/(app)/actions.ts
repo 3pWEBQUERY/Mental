@@ -734,6 +734,7 @@ export type ClientNotification = {
   excerpt: string | null
   message: string | null
   appealable: boolean
+  followUp: boolean
   read: boolean
   createdAt: string
 }
@@ -765,6 +766,7 @@ export async function listNotifications(): Promise<ClientNotification[]> {
     excerpt: r.payload.excerpt ?? null,
     message: r.payload.message ?? null,
     appealable: Boolean(r.payload.appealable),
+    followUp: Boolean(r.payload.followUp),
     read: Boolean(r.readAt),
     createdAt: r.createdAt.toISOString(),
   }))
