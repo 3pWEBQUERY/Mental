@@ -1,20 +1,16 @@
-import { eq } from "drizzle-orm";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { db } from "@/db";
-import { blogMedia, blogPosts } from "@/db/schema";
-import { BlogEditor } from "@/components/admin/blog-editor";
-import { isUuid } from "@/lib/id";
-import { requireModerator } from "@/lib/server/admin";
+import { eq } from 'drizzle-orm'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { db } from '@/db'
+import { blogMedia, blogPosts } from '@/db/schema'
+import { BlogEditor } from '@/components/admin/blog-editor'
+import { isUuid } from '@/lib/id'
+import { requireModerator } from '@/lib/server/admin'
 
-export default async function EditBlogPost({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  await requireModerator("admin");
-  const { id } = await params;
-  if (!isUuid(id)) notFound();
+export default async function EditBlogPost({ params }: { params: Promise<{ id: string }> }) {
+  await requireModerator('admin')
+  const { id } = await params
+  if (!isUuid(id)) notFound()
   const [p] = await db
     .select({
       post: blogPosts,
@@ -23,9 +19,9 @@ export default async function EditBlogPost({
     })
     .from(blogPosts)
     .leftJoin(blogMedia, eq(blogMedia.id, blogPosts.coverId))
-    .where(eq(blogPosts.id, id));
-  if (!p) notFound();
-  const { post } = p;
+    .where(eq(blogPosts.id, id))
+  if (!p) notFound()
+  const { post } = p
   return (
     <div className="stack">
       <Link href="/admin/blog" className="fine">
@@ -43,14 +39,11 @@ export default async function EditBlogPost({
           body: post.body,
           locale: post.locale,
           category: post.category,
-          status: post.status === "published" ? "published" : "draft",
-          cover:
-            post.coverId && p.width && p.height
-              ? { id: post.coverId, width: p.width, height: p.height }
-              : null,
-          coverAlt: post.coverAlt ?? "",
+          status: post.status === 'published' ? 'published' : 'draft',
+          cover: post.coverId && p.width && p.height ? { id: post.coverId, width: p.width, height: p.height } : null,
+          coverAlt: post.coverAlt ?? '',
         }}
       />
     </div>
-  );
+  )
 }

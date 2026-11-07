@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { PublicShell } from '@/components/ui'
 
-export const metadata: Metadata = { title: 'Impressum' }
+export const metadata: Metadata = { title: 'Impressum', description: 'Impressum von Jiaia – verantwortlich, Kontakt und Hinweis: kein Notfalldienst.', alternates: { canonical: '/impressum' } }
 
 /** Impressum nach Schweizer Recht. */
 export default function ImprintPage() {

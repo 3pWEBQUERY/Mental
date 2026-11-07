@@ -6,6 +6,7 @@ import { PanicGuard } from '@/components/panic'
 import { Toaster } from '@/components/toast'
 import { PREFS_SCRIPT } from '@/lib/prefs-script'
 import { m } from '@/messages'
+import { OG_IMAGE, ogLocale, SITE_URL } from '@/lib/seo'
 import './globals.css'
 import { HtmlLang } from '@/components/html-lang'
 
@@ -22,8 +23,13 @@ const serif = localFont({
 // Pro Anfrage (Sprache); vorgerenderte Seiten bekommen die deutsche Beschreibung.
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: { default: m.brand, template: `%s · ${m.brand}` },
-    description: m.meta.description,
+    metadataBase: new URL(SITE_URL),
+    title: { default: m.seo.title, template: `%s · ${m.brand}` },
+    description: m.seo.home,
+    openGraph: { type: 'website', siteName: m.brand, locale: ogLocale(), title: m.seo.title, description: m.seo.home, images: [{ ...OG_IMAGE, alt: m.seo.ogAlt }] },
+    twitter: { card: 'summary_large_image', title: m.seo.title, description: m.seo.home, images: [OG_IMAGE.url] },
+    // Safari auf iPhone/iPad: dezentes Banner «In der App öffnen» für die Jiaia-App.
+    other: { 'apple-itunes-app': 'app-id=6829498048' },
     applicationName: m.brand,
     appleWebApp: { capable: true, title: m.brand, statusBarStyle: 'default' },
     // Tab- und App-Icons kommen aus den Dateien app/favicon.ico, app/icon.svg und app/apple-icon.png. Ein eigener

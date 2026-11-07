@@ -4,6 +4,7 @@ import { HelpList, PhoneScript, PublicShell } from '@/components/ui'
 import { TopicHelp } from '@/components/topic-help'
 import { getHelpResources } from '@/lib/server/terms'
 import { getMessages } from '@/messages'
+import { pageMeta } from '@/lib/seo'
 
 // Bei jeder Anfrage gerendert (Daten aus dem Zwischenspeicher, höchstens 2 s Datenbank, sonst die Notfall-Liste).
 // Vorgerendert hätte der erste Besuch nach einem Deploy die Fassung vom Build gezeigt – ohne Datenbank gebaut, also
@@ -12,7 +13,11 @@ export const instant = false
 
 const en = getMessages('en')
 
-export const metadata: Metadata = { title: en.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto', 'en-CH': '/help' } } }
+const seo = pageMeta({ title: en.help.pageTitle, description: en.help.metaDescription, path: '/help', locale: 'en' })
+export const metadata: Metadata = {
+  ...seo,
+  alternates: { canonical: '/help', languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto', 'en-CH': '/help', 'x-default': '/hilfe' } },
+}
 
 /** Immediate help – die englische Hilfeseite (für alle, die in der Schweiz lieber Englisch lesen). */
 export default async function HelpPage() {

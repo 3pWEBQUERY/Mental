@@ -271,6 +271,7 @@ export const fr: Messages = {
   },
   help: {
     title: 'Aide immédiate',
+    metaDescription: 'Aide immédiate en Suisse : La Main Tendue 143, Pro Juventute 147, urgences 144 – 24 h sur 24, anonyme et gratuit. Même sans inscription.',
     /** Die vorgerenderte Hilfeseite dieser Sprache. */
     href: '/aide',
     eyebrow: 'Aide immédiate',
@@ -657,6 +658,15 @@ export const fr: Messages = {
     helpLink: 'Aide immédiate',
     draft: 'Brouillon – visible seulement pour l’équipe.',
     notFound: 'Cet article n’existe pas (ou plus).',
+  },
+  seo: {
+    title: 'Jiaia – partager ses pensées anonymement, recevoir du soutien',
+    home: 'Un lieu calme et anonyme en Suisse : partager ses pensées, recevoir du soutien, l’aide toujours à un geste. Sans e-mail, sans likes, sans publicité – sur le web et en application pour iPhone.',
+    ogAlt: 'Jiaia – un lieu où personne ne juge.',
+    blog: 'Les actualités de Jiaia et des connaissances claires sur la santé mentale, écrites par l’équipe Jiaia.',
+    rules: 'Comment nous nous comportons sur Jiaia : les règles de la maison et celles de chaque cercle.',
+    transparency: 'Ce que Jiaia promet et comment travaille la modération – ouvertement, sans contenus et sans chiffres qui permettraient de reconnaître quelqu’un.',
+    register: 'Créer un compte Jiaia – anonyme, sans e-mail et sans numéro de téléphone. Dès 16 ans.',
   },
   transparency: {
     title: 'Transparence',

@@ -1,6 +1,8 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { connection } from 'next/server'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { NO_INDEX } from '@/lib/seo'
 import { AppChrome } from '@/components/app/chrome'
 import { ViewerProvider, type ClientViewer } from '@/components/viewer'
 import { db } from '@/db'
@@ -14,6 +16,9 @@ import { presenceCounts, unreadState } from './actions'
 
 // Alles hinter der Anmeldung wird pro Request gerendert: eigene CSP-Nonce, keine geteilten Shells.
 export const instant = false
+
+/** Persönlicher Raum: nie in Suchmaschinen. */
+export const metadata: Metadata = { robots: NO_INDEX }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   await connection()

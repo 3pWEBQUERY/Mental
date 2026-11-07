@@ -4,13 +4,14 @@ import { connection } from 'next/server'
 import { PublicShell } from '@/components/ui'
 import { getTransparency, type Figure } from '@/lib/server/transparency'
 import { lazy, localeTag, m } from '@/messages'
+import { pageMeta } from '@/lib/seo'
 
 // Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
 export const instant = false
 
 // Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: m.transparency.title }
+  return pageMeta({ title: m.transparency.title, description: m.seo.transparency, path: '/transparenz' })
 }
 
 const t = lazy('transparency')
