@@ -8,7 +8,7 @@ import { env } from '@/lib/server/env'
 import { isLocale, LOCALE_COOKIE } from '@/messages'
 
 /** Die beiden Hilfeseiten sind vorgerendert und einsprachig – beim Wechsel auf die jeweils andere springen. */
-const HELP_PAGE = { de: '/hilfe', fr: '/aide', it: '/aiuto' } as const
+const HELP_PAGE = { de: '/hilfe', fr: '/aide', it: '/aiuto', en: '/help' } as const
 
 /**
  * Sprache wechseln: /sprache?l=fr&zurueck=/einstellungen. Setzt das Cookie für dieses Gerät, merkt es sich

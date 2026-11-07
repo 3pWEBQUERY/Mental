@@ -9,7 +9,7 @@ export const ensureStatic = 'navigation'
 
 const fr = getMessages('fr')
 
-export const metadata: Metadata = { title: fr.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto' } } }
+export const metadata: Metadata = { title: fr.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto', 'en-CH': '/help' } } }
 
 /** Aide immédiate – die französische Hilfeseite für die Romandie. */
 export default async function AidePage() {

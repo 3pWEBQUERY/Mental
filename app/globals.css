@@ -925,3 +925,5 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 .segment.small { padding: 3px; }
 .segment.small button, .segment.small .blob-copy { padding: 5px 11px; font-size: calc(12px * var(--fz)); }
 .breath-hint { flex-basis: 100%; margin: 0; font-size: calc(12.5px * var(--fz)); color: var(--ink-3); max-width: 44ch; }
+.transparency-early { margin: 22px 0 8px; }
+.transparency-early h2 { margin-top: 0; }

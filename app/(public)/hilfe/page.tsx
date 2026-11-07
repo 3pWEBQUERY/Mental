@@ -7,7 +7,7 @@ import { getMessages, m } from '@/messages'
 // Vollständig vorgerendert: Die Hilfe funktioniert auch, wenn Datenbank oder Login ausfallen.
 export const ensureStatic = 'navigation'
 
-export const metadata: Metadata = { title: m.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto' } } }
+export const metadata: Metadata = { title: m.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto', 'en-CH': '/help' } } }
 
 export default async function HelpPage() {
   const resources = await getHelpResources()

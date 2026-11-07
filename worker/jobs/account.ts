@@ -44,6 +44,7 @@ const EXPORT_HINT = {
   de: 'Dein Tagebuch ist verschlüsselt. Entschlüsseln kannst nur du – mit deiner Tagebuch-PIN. «letGoAt» bei einem Gedanken ist der Tag, an dem du ihn loslässt (er wird dann gelöscht).',
   fr: 'Ton journal est chiffré. Toi seul·e peux le déchiffrer – avec le code PIN de ton journal. «letGoAt» pour une pensée est le jour où tu la laisses partir (elle sera alors supprimée).',
   it: 'Il tuo diario è cifrato. Puoi decifrarlo solo tu – con il PIN del diario. «letGoAt» per un pensiero è il giorno in cui lo lasci andare (verrà eliminato).',
+  en: 'Your journal is encrypted. Only you can decrypt it – with your journal PIN. “letGoAt” on a thought is the day you let it go (it will then be deleted).',
 }
 
 /** ZIP mit allen Daten des Kontos (JSON + eigene Bilder), 24 Stunden über einen signierten Link abrufbar. */
@@ -140,7 +141,7 @@ async function exportOnce(exportId: string, last: boolean): Promise<boolean> {
     const { journalSalt, journalCheck, ...settings } = profile?.settings ?? {}
     const data = {
       exportedAt: new Date().toISOString(),
-      hinweis: EXPORT_HINT[(profile?.settings?.locale as 'fr' | 'it' | undefined) ?? 'de'] ?? EXPORT_HINT.de,
+      hinweis: EXPORT_HINT[(profile?.settings?.locale as 'fr' | 'it' | 'en' | undefined) ?? 'de'] ?? EXPORT_HINT.de,
       sprache: profile?.settings?.locale ?? 'de',
       account: { ...user, displayName: profile?.displayName, defaultVisibility: profile?.defaultVisibility, settings },
       gedanken: myPosts,

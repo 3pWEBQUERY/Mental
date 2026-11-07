@@ -10,9 +10,15 @@ export const MIN_COUNT = 10
 /** Eine Zahl oder «unterdrückt» (1 bis MIN_COUNT − 1). Null bleibt null – das verrät niemanden. */
 export type Figure = { n: number } | { below: number }
 
+/** Ab so vielen Gedanken in einem Quartal veröffentlichen wir seine Zahlen – darunter wären Einzelne erkennbar. */
+export const PUBLISH_MIN_POSTS = 100
+
 export type Quarter = {
-  /** z. B. «3. Quartal 2026» */
-  label: string
+  /** Quartal (1–4) und Jahr – beschriftet in der Sprache der Seite (m.transparency.quarter). */
+  q: number
+  year: number
+  /** Genug Austausch für eine Veröffentlichung (PUBLISH_MIN_POSTS). */
+  publishable: boolean
   posts: Figure
   replies: Figure
   /** Anteil der Gedanken mit einer Antwort innerhalb von 24 Stunden – nur ab MIN_COUNT Gedanken. */
@@ -50,7 +56,7 @@ export async function getTransparency(): Promise<Quarter[] | null> {
       SELECT q::text AS q, extract(quarter FROM q)::int AS label_q, extract(year FROM q)::int AS label_y
       FROM generate_series(date_trunc('quarter', now()) - interval '6 months', date_trunc('quarter', now()) - interval '3 months', interval '3 months') AS q
       ORDER BY q DESC`)
-    const out = await Promise.all(quarters.map((q) => quarter(q.q, `${q.label_q}. Quartal ${q.label_y}`)))
+    const out = await Promise.all(quarters.map((q) => quarter(q.q, q.label_q, q.label_y)))
     cacheLife('hours')
     return out
   } catch (e) {
@@ -60,7 +66,7 @@ export async function getTransparency(): Promise<Quarter[] | null> {
   }
 }
 
-async function quarter(from: string, label: string): Promise<Quarter> {
+async function quarter(from: string, q: number, year: number): Promise<Quarter> {
   const range = sql`>= ${from}::timestamptz AND created_at < ${from}::timestamptz + interval '3 months'`
   const pRange = sql`>= ${from}::timestamptz AND p.created_at < ${from}::timestamptz + interval '3 months'`
   const [content, reports, reasons, crisis, actions, userActs] = await Promise.all([
@@ -102,7 +108,9 @@ async function quarter(from: string, label: string): Promise<Quarter> {
   const act = (name: string) => actions.find((a) => a.action === name)?.n ?? 0
   const userAct = (name: string) => userActs.find((a) => a.action === name)?.n ?? 0
   return {
-    label,
+    q,
+    year,
+    publishable: c.posts >= PUBLISH_MIN_POSTS,
     posts: figure(c.posts),
     replies: figure(c.replies),
     answeredShare: c.visible >= MIN_COUNT ? Math.round((c.answered / c.visible) * 100) : null,

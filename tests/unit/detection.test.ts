@@ -118,3 +118,15 @@ describe('Krisenerkennung: Umlaute in jeder Schreibweise', () => {
     expect(detectCrisis('Ich bin müde heute')).toBe('none')
   })
 })
+
+describe('Englisch', () => {
+  it('erkennt Krisensprache mit und ohne Apostroph', async () => {
+    const { detectCrisis } = await import('../../lib/crisis')
+    expect(detectCrisis('Honestly I just want to kill myself')).toBe('acute')
+    expect(detectCrisis("I don't want to live anymore")).toBe('acute')
+    expect(detectCrisis('i dont want to live like this')).toBe('acute')
+    expect(detectCrisis('Everyone would be better off without me')).toBe('concern')
+    expect(detectCrisis('I could die laughing at this')).toBe('none')
+    expect(detectCrisis('I want to end it with him')).toBe('none')
+  })
+})

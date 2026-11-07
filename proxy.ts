@@ -6,15 +6,15 @@ const SESSION_COOKIE = 'lichtung_session'
 const PROTECTED = ['/start', '/ich', '/einstellungen', '/admin']
 const AUTH_ONLY = ['/anmelden', '/registrieren']
 /** Vollständig vorgerenderte Seiten ohne Nutzerinhalte – hier kann es keine Nonce geben. */
-const STATIC_PAGES = ['/hilfe', '/datenschutz', '/impressum', '/offline', '/aide', '/aiuto']
+const STATIC_PAGES = ['/hilfe', '/datenschutz', '/impressum', '/offline', '/aide', '/aiuto', '/help']
 /** Alle Seiten-Routen der App. Was hier nicht drin ist, endet auf der vorgerenderten 404-Seite. */
 const APP_ROUTES = ['/', '/regeln', '/transparenz', ...STATIC_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen', '/sprache']
 const isAppRoute = (p: string) => APP_ROUTES.some((r) => p === r || (r !== '/' && p.startsWith(`${r}/`)))
 /** Gleich wie LOCALE_COOKIE in messages/index.ts – hier ohne Import, damit die Wörterbücher nicht im Proxy landen. */
 const LOCALE_COOKIE = 'lichtung_lang'
 
-/** Erste unterstützte Sprache aus Accept-Language (Deutsch, Französisch, Italienisch), sonst Deutsch. */
-export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' | 'it' {
+/** Erste unterstützte Sprache aus Accept-Language (Deutsch, Französisch, Italienisch, Englisch), sonst Deutsch. */
+export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' | 'it' | 'en' {
   const langs = (acceptLanguage ?? '')
     .split(',')
     .map((part) => {
@@ -28,6 +28,7 @@ export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' | 'it' {
     if (l.tag.startsWith('fr')) return 'fr'
     if (l.tag.startsWith('it')) return 'it'
     if (l.tag.startsWith('de')) return 'de'
+    if (l.tag.startsWith('en')) return 'en'
   }
   return 'de'
 }

@@ -483,6 +483,9 @@ export async function saveCircle(form: FormData): Promise<AdminResult> {
       nameIt: optional(40),
       descriptionIt: optional(400),
       rulesIt: optional(400),
+      nameEn: optional(40),
+      descriptionEn: optional(400),
+      rulesEn: optional(400),
     })
     .safeParse(Object.fromEntries(form))
   if (!parsed.success)
@@ -490,6 +493,7 @@ export async function saveCircle(form: FormData): Promise<AdminResult> {
   const d = parsed.data
   const fr = { name: d.nameFr || undefined, description: d.descriptionFr || undefined, rules: d.rulesFr || undefined }
   const it = { name: d.nameIt || undefined, description: d.descriptionIt || undefined, rules: d.rulesIt || undefined }
+  const en = { name: d.nameEn || undefined, description: d.descriptionEn || undefined, rules: d.rulesEn || undefined }
   const has = (t: typeof fr) => Boolean(t.name || t.description || t.rules)
   const values = {
     slug: d.slug,
@@ -500,7 +504,7 @@ export async function saveCircle(form: FormData): Promise<AdminResult> {
     sort: d.sort,
     isActive: d.isActive === 'on',
     requireCw: d.requireCw === 'on',
-    i18n: { ...(has(fr) ? { fr } : {}), ...(has(it) ? { it } : {}) },
+    i18n: { ...(has(fr) ? { fr } : {}), ...(has(it) ? { it } : {}), ...(has(en) ? { en } : {}) },
   }
   const [taken] = await db
     .select({ id: circles.id })
@@ -586,7 +590,7 @@ const helpSchema = z.object({
   hours: str(80),
   audience: str(120),
   sort: z.coerce.number().int().min(0).max(999),
-  language: z.enum(['de', 'fr', 'it']).default('de'),
+  language: z.enum(['de', 'fr', 'it', 'en']).default('de'),
   circleId: z.uuid().optional().or(z.literal('')),
 })
 
@@ -639,7 +643,7 @@ export async function saveTerm(form: FormData) {
     .object({
       term: str(80),
       level: z.enum(['concern', 'acute']),
-      language: z.enum(['de', 'fr', 'it']).default('de'),
+      language: z.enum(['de', 'fr', 'it', 'en']).default('de'),
       remove: z.string().optional(),
       id: z.uuid().optional().or(z.literal('')),
     })
@@ -669,11 +673,16 @@ export async function saveStep(form: FormData): Promise<AdminResult> {
       isActive: z.string().optional(),
       textFr: optional(200),
       textIt: optional(200),
+      textEn: optional(200),
     })
     .safeParse(Object.fromEntries(form))
   if (!parsed.success) return nope(INVALID)
   const d = parsed.data
-  const i18n = { ...(d.textFr ? { fr: { text: d.textFr } } : {}), ...(d.textIt ? { it: { text: d.textIt } } : {}) }
+  const i18n = {
+    ...(d.textFr ? { fr: { text: d.textFr } } : {}),
+    ...(d.textIt ? { it: { text: d.textIt } } : {}),
+    ...(d.textEn ? { en: { text: d.textEn } } : {}),
+  }
   const values = { text: d.text, circleId: d.circleId || null, sort: d.sort, isActive: d.isActive === 'on', i18n }
   if (values.circleId) {
     const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.id, values.circleId))

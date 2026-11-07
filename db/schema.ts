@@ -142,7 +142,7 @@ export type Settings = {
   /** Zuletzt gezeigter kleiner Schritt – der nächste ist ein anderer. */
   lastStep?: string
   /** Sprache der App für dieses Konto – gilt auf jedem Gerät nach der Anmeldung (Cookie lichtung_lang). */
-  locale?: 'de' | 'fr' | 'it'
+  locale?: 'de' | 'fr' | 'it' | 'en'
   /** Neues Konto: kurze Einführung beim ersten Besuch (wird danach entfernt). */
   onboard?: boolean
   /** «Zuhören, wenn es still bleibt»: Hinweis auf Gedanken, die lange ohne Antwort sind. */
@@ -169,8 +169,8 @@ export const profiles = pgTable('profiles', {
 /* --------------------------------------------------------------- Kreise */
 
 type CircleText = { name?: string; description?: string; rules?: string }
-export type CircleI18n = { fr?: CircleText; it?: CircleText }
-export type StepI18n = { fr?: { text?: string }; it?: { text?: string } }
+export type CircleI18n = { fr?: CircleText; it?: CircleText; en?: CircleText }
+export type StepI18n = { fr?: { text?: string }; it?: { text?: string }; en?: { text?: string } }
 
 export const circles = pgTable('circles', {
   id: id(),

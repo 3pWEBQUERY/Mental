@@ -1,8 +1,8 @@
 /* Jiaia Service Worker: Push für «neue Antwort» und eine Offline-Seite mit den Hilfe-Nummern. */
-const CACHE = 'jiaia-v6'
+const CACHE = 'jiaia-v7'
 /** Stylesheets und Schriften der Hilfeseiten – damit sie offline nicht ungestaltet erscheinen. */
 const ASSETS = 'jiaia-assets-v2'
-const OFFLINE = ['/offline', '/hilfe', '/aide', '/aiuto']
+const OFFLINE = ['/offline', '/hilfe', '/aide', '/aiuto', '/help']
 const KEEP = [CACHE, ASSETS]
 
 let lastRefresh = 0
@@ -84,7 +84,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(async () => {
         const cache = await caches.open(CACHE)
-        const page = ['/hilfe', '/aide', '/aiuto'].includes(url.pathname) ? url.pathname : '/offline'
+        const page = ['/hilfe', '/aide', '/aiuto', '/help'].includes(url.pathname) ? url.pathname : '/offline'
         return (await cache.match(page)) || Response.error()
       }),
   )

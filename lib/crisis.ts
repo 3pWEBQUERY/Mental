@@ -63,7 +63,6 @@ export const DEFAULT_CRISIS_TERMS_FR: CrisisTerm[] = [
   { term: 'je vais me tuer', level: 'acute' },
   { term: 'envie de me tuer', level: 'acute' },
   { term: 'me suicider', level: 'acute' },
-  { term: 'suicide', level: 'acute' },
   { term: 'suicidaire', level: 'acute' },
   { term: 'suicidaires', level: 'acute' },
   { term: 'suicid*', level: 'acute' },
@@ -140,8 +139,58 @@ export const DEFAULT_CRISIS_TERMS_IT: CrisisTerm[] = [
   { term: 'vorrei sparire', level: 'concern' },
 ]
 
+/**
+ * Englische Startliste. Wie die französische und italienische eng gefasst («akut» hält einen Gedanken bis zur
+ * Prüfung zurück): ganze Wendungen statt einzelner Wörter wie «die» oder «end it» («end it with him»). Apostrophe werden beim
+ * Vergleich zu Leerzeichen (lib/text.ts) – darum je eine Fassung mit und ohne («don’t» / «dont»).
+ * Vor dem Launch von einer Fachperson abzunehmen.
+ */
+export const DEFAULT_CRISIS_TERMS_EN: CrisisTerm[] = [
+  { term: 'i want to die', level: 'acute' },
+  { term: 'i wanna die', level: 'acute' },
+  { term: 'want to be dead', level: 'acute' },
+  { term: 'wish i was dead', level: 'acute' },
+  { term: 'wish i were dead', level: 'acute' },
+  { term: 'don’t want to live', level: 'acute' },
+  { term: 'dont want to live', level: 'acute' },
+  { term: 'do not want to live', level: 'acute' },
+  { term: 'don’t want to be alive', level: 'acute' },
+  { term: 'dont want to be alive', level: 'acute' },
+  { term: 'no reason to live', level: 'acute' },
+  { term: 'kill myself', level: 'acute' },
+  { term: 'killing myself', level: 'acute' },
+  { term: 'end my life', level: 'acute' },
+  { term: 'ending my life', level: 'acute' },
+  { term: 'take my own life', level: 'acute' },
+  { term: 'want to end it all', level: 'acute' },
+  { term: 'suicide', level: 'acute' },
+  { term: 'suicid*', level: 'acute' },
+  { term: 'goodbye letter', level: 'acute' },
+  { term: 'never wake up', level: 'acute' },
+  { term: 'jump off a bridge', level: 'acute' },
+  { term: 'hurt myself', level: 'concern' },
+  { term: 'harm myself', level: 'concern' },
+  { term: 'self harm', level: 'concern' },
+  { term: 'cutting myself', level: 'concern' },
+  { term: 'nothing makes sense anymore', level: 'concern' },
+  { term: 'hopeless', level: 'concern' },
+  { term: 'no hope left', level: 'concern' },
+  { term: 'nobody would miss me', level: 'concern' },
+  { term: 'no one would miss me', level: 'concern' },
+  { term: 'better off without me', level: 'concern' },
+  { term: 'i am a burden', level: 'concern' },
+  { term: 'i’m a burden', level: 'concern' },
+  { term: 'im a burden', level: 'concern' },
+  { term: 'i can’t go on', level: 'concern' },
+  { term: 'i cant go on', level: 'concern' },
+  { term: 'i can’t do this anymore', level: 'concern' },
+  { term: 'i cant do this anymore', level: 'concern' },
+  { term: 'overdose', level: 'concern' },
+  { term: 'want to disappear', level: 'concern' },
+]
+
 /** Rückfall ohne Datenbank: alle Sprachen. */
-export const ALL_DEFAULT_CRISIS_TERMS: CrisisTerm[] = [...DEFAULT_CRISIS_TERMS, ...DEFAULT_CRISIS_TERMS_FR, ...DEFAULT_CRISIS_TERMS_IT]
+export const ALL_DEFAULT_CRISIS_TERMS: CrisisTerm[] = [...DEFAULT_CRISIS_TERMS, ...DEFAULT_CRISIS_TERMS_FR, ...DEFAULT_CRISIS_TERMS_IT, ...DEFAULT_CRISIS_TERMS_EN]
 
 const RANK: Record<CrisisLevel, number> = { none: 0, concern: 1, acute: 2 }
 

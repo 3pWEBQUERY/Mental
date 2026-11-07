@@ -67,11 +67,16 @@ test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
   await expect(page.locator('#composer-text')).toHaveValue('')
 })
 
-test('Transparenz: öffentliche Zahlen pro Quartal, ohne Anmeldung', async ({ page }) => {
+test('Transparenz: ohne genug Austausch keine leeren Zahlen, sondern Versprechen und Arbeitsweise', async ({ page }) => {
   await page.goto('/transparenz')
   await expect(page.getByRole('heading', { name: 'Transparenz', level: 1 })).toBeVisible()
-  await expect(page.getByRole('heading', { name: /Quartal \d{4}/ }).first()).toBeVisible()
-  await expect(page.getByText('Geteilte Gedanken').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Noch keine Zahlen – mit Absicht' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Was wir versprechen' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'So arbeitet die Moderation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Was wir veröffentlichen werden' })).toBeVisible()
+  // Keine Quartalszahlen, solange niemand sie lesen könnte, ohne Einzelne zu erkennen.
+  await expect(page.getByRole('heading', { name: /Quartal \d{4}/ })).toHaveCount(0)
+  await expect(page.getByText('Geteilte Gedanken')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Transparenz' })).toBeVisible()
 })
 

@@ -501,7 +501,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           {/* Sprachnamen immer in ihrer eigenen Sprache. Wechsel lädt die Seite in der neuen Sprache neu. */}
           <Segment
             value={currentLocale()}
-            options={{ de: 'Deutsch', fr: 'Français', it: 'Italiano' }}
+            options={{ de: 'Deutsch', fr: 'Français', it: 'Italiano', en: 'English' }}
             onChange={(l) => window.location.assign(`/sprache?l=${l}&zurueck=/einstellungen`)}
             label={s.language}
           />

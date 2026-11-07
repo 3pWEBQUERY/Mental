@@ -16,8 +16,8 @@ export function HtmlLang() {
   useEffect(() => {
     const seg = path.split('/')[1] ?? ''
     const cookie = ` ${document.cookie};`
-    const ui = cookie.includes(' lichtung_lang=fr;') ? 'fr' : cookie.includes(' lichtung_lang=it;') ? 'it' : 'de'
-    const lang = seg === 'aide' ? 'fr' : seg === 'aiuto' ? 'it' : GERMAN_ONLY.includes(seg) ? 'de' : ui
+    const ui = cookie.includes(' lichtung_lang=fr;') ? 'fr' : cookie.includes(' lichtung_lang=it;') ? 'it' : cookie.includes(' lichtung_lang=en;') ? 'en' : 'de'
+    const lang = seg === 'aide' ? 'fr' : seg === 'aiuto' ? 'it' : seg === 'help' ? 'en' : GERMAN_ONLY.includes(seg) ? 'de' : ui
     document.documentElement.lang = `${lang}-CH`
     // Installierte App in der gewählten Sprache (Name, Beschreibung, Kurzbefehle) – das vorgerenderte Manifest ist
     // deutsch, und Browser senden beim Abruf keinen Cookie.

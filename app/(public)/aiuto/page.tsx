@@ -9,7 +9,7 @@ export const ensureStatic = 'navigation'
 
 const it = getMessages('it')
 
-export const metadata: Metadata = { title: it.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto' } } }
+export const metadata: Metadata = { title: it.help.pageTitle, alternates: { languages: { 'de-CH': '/hilfe', 'fr-CH': '/aide', 'it-CH': '/aiuto', 'en-CH': '/help' } } }
 
 /** Aiuto immediato – die italienische Hilfeseite für das Tessin und die italienischsprachigen Täler. */
 export default async function AiutoPage() {
