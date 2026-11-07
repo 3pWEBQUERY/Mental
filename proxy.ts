@@ -10,7 +10,7 @@ const STATIC_PAGES = ['/datenschutz', '/impressum', '/offline']
 /** Hilfeseiten: bei jeder Anfrage gerendert (siehe app/(public)/hilfe/page.tsx) – also mit Nonce wie alle anderen. */
 const HELP_PAGES = ['/hilfe', '/aide', '/aiuto', '/help']
 /** Alle Seiten-Routen der App. Was hier nicht drin ist, endet auf der vorgerenderten 404-Seite. */
-const APP_ROUTES = ['/', '/regeln', '/transparenz', ...STATIC_PAGES, ...HELP_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen', '/sprache']
+const APP_ROUTES = ['/', '/regeln', '/transparenz', '/blog', ...STATIC_PAGES, ...HELP_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen', '/sprache']
 const isAppRoute = (p: string) => APP_ROUTES.some((r) => p === r || (r !== '/' && p.startsWith(`${r}/`)))
 /** Gleich wie LOCALE_COOKIE in messages/index.ts – hier ohne Import, damit die Wörterbücher nicht im Proxy landen. */
 const LOCALE_COOKIE = 'lichtung_lang'

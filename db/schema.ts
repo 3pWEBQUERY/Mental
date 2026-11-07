@@ -602,6 +602,41 @@ export const partners = pgTable('partners', {
   createdAt: createdAt(),
 })
 
+/** Titelbilder für Blogbeiträge – neu gerechnet (WebP, ohne Metadaten), in der Datenbank wie die Partner-Logos. */
+export const blogMedia = pgTable('blog_media', {
+  id: id(),
+  data: bytea('data').notNull(),
+  contentType: text('content_type').notNull().default('image/webp'),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: createdAt(),
+})
+
+/**
+ * Blog: Neuigkeiten über Jiaia und Wissen rund um mentale Gesundheit. Eine Sprache je Beitrag. Öffentlich erst mit
+ * status «published»; Entwürfe sieht nur das Admin-Team (Vorschau). Verfasst «vom Team Jiaia» – nie mit Namen.
+ */
+export const blogPosts = pgTable(
+  'blog_posts',
+  {
+    id: id(),
+    slug: text('slug').notNull(),
+    locale: text('locale').notNull().default('de'),
+    category: text('category').notNull().default('news'),
+    title: text('title').notNull(),
+    excerpt: text('excerpt').notNull(),
+    body: text('body').notNull(),
+    coverId: uuid('cover_id').references(() => blogMedia.id, { onDelete: 'set null' }),
+    coverAlt: text('cover_alt'),
+    status: text('status').notNull().default('draft'),
+    publishedAt: ts('published_at'),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('blog_posts_slug_idx').on(t.slug), index('blog_posts_list_idx').on(t.status, t.locale, t.publishedAt.desc())],
+)
+
 /** Einmalige Seed-Schritte (z. B. Standard-Hilfe je Kreis): einmal ausgeführt, danach pflegt das Admin-Team. */
 export const seedMarks = pgTable('seed_marks', {
   key: text('key').primaryKey(),

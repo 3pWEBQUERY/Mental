@@ -14,6 +14,7 @@ const items = (): { href: string; label: string; level: Level }[] => [
   { href: '/admin/begriffe', label: m.admin.nav.terms, level: 'admin' },
   { href: '/admin/schritte', label: m.admin.nav.steps, level: 'admin' },
   { href: '/admin/partner', label: m.admin.nav.partners, level: 'admin' },
+  { href: '/admin/blog', label: m.admin.nav.blog, level: 'admin' },
   { href: '/admin/audit', label: m.admin.nav.audit, level: 'mod' },
   { href: '/admin/statistik', label: m.admin.nav.stats, level: 'mod' },
 ]
