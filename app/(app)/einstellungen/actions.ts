@@ -9,12 +9,15 @@ import { LIMITS } from '@/lib/constants'
 import { displayNameProblem } from '@/lib/display-name'
 import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
 import { enqueue, QUEUES } from '@/lib/jobs'
-import { hmac } from '@/lib/server/crypto'
+import { syncReplyCountsBetween, syncReplyCountsOfAuthor } from '@/lib/reply-count'
+import { hmac, memberRef } from '@/lib/server/crypto'
+import { notifyAdmins, notifySystem } from '@/lib/server/notify'
 import { hashSecret, isPwned, verifySecret } from '@/lib/server/password'
 import { hit } from '@/lib/server/rate-limit'
 import { generateRecoveryKey } from '@/lib/server/recovery'
 import { endOtherSessions, getViewer, SESSION_COOKIE } from '@/lib/server/session'
 import { m } from '@/messages'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 type R<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 const fail = (error: string) => ({ ok: false as const, error })
@@ -55,11 +58,14 @@ const settingsSchema = z
     fontSize: z.enum(['normal', 'large', 'xlarge']),
     motion: z.enum(['on', 'reduced', 'off']),
     breathSound: z.boolean(),
+    breathPattern: z.enum(['calm', 'box', 'relax']),
+    breathMinutes: z.union([z.literal(1), z.literal(3), z.literal(5)]),
     hidePresence: z.boolean(),
     collapseWarnings: z.boolean(),
     discreet: z.boolean(),
     listener: z.boolean(),
-    locale: z.enum(['de', 'fr', 'it']),
+    followUp: z.boolean(),
+    locale: z.enum(['de', 'fr', 'it', 'en']),
   })
   .partial()
 
@@ -94,6 +100,9 @@ export async function changePassword(input: { current: string; next: string }): 
   if (await isPwned(input.next)) return fail(m.register.passwordPwned)
   await db.update(users).set({ passwordHash: await hashSecret(input.next) }).where(eq(users.id, v.userId))
   await endOtherSessions(v.userId, v.sessionId)
+  // Hinweis in der Glocke (und per Push): Wer nur das Passwort erbeutet hat, soll nicht unbemerkt bleiben.
+  await notifySystem([v.userId], (t) => t.security.passwordChanged)
+  if (v.role !== 'member') await notifyAdmins((t) => t.security.staffPasswordChanged(memberRef(v.userId)), v.userId)
   return { ok: true }
 }
 
@@ -102,6 +111,7 @@ export async function regenerateRecoveryKey(password: string): Promise<R<{ words
   if (!(await checkPassword(v.userId, password))) return fail(m.auth.invalid)
   const words = generateRecoveryKey()
   await db.update(users).set({ recoveryHash: await hashSecret(words.join(' ')) }).where(eq(users.id, v.userId))
+  await notifySystem([v.userId], (t) => t.security.recoveryKeyChanged)
   return { ok: true, words }
 }
 
@@ -111,16 +121,26 @@ export async function listPasskeys(): Promise<PasskeyItem[]> {
   const rows = await db.select().from(passkeys).where(eq(passkeys.userId, v.userId)).orderBy(asc(passkeys.createdAt))
   return rows.map((p) => ({
     id: p.id,
-    label: p.label ?? (p.deviceType === 'multiDevice' ? 'Synchronisierter Passkey' : 'Passkey auf einem Gerät'),
+    label: p.label ?? (p.deviceType === 'multiDevice' ? m.settings.passkeySynced : m.settings.passkeyDevice),
     createdAt: p.createdAt.toISOString(),
     lastUsedAt: p.lastUsedAt?.toISOString() ?? null,
   }))
 }
 
+/**
+ * Passkey entfernen. Moderationskonten nur aus einer Passkey-Sitzung: Sonst könnte jemand mit dem Passwort allein
+ * alle Passkeys löschen, einen eigenen anlegen und so in den Moderationsbereich kommen. Jede Entfernung wird
+ * gemeldet (Glocke), an Moderationskonten zusätzlich allen Admins.
+ */
 export async function removePasskey(id: string): Promise<R> {
   const v = await viewer()
   if (!z.uuid().safeParse(id).success) return fail(m.common.error)
-  await db.delete(passkeys).where(and(eq(passkeys.id, id), eq(passkeys.userId, v.userId)))
+  const staff = v.role !== 'member'
+  if (staff && v.authMethod !== 'passkey') return fail(m.settings.passkeyRemoveNeedsPasskey)
+  const [row] = await db.delete(passkeys).where(and(eq(passkeys.id, id), eq(passkeys.userId, v.userId))).returning({ id: passkeys.id })
+  if (!row) return fail(m.common.error)
+  await notifySystem([v.userId], (t) => t.security.passkeyRemoved)
+  if (staff) await notifyAdmins((t) => t.security.staffPasskeyRemoved(memberRef(v.userId)), v.userId)
   return { ok: true }
 }
 
@@ -172,6 +192,7 @@ export async function unblock(ref: string): Promise<R> {
   const member = members.find((b) => blockRef(v.userId, b.blockedId) === ref)
   if (member) {
     await db.delete(blocks).where(and(eq(blocks.blockerId, v.userId), eq(blocks.blockedId, member.blockedId)))
+    await syncReplyCountsBetween(v.userId, member.blockedId)
     return { ok: true }
   }
   const post = hidden.find((h) => blockRef(v.userId, h.postId, 'post') === ref)
@@ -218,6 +239,11 @@ export async function updateQuietHours(from: number, to: number): Promise<R> {
   const q = z.object({ from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).safeParse({ from, to })
   if (!q.success) return fail(m.common.error)
   await db.update(pushSubscriptions).set({ quietFrom: q.data.from, quietTo: q.data.to }).where(eq(pushSubscriptions.userId, v.userId))
+  // Auch im Konto merken: gilt für Geräte, die erst später Benachrichtigungen erlauben (und für die iOS-App).
+  await db
+    .update(profiles)
+    .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ quiet: q.data })}::jsonb` })
+    .where(eq(profiles.userId, v.userId))
   return { ok: true }
 }
 
@@ -250,6 +276,9 @@ export async function deleteAccount(password: string): Promise<R> {
   if (!(await checkPassword(v.userId, password))) return fail(m.auth.invalid)
   const deleteAfter = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   await db.update(users).set({ status: 'deleting', deleteAfter }).where(eq(users.id, v.userId))
+  // Auch der Antrag gehört ins Lösch-Journal: Nach einem Restore aus einem Backup bliebe das Konto sonst aktiv.
+  await journalDeletion('account-request', v.userId, { deleteAfter: deleteAfter.toISOString() })
+  await syncReplyCountsOfAuthor(v.userId)
   await db.delete(sessions).where(eq(sessions.userId, v.userId))
   await enqueue(QUEUES.purgeAccount, { userId: v.userId }, { startAfter: deleteAfter, singletonKey: `purge:${v.userId}` })
   ;(await cookies()).delete(SESSION_COOKIE)

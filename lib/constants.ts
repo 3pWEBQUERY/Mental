@@ -24,6 +24,9 @@ export type Visibility = (typeof VISIBILITIES)[number]
 export const REPORT_REASONS = ['worry', 'hurtful', 'spam', 'personal_data', 'other'] as const
 export type ReportReason = (typeof REPORT_REASONS)[number]
 
+/** Gespeicherter Name anonymer Gedanken – angezeigt wird immer m.common.anonymous der lesenden Person. */
+export const ANON_HANDLE = 'Anonym'
+
 export const LIMITS = {
   postMin: 3,
   postMax: 600,

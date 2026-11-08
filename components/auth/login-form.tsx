@@ -2,15 +2,17 @@
 
 import { browserSupportsWebAuthn, startAuthentication } from '@simplewebauthn/browser'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
 import { login, passkeyLogin, passkeyLoginOptions } from '@/app/(auth)/actions'
-import { toast } from '@/lib/client/bus'
+import { carryNotice } from '@/lib/client/notice'
+import { solvePow } from '@/lib/client/pow'
 import { forgetPrivate } from '@/lib/client/private-storage'
 import { m } from '@/messages'
 
+/** Ein Fehler mit eigenem, übersetztem Text – nur solche Meldungen werden angezeigt (nie die englischen des Browsers). */
+class Shown extends Error {}
+
 export function LoginForm() {
-  const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -21,17 +23,26 @@ export function LoginForm() {
   useEffect(forgetPrivate, [])
 
   function done(notice: string | null) {
-    if (notice) toast(notice)
-    router.replace('/start')
+    // Der Hinweis (z. B. «Löschung abgebrochen») überlebt den Seitenaufbau – die App zeigt ihn nach dem Laden.
+    if (notice) carryNotice(notice)
+    // Ganzer Seitenaufbau statt Client-Navigation: kein Zustand einer vorherigen Sitzung im Tab.
+    window.location.replace('/start')
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const res = await login({ username, password })
+    let res = await login({ username, password }).catch(() => ({ ok: false as const, error: m.common.error }))
+    // Unter Angriff auf diesen Namen verlangt der Server eine kleine Rechenaufgabe – im Hintergrund lösen, dann erneut.
+    if (!res.ok && 'pow' in res && res.pow) {
+      setError(res.error)
+      const pow = await solvePow()
+      res = pow ? await login({ username, password, pow }).catch(() => ({ ok: false as const, error: m.common.error })) : { ok: false as const, error: m.common.error }
+    }
     setBusy(false)
     if (!res.ok) return setError(res.error)
+    setError('')
     done(res.notice)
   }
 
@@ -39,14 +50,28 @@ export function LoginForm() {
     setBusy(true)
     setError('')
     try {
-      const options = await passkeyLoginOptions()
-      if (!options) throw new Error(m.common.rateLimited)
-      const response = await startAuthentication({ optionsJSON: options })
+      const got = await passkeyLoginOptions()
+      if (!got) throw new Shown(m.common.rateLimited)
+      const { options, related } = got
+      let response
+      try {
+        response = await startAuthentication({ optionsJSON: options })
+      } catch (first) {
+        // Kein Passkey für jiaia.app gewählt: vielleicht einer von der früheren Adresse.
+        if (!related.length) throw first
+        for (const rpId of related) {
+          try {
+            response = await startAuthentication({ optionsJSON: { ...options, rpId } })
+            break
+          } catch {}
+        }
+        if (!response) throw new Shown(m.auth.passkeyLegacyFailed)
+      }
       const res = await passkeyLogin(response)
-      if (!res.ok) throw new Error(res.error)
+      if (!res.ok) throw new Shown(res.error)
       done(res.notice)
     } catch (err) {
-      setError(err instanceof Error && err.message.length > 12 ? err.message : m.auth.passkeyFailed)
+      setError(err instanceof Shown ? err.message : m.auth.passkeyFailed)
     } finally {
       setBusy(false)
     }

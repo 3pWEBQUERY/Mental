@@ -7,6 +7,8 @@ import { uuidv7 } from '@/lib/id'
 import { bucketConfigured, presignUpload } from '@/lib/s3'
 import { getViewer } from '@/lib/server/session'
 import { m } from '@/messages'
+import { hit } from '@/lib/server/rate-limit'
+import { readLimited } from '@/lib/server/read-body'
 
 const schema = z.object({ type: z.enum(IMAGE_TYPES), size: z.number().int().positive().max(LIMITS.imageMaxBytes) })
 
@@ -19,7 +21,12 @@ export async function POST(request: Request) {
   if (!v) return Response.json({ error: m.common.sessionEnded }, { status: 401 })
   if (v.status === 'muted') return Response.json({ error: m.common.muted }, { status: 403 })
   if (!bucketConfigured()) return Response.json({ error: m.composer.imagesUnavailable }, { status: 503 })
-  const parsed = schema.safeParse(await request.json().catch(() => null))
+  const body = await readLimited(request, 4096)
+  let json: unknown = null
+  try {
+    json = body ? JSON.parse(body) : null
+  } catch {}
+  const parsed = schema.safeParse(json)
   if (!parsed.success) return Response.json({ error: m.composer.imageType }, { status: 400 })
 
   const [{ n } = { n: 0 }] = await db
@@ -27,6 +34,10 @@ export async function POST(request: Request) {
     .from(postMedia)
     .where(and(eq(postMedia.userId, v.userId), gt(postMedia.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))))
   if (n >= LIMITS.postsPerDay) return Response.json({ error: m.composer.limit }, { status: 429 })
+  // Zusätzlich ein Zähler, der nicht verschwindet: Abgebrochene Uploads räumt der Worker nach 1 h weg – ohne ihn
+  // gingen sonst 10 Uploads pro Stunde statt pro Tag.
+  if (!(await hit(`upload-day:${v.userId}`, LIMITS.postsPerDay * 2, 24 * 60 * 60 * 1000)).ok)
+    return Response.json({ error: m.composer.limit }, { status: 429 })
 
   const id = uuidv7()
   const key = `quarantine/${id}`

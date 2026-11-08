@@ -1,6 +1,8 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { connection } from 'next/server'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { NO_INDEX } from '@/lib/seo'
 import { AppChrome } from '@/components/app/chrome'
 import { ViewerProvider, type ClientViewer } from '@/components/viewer'
 import { db } from '@/db'
@@ -14,6 +16,9 @@ import { presenceCounts, unreadState } from './actions'
 
 // Alles hinter der Anmeldung wird pro Request gerendert: eigene CSP-Nonce, keine geteilten Shells.
 export const instant = false
+
+/** Persönlicher Raum: nie in Suchmaschinen. */
+export const metadata: Metadata = { robots: NO_INDEX }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   await connection()
@@ -29,7 +34,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       .select({ slug: circlesTable.slug })
       .from(circlePrefs)
       .innerJoin(circlesTable, eq(circlesTable.id, circlePrefs.circleId))
-      .where(and(eq(circlePrefs.userId, v.userId), eq(circlePrefs.state, 'follow'))),
+      .where(and(eq(circlePrefs.userId, v.userId), eq(circlePrefs.state, 'follow'), eq(circlesTable.isActive, true))),
   ])
   const s = v.settings
   const value: ClientViewer = {
@@ -47,6 +52,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     listener: s.listener ?? false,
     nightModeration: nightStaffed(),
     breathSound: s.breathSound ?? false,
+    breathPattern: s.breathPattern ?? 'calm',
+    breathMinutes: s.breathMinutes ?? 1,
     collapseWarnings: s.collapseWarnings ?? true,
     hidePresence: s.hidePresence ?? false,
     circles: circles.map((c) => localizeCircle(c)),
@@ -55,7 +62,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     help,
   }
   return (
-    <ViewerProvider value={value}>
+    // Schlüssel = Konto: Next hält ausgeblendete Seiten mit ihrem Zustand vor (Activity). Meldet sich im selben Tab
+    // jemand anderes an, darf nichts davon (Feed mit «du», Einstellungen, entsperrtes Tagebuch) wieder auftauchen.
+    <ViewerProvider value={value} key={v.userId}>
       <AppChrome initialUnread={unread.unread} pulseOnOpen={unread.supportSinceLastVisit} presence={presence}>
         {children}
       </AppChrome>

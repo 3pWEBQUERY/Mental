@@ -96,3 +96,37 @@ describe('Krisenerkennung auf Italienisch', () => {
     expect(detectCrisis('Le domeniche sono le più difficili.')).toBe('none')
   })
 })
+
+describe('Krisenerkennung: Wortanfänge (*) für Zusammensetzungen', () => {
+  it('trifft Suizidgedanken, suizidal, Selbstmordgedanken – auf Deutsch, Französisch, Italienisch', () => {
+    for (const t of ['Ich habe ständig Suizidgedanken', 'bin suizidal', 'Selbstmordgedanken jeden Abend', 'ich bin so lebensmüde', 'des pensées suicidaires', 'penso al suicidio']) expect(detectCrisis(t)).toBe('acute')
+    expect(detectCrisis('Selbstverletzendes Verhalten')).toBe('concern')
+  })
+  it('bleibt bei ganzen Wörtern, wo kein * steht', () => {
+    expect(detectCrisis('ich will verschwinden')).toBe('concern')
+    expect(detectCrisis('verschwindend gering')).toBe('none')
+  })
+})
+
+describe('Krisenerkennung: Umlaute in jeder Schreibweise', () => {
+  it('erkennt zerlegte Umlaute (NFD, aus PDF/macOS) und Schreibweisen ohne Umlaut', () => {
+    expect(detectCrisis('ich bin so lebensmüde'.normalize('NFD'))).toBe('acute')
+    expect(detectCrisis('Ich möchte sterben'.normalize('NFD'))).toBe('acute')
+    expect(detectCrisis('ich mochte sterben')).toBe('acute')
+    expect(detectCrisis('total lebensmude')).toBe('acute')
+    expect(detectCrisis('von der brucke springen')).toBe('acute')
+    expect(detectCrisis('Ich bin müde heute')).toBe('none')
+  })
+})
+
+describe('Englisch', () => {
+  it('erkennt Krisensprache mit und ohne Apostroph', async () => {
+    const { detectCrisis } = await import('../../lib/crisis')
+    expect(detectCrisis('Honestly I just want to kill myself')).toBe('acute')
+    expect(detectCrisis("I don't want to live anymore")).toBe('acute')
+    expect(detectCrisis('i dont want to live like this')).toBe('acute')
+    expect(detectCrisis('Everyone would be better off without me')).toBe('concern')
+    expect(detectCrisis('I could die laughing at this')).toBe('none')
+    expect(detectCrisis('I want to end it with him')).toBe('none')
+  })
+})

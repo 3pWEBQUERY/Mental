@@ -23,6 +23,10 @@ export function usePasskeySetup() {
         setError(m.settings.passkeyNeedsPasskey)
         return false
       }
+      if ('staffWait' in options) {
+        setError(m.settings.passkeyStaffWait)
+        return false
+      }
       if ('reauth' in options) {
         if ('failed' in options) setError(m.auth.invalid)
         return 'reauth'

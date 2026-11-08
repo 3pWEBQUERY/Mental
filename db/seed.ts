@@ -2,11 +2,16 @@
  * Stammdaten: Kreise, Hilfe-Nummern, Krisen-Wortliste, kleine Schritte.
  * Idempotent – kann bei jedem Deployment laufen.
  */
-import { sql } from 'drizzle-orm'
-import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
-import { DEFAULT_HELP, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
+import { eq, sql } from 'drizzle-orm'
+import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_EN, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
+import { DEFAULT_HELP, DEFAULT_HELP_EN, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
 import { db, pool } from './index'
-import { circles, crisisTerms, helpResources, steps } from './schema'
+import { blogMedia, blogPosts, circles, crisisTerms, helpResources, seedMarks, steps } from './schema'
+import { CIRCLE_HELP, NEW_CIRCLES, NEW_STEPS } from './seed-kreise'
+import { CIRCLE_HELP_EN, CIRCLES_EN, DEFAULT_HELP_CHATS_EN, STEPS_EN } from './seed-en'
+import { LAUNCH_COVER_ALT, LAUNCH_POSTS } from './seed-launch'
+import { readFile } from 'node:fs/promises'
+import sharp from 'sharp'
 
 const CIRCLES = [
   {
@@ -79,20 +84,41 @@ const STEPS: { text: string; fr: string; it: string; circle?: string }[] = [
   { text: 'Leg die Hand aufs Herz und zähl zehn Atemzüge.', fr: 'Pose la main sur ton cœur et compte dix respirations.', it: 'Metti la mano sul cuore e conta dieci respiri.' },
 ]
 
+/**
+ * Läuft pro Datenbank genau einmal (Tabelle seed_marks). Für Standardinhalte, die das Admin-Team danach frei
+ * ändern oder löschen darf – ein späteres Deploy legt sie nicht wieder an.
+ */
+async function once(key: string, fn: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<void>) {
+  await db.transaction(async (tx) => {
+    const [mark] = await tx.insert(seedMarks).values({ key }).onConflictDoNothing().returning({ key: seedMarks.key })
+    if (mark) await fn(tx)
+  })
+}
+
 async function main() {
-  for (const [i, { fr, it, ...c }] of CIRCLES.entries()) {
-    await db
-      .insert(circles)
-      .values({ ...c, sort: i, i18n: { fr, it } })
-      // Nur anlegen: Namen, Farben und Reihenfolge pflegt das Admin-Team, ein Deploy überschreibt sie nicht.
-      .onConflictDoNothing({ target: circles.slug })
-    // Bestehende Kreise bekommen die französische Fassung einmal dazu – eine gepflegte bleibt unangetastet.
-    await db.execute(
-      sql`UPDATE circles SET i18n = i18n || jsonb_build_object('fr', ${JSON.stringify(fr)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'fr')`,
-    )
-    await db.execute(
-      sql`UPDATE circles SET i18n = i18n || jsonb_build_object('it', ${JSON.stringify(it)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'it')`,
-    )
+  const defaults = [...CIRCLES, ...NEW_CIRCLES]
+  // Umstellung auf «einmal je Kreis»: Bestehende Datenbanken gelten als schon angelegt – ein Kreis oder eine
+  // Übersetzung, die das Admin-Team gelöscht hat, kommt dadurch nicht mit diesem Deploy noch einmal zurück.
+  await once('seed-v2-baseline', async (tx) => {
+    const [{ n } = { n: 0 }] = (await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM circles`)).rows
+    if (n === 0) return
+    await tx
+      .insert(seedMarks)
+      .values([...defaults.map((c) => ({ key: `circle:${c.slug}` })), { key: 'steps-i18n' }, { key: 'steps-default' }])
+      .onConflictDoNothing()
+  })
+  for (const [i, { fr, it, ...c }] of defaults.entries()) {
+    // Je Kreis genau einmal: Danach pflegt das Admin-Team Namen, Farben, Reihenfolge und Übersetzungen – auch Löschen
+    // gilt dauerhaft (früher legte jedes Deploy gelöschte Standard-Kreise und Übersetzungen wieder an).
+    await once(`circle:${c.slug}`, async (tx) => {
+      await tx
+        .insert(circles)
+        .values({ ...c, sort: i, i18n: { fr, it } })
+        .onConflictDoNothing({ target: circles.slug })
+      // Gab es den Kreis schon (ohne Übersetzung), bekommt er sie einmal dazu – eine gepflegte bleibt unangetastet.
+      await tx.execute(sql`UPDATE circles SET i18n = i18n || jsonb_build_object('fr', ${JSON.stringify(fr)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'fr')`)
+      await tx.execute(sql`UPDATE circles SET i18n = i18n || jsonb_build_object('it', ${JSON.stringify(it)}::jsonb) WHERE slug = ${c.slug} AND NOT (i18n ? 'it')`)
+    })
   }
 
   // Pro Sprache nur anlegen, solange es dort noch nichts gibt – danach pflegt das Admin-Team die Liste.
@@ -122,7 +148,15 @@ async function main() {
         { name: 'Chat di Pro Juventute', phone: null, url: 'https://www.147.ch', hours: '24 ore su 24', audience: 'per bambini e giovani, anche via SMS', sort: 50 },
       ].map((h) => ({ ...h, language: 'it' })),
     )
+  }  if ((await helpCount('en')) === 0) {
+    await db.insert(helpResources).values(
+      [...DEFAULT_HELP_EN.map((h, i) => ({ ...h, sort: i * 10 })), ...DEFAULT_HELP_CHATS_EN.map((h, i) => ({ ...h, sort: 40 + i * 10 }))].map((h) => ({
+        ...h,
+        language: 'en',
+      })),
+    )
   }
+
 
   // Neue Standardbegriffe kommen dazu; entfernte bleiben als inaktiv bestehen und werden nicht reaktiviert.
   await db
@@ -131,13 +165,16 @@ async function main() {
       ...DEFAULT_CRISIS_TERMS.map((t) => ({ term: t.term, level: t.level, language: 'de' })),
       ...DEFAULT_CRISIS_TERMS_FR.map((t) => ({ term: t.term, level: t.level, language: 'fr' })),
       ...DEFAULT_CRISIS_TERMS_IT.map((t) => ({ term: t.term, level: t.level, language: 'it' })),
+      ...DEFAULT_CRISIS_TERMS_EN.map((t) => ({ term: t.term, level: t.level, language: 'en' })),
     ])
     .onConflictDoNothing()
 
-  const [{ n: stepCount } = { n: 0 }] = (await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM steps`)).rows
-  if (stepCount === 0) {
-    const rows = await db.select({ id: circles.id, slug: circles.slug }).from(circles)
-    await db.insert(steps).values(
+  // Standard-Schritte einmal – löscht das Team später alle, bleibt die Liste leer.
+  await once('steps-default', async (tx) => {
+    const [{ n: stepCount } = { n: 0 }] = (await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM steps`)).rows
+    if (stepCount > 0) return
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    await tx.insert(steps).values(
       STEPS.map((s, i) => ({
         text: s.text,
         i18n: { fr: { text: s.fr }, it: { text: s.it } },
@@ -145,16 +182,82 @@ async function main() {
         circleId: s.circle ? (rows.find((r) => r.slug === s.circle)?.id ?? null) : null,
       })),
     )
-  }
-  // Bestehende Standard-Schritte (gleicher deutscher Text) bekommen die Übersetzung einmal dazu.
-  for (const s of STEPS) {
-    await db.execute(
-      sql`UPDATE steps SET i18n = i18n || jsonb_build_object('fr', jsonb_build_object('text', ${s.fr}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'fr')`,
+  })
+  // Bestehende Standard-Schritte (gleicher deutscher Text) bekommen die Übersetzung einmal dazu – nur einmal, damit
+  // eine bewusst entfernte Übersetzung entfernt bleibt.
+  await once('steps-i18n', async (tx) => {
+    for (const s of STEPS) {
+      await tx.execute(
+        sql`UPDATE steps SET i18n = i18n || jsonb_build_object('fr', jsonb_build_object('text', ${s.fr}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'fr')`,
+      )
+      await tx.execute(
+        sql`UPDATE steps SET i18n = i18n || jsonb_build_object('it', jsonb_build_object('text', ${s.it}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'it')`,
+      )
+    }
+  })
+  // Trauer: Inhaltshinweis immer an (Entscheid Nov. 2026). Einmalig – schaltet das Team ihn aus, bleibt er aus.
+  await once('trauer-cw-2026-11', async (tx) => {
+    await tx.update(circles).set({ requireCw: true }).where(eq(circles.slug, 'trauer'))
+  })
+
+  // Kreise vom November 2026: kleine Schritte dazu, Hilfe je Kreis für alle Kreise (auch die bestehenden).
+  await once('kreise-2026-11', async (tx) => {
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    const idOf = new Map(rows.map((r) => [r.slug, r.id]))
+    const [{ max } = { max: 0 }] = (await tx.execute<{ max: number }>(sql`SELECT coalesce(max(sort), 0)::int AS max FROM steps`)).rows
+    const newSteps = NEW_STEPS.filter((s) => idOf.has(s.circle))
+    if (newSteps.length)
+      await tx.insert(steps).values(
+        newSteps.map((s, i) => ({ text: s.text, i18n: { fr: { text: s.fr }, it: { text: s.it } }, sort: max + 1 + i, circleId: idOf.get(s.circle)! })),
+      )
+    const help = Object.entries(CIRCLE_HELP).flatMap(([slug, byLang]) =>
+      idOf.has(slug)
+        ? (['de', 'fr', 'it'] as const).flatMap((language) =>
+            byLang[language].map((h, i) => ({ ...h, language, sort: 100 + i * 10, circleId: idOf.get(slug)! })),
+          )
+        : [],
     )
-    await db.execute(
-      sql`UPDATE steps SET i18n = i18n || jsonb_build_object('it', jsonb_build_object('text', ${s.it}::text)) WHERE text = ${s.text} AND NOT (i18n ? 'it')`,
+    if (help.length) await tx.insert(helpResources).values(help)
+  })
+
+  // Englisch (November 2026): Übersetzungen für die Standard-Kreise und -Schritte und die Hilfe je Kreis – einmal.
+  // Was das Team schon auf Englisch gepflegt hat, bleibt; danach gilt wieder nur noch der Admin-Bereich.
+  await once('english-2026-11', async (tx) => {
+    for (const [slug, en] of Object.entries(CIRCLES_EN)) {
+      await tx.execute(sql`UPDATE circles SET i18n = i18n || jsonb_build_object('en', ${JSON.stringify(en)}::jsonb) WHERE slug = ${slug} AND NOT (i18n ? 'en')`)
+    }
+    for (const [text, en] of Object.entries(STEPS_EN)) {
+      await tx.execute(
+        sql`UPDATE steps SET i18n = i18n || jsonb_build_object('en', jsonb_build_object('text', ${en}::text)) WHERE text = ${text} AND NOT (i18n ? 'en')`,
+      )
+    }
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    const idOf = new Map(rows.map((r) => [r.slug, r.id]))
+    const help = Object.entries(CIRCLE_HELP_EN).flatMap(([slug, list]) =>
+      idOf.has(slug) ? list.map((h, i) => ({ ...h, language: 'en', sort: 100 + i * 10, circleId: idOf.get(slug)! })) : [],
     )
-  }
+    if (help.length) await tx.insert(helpResources).values(help)
+  })
+
+  // Erster Blogbeitrag (November 2026): Jiaia ist live – im Web und als App. Einmal; danach pflegt das Team ihn im Admin.
+  await once('blog-launch-2026-11', async (tx) => {
+    // Titelbild: das Sternenhimmel-Motiv der Startseite (WebP, ohne Metadaten, wie jeder Upload).
+    const poster = await readFile(new URL('../components/landing/hero-poster.webp', import.meta.url)).catch(() => null)
+    let coverId: string | null = null
+    if (poster) {
+      const { data, info } = await sharp(poster).resize({ width: 2000, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
+      const [m] = await tx.insert(blogMedia).values({ data, width: info.width, height: info.height, bytes: data.length }).returning({ id: blogMedia.id })
+      coverId = m!.id
+    }
+    const now = new Date()
+    for (const p of LAUNCH_POSTS) {
+      await tx
+        .insert(blogPosts)
+        .values({ ...p, category: 'news', status: 'published', publishedAt: now, coverId, coverAlt: coverId ? LAUNCH_COVER_ALT[p.locale] : null })
+        .onConflictDoNothing({ target: blogPosts.slug })
+    }
+  })
+
   // Passkeys von vor der Spalte rp_id gehören zur Domain, die jetzt gilt. Läuft dieses Deploy noch auf der alten
   // Domain, sind sie damit richtig markiert – nach dem Wechsel auf jiaia.app zählen sie nicht mehr (passkey-actions.ts).
   const rpId = process.env.WEBAUTHN_RP_ID ?? new URL(process.env.APP_URL ?? 'http://localhost:3000').hostname

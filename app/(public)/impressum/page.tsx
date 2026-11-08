@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { PublicShell } from '@/components/ui'
 
-export const metadata: Metadata = { title: 'Impressum' }
+export const metadata: Metadata = { title: 'Impressum', description: 'Impressum von Jiaia – verantwortlich, Kontakt und Hinweis: kein Notfalldienst.', alternates: { canonical: '/impressum' } }
 
 /** Impressum nach Schweizer Recht. */
 export default function ImprintPage() {
@@ -9,11 +9,12 @@ export default function ImprintPage() {
     <PublicShell>
       <div className="prose" style={{ margin: '0 auto' }}>
         <h1 className="display">Impressum</h1>
-        {/* Rechtstexte gibt es vorerst nur auf Deutsch – die französische Fassung folgt nach rechtlicher Prüfung. */}
-        <p className="fine" lang="fr">
+        {/* Rechtstexte gibt es vorerst nur auf Deutsch. Der Hinweis darauf erscheint nur, wer Französisch oder
+            Italienisch gewählt hat (data-ui, lib/prefs-script.ts) – auf Deutsch bleibt die Seite ganz deutsch. */}
+        <p className="fine legal-note" lang="fr">
           Ce texte juridique n’existe pour l’instant qu’en allemand. Une version française suivra après vérification juridique.
         </p>
-        <p className="fine" lang="it">
+        <p className="fine legal-note" lang="it">
           Questo testo giuridico esiste per ora solo in tedesco. Una versione italiana seguirà dopo una verifica giuridica.
         </p>
 

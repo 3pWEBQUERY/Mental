@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import { recover } from '@/app/(auth)/actions'
+import { forgetPrivate } from '@/lib/client/private-storage'
 import { m } from '@/messages'
 
 export function RecoverForm() {
@@ -17,9 +18,10 @@ export function RecoverForm() {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const res = await recover({ username, key, password })
+    const res = await recover({ username, key, password }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
+    forgetPrivate()
     setWords(res.words)
   }
 
@@ -38,9 +40,10 @@ export function RecoverForm() {
           <button type="button" className="btn ghost" onClick={() => navigator.clipboard?.writeText(words.join(' '))}>
             {m.register.keyCopy}
           </button>
-          <Link className="btn" href="/start">
+          {/* Voll laden statt Wechsel innerhalb der App: Nichts aus dem Tab von vorher (andere Person) bleibt im Speicher. */}
+          <a className="btn" href="/start">
             {m.register.finish}
-          </Link>
+          </a>
         </div>
       </div>
     )

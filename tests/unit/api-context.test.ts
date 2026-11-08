@@ -30,7 +30,8 @@ describe('App-Schnittstelle (/api/v1)', () => {
   it('liest die Sprache der App nur aus «X-Locale» mit bekannten Sprachen', async () => {
     expect(appLocale(new Headers({ 'x-locale': 'fr' }))).toBe('fr')
     expect(appLocale(new Headers({ 'x-locale': ' IT ' }))).toBe('it')
-    expect(appLocale(new Headers({ 'x-locale': 'en' }))).toBeUndefined()
+    expect(appLocale(new Headers({ 'x-locale': 'en' }))).toBe('en')
+    expect(appLocale(new Headers({ 'x-locale': 'es' }))).toBeUndefined()
     expect(appLocale(new Headers({ 'accept-language': 'fr-CH' }))).toBeUndefined()
     expect(await apiContext.run(async () => apiContext.get()!.locale, 'it')).toEqual({ result: 'it', token: null })
   })

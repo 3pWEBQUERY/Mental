@@ -1,8 +1,8 @@
 'use client'
 
 import { HelpList, PublicShell } from '@/components/ui'
-import { DEFAULT_HELP } from '@/lib/help'
-import { m } from '@/messages'
+import { defaultHelp } from '@/lib/help'
+import { currentLocale, m } from '@/messages'
 
 /** Fehler unterhalb des Root-Layouts: ruhig erklären, neu versuchen lassen, Hilfe immer sichtbar. */
 export default function ErrorPage({ retry }: { error: unknown; retry: () => void }) {
@@ -22,7 +22,7 @@ export default function ErrorPage({ retry }: { error: unknown; retry: () => void
           </button>
         </p>
         <section className="help">
-          <HelpList resources={DEFAULT_HELP} />
+          <HelpList resources={defaultHelp(currentLocale())} />
         </section>
       </div>
     </PublicShell>

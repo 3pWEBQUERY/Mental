@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { logout } from '@/app/(auth)/actions'
+import { LogoutButton } from '@/components/auth/logout-button'
 import { hasStrongAuth, requireModeratorRole } from '@/lib/server/admin'
 import { m } from '@/messages'
 
@@ -11,9 +11,7 @@ export default async function PasskeyRequiredPage() {
     <div className="auth-card stack">
       <h1>{m.admin.title}</h1>
       <p className="notice warn">{m.admin.passkeyRequired}</p>
-      <form action={logout}>
-        <button className="btn">{m.admin.passkeyRelogin}</button>
-      </form>
+      <LogoutButton label={m.admin.passkeyRelogin} className="btn" />
     </div>
   )
 }

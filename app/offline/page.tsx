@@ -31,6 +31,20 @@ export default function Offline() {
         <section className="help">
           <HelpList resources={DEFAULT_HELP} />
         </section>
+        {/* Die französische, italienische und englische Hilfe liegen ebenfalls im Offline-Speicher (public/sw.js). */}
+        <p className="fine" style={{ marginTop: 14 }}>
+          <a href="/aide" lang="fr" hrefLang="fr">
+            Aide immédiate (français)
+          </a>{' '}
+          ·{' '}
+          <a href="/aiuto" lang="it" hrefLang="it">
+            Aiuto immediato (italiano)
+          </a>{' '}
+          ·{' '}
+          <a href="/help" lang="en" hrefLang="en">
+            Immediate help (English)
+          </a>
+        </p>
         {/* Als rohes HTML: React fasst diesen Block beim Hydrieren nicht an – sonst setzte es das vom Skript
             Eingefüllte (und «hidden») wieder zurück. */}
         <div dangerouslySetInnerHTML={{ __html: PLAN_HTML }} />

@@ -1,14 +1,14 @@
 import 'server-only'
-import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, replies, stepLog } from '@/db/schema'
+import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, pushSubscriptions, replies, stepLog } from '@/db/schema'
 import { openText } from '@/lib/at-rest'
 import { localizeCircle } from '@/lib/localize'
 import { nightStaffed } from '@/lib/moderation-hours'
 import { currentLocale } from '@/messages'
-import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, type FeedView } from './posts'
+import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, notBlocked, type FeedView } from './posts'
 import { getViewer } from './session'
-import { getCircles, getCrisisTerms, getHelpResources } from './terms'
+import { getCircleHelp, getCircles, getCrisisTerms, getHelpResources } from './terms'
 
 /**
  * Lesende Abfragen für die Apps. Im Web stecken sie in Server Components (Layout, «Ich»-Seite);
@@ -21,16 +21,18 @@ export async function me() {
   if (!v) return null
   // Sprache aus «X-Locale» der App (lib/server/request-locale.ts) – Kreise und Hilfe-Nummern wie im Web übersetzt.
   const locale = currentLocale()
-  const [last, circles, crisisTerms, help, follows] = await Promise.all([
+  const [last, circles, crisisTerms, help, circleHelp, follows, [sub]] = await Promise.all([
     db.select({ mood: checkins.mood }).from(checkins).where(eq(checkins.userId, v.userId)).orderBy(desc(checkins.createdAt)).limit(1),
     getCircles(),
     getCrisisTerms(),
     getHelpResources(locale),
+    getCircleHelp(locale),
     db
       .select({ slug: circlesTable.slug, state: circlePrefs.state })
       .from(circlePrefs)
       .innerJoin(circlesTable, eq(circlesTable.id, circlePrefs.circleId))
-      .where(eq(circlePrefs.userId, v.userId)),
+      .where(and(eq(circlePrefs.userId, v.userId), eq(circlesTable.isActive, true))),
+    db.select({ from: pushSubscriptions.quietFrom, to: pushSubscriptions.quietTo }).from(pushSubscriptions).where(eq(pushSubscriptions.userId, v.userId)).limit(1),
   ])
   const s = v.settings
   return {
@@ -46,6 +48,11 @@ export async function me() {
       fontSize: s.fontSize ?? 'normal',
       motion: s.motion ?? 'on',
       breathSound: s.breathSound ?? false,
+      // Neu (Nov. 2026): Atemmuster und Dauer – ältere App-Versionen ignorieren die Felder.
+      breathPattern: s.breathPattern ?? 'calm',
+      breathMinutes: s.breathMinutes ?? 1,
+      // Ruhezeiten (Stunden, Ortszeit Schweiz) – ändern mit updateQuietHours(from, to).
+      quiet: sub ?? s.quiet ?? { from: 22, to: 7 },
       collapseWarnings: s.collapseWarnings ?? true,
       hidePresence: s.hidePresence ?? false,
       discreet: s.discreet ?? false,
@@ -53,7 +60,10 @@ export async function me() {
       onboard: s.onboard ?? false,
       locale: s.locale ?? null,
     },
-    circles: circles.map((c) => localizeCircle(c, locale)).map(({ slug, name, description, rules, color }) => ({ slug, name, description, rules, color })),
+    // requireCw und help: neu (Nov. 2026) – ältere App-Versionen ignorieren die Felder.
+    circles: circles
+      .map((c) => localizeCircle(c, locale))
+      .map(({ slug, name, description, rules, color, requireCw }) => ({ slug, name, description, rules, color, requireCw, help: circleHelp[slug] ?? [] })),
     circlePrefs: Object.fromEntries(follows.map((f) => [f.slug, f.state])),
     crisisTerms,
     help,
@@ -68,8 +78,8 @@ export async function feed(view: string, circle: string | null, cursor: string |
   const safeView: FeedView = view === 'unheard' || view === 'brave' ? view : 'all'
   const followed = circle === 'meine'
   let circleId: string | null = null
-  if (circle && !followed) {
-    const [c] = await db.select({ id: circlesTable.id }).from(circlesTable).where(eq(circlesTable.slug, circle))
+  if (circle && !followed && typeof circle === 'string') {
+    const [c] = await db.select({ id: circlesTable.id }).from(circlesTable).where(and(eq(circlesTable.slug, circle), eq(circlesTable.isActive, true)))
     circleId = c?.id ?? null
   }
   return getFeed({ viewerId: v.userId, view: safeView, circleId, followed, cursor })
@@ -120,7 +130,21 @@ export async function saved() {
     .select({ id: replies.id, body: replies.body, handle: replies.authorHandle, createdAt: replies.createdAt, postBody: posts.body })
     .from(replies)
     .innerJoin(posts, eq(posts.id, replies.postId))
-    .where(and(eq(posts.userId, v.userId), eq(replies.helpful, true), isNull(replies.deletedAt), isNull(posts.deletedAt), isNotNull(replies.body)))
+    .where(
+      and(
+        eq(posts.userId, v.userId),
+        eq(replies.helpful, true),
+        // Von der Moderation ausgeblendete Antworten und solche von Konten in Löschung gehören nicht mehr hierher.
+        eq(replies.status, 'visible'),
+        isNull(replies.deletedAt),
+        isNull(posts.deletedAt),
+        isNotNull(replies.body),
+        sql`NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ${replies.userId} AND u.status = 'deleting')`,
+        // Blockiert (in eine Richtung): wie im Feed nicht mehr zeigen.
+        or(isNull(replies.userId), notBlocked(v.userId, replies.userId)),
+      ),
+    )
     .orderBy(desc(replies.createdAt))
+    .limit(100)
   return rows.map((r) => ({ id: r.id, body: r.body, authorHandle: r.handle, createdAt: r.createdAt.toISOString(), postBody: r.postBody }))
 }

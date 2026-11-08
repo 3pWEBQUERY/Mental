@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
 import { Pool } from 'pg'
-import { register, share } from './helpers'
+import { moderator, register, share } from './helpers'
 
 test('Moderation ohne Passkey-Sitzung: keine Daten, nur der Hinweis', async ({ page }) => {
   const { username } = await register(page)
@@ -31,7 +31,7 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
   // Normales Konto, frische Sitzung: Passkey anlegen geht.
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
 
   // Wird das Konto zum Moderationskonto, reicht die Passwort-Sitzung für einen weiteren Passkey nicht mehr.
   execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
@@ -40,7 +40,7 @@ test('Moderationskonto: weiterer Passkey nur aus einer Passkey-Sitzung – das P
   await expect(page.getByText(/nur an, wenn du mit einem Passkey angemeldet bist/)).toBeVisible()
 })
 
-test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nicht aus', async ({ page, context }) => {
+test('Domainwechsel: Passkeys der alten Domain zählen weiter – Passwort allein legt keinen neuen an', async ({ page, context }) => {
   const cdp = await context.newCDPSession(page)
   await cdp.send('WebAuthn.enable')
   const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
@@ -49,7 +49,7 @@ test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nich
   const { username } = await register(page)
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
   execSync(`npm run admin:grant -- ${username} mod`, { stdio: 'ignore' })
   // Der vorhandene Passkey gehört zu einer anderen (alten) Domain – hier funktioniert er nicht mehr.
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -58,33 +58,50 @@ test('Domainwechsel: Passkeys der alten Domain sperren ein Moderationskonto nich
   } finally {
     await pool.end()
   }
-  // Wie nach einem echten Wechsel: Für die neue Domain hat das Gerät noch keinen Passkey.
+  // Wie nach einem echten Wechsel: Für die neue Domain hat das Gerät noch keinen Passkey. Die alten melden über die
+  // Brücke (Related Origins) weiter an – ein erbeutetes Passwort darf darum keinen eigenen neuen anlegen.
   await cdp.send('WebAuthn.clearCredentials', { authenticatorId })
   await page.reload()
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
+  await expect(page.getByText(/nur an, wenn du mit einem Passkey angemeldet bist/)).toBeVisible()
+  const pool2 = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    const { rows } = await pool2.query(`SELECT count(*)::int AS n FROM passkeys p JOIN users u ON u.id = p.user_id WHERE u.username = $1`, [username])
+    expect(rows[0].n).toBe(1)
+  } finally {
+    await pool2.end()
+  }
 })
 
-/** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
-async function moderator(browser: import('@playwright/test').Browser, role: 'mod' | 'admin' = 'mod') {
-  const ctx = await browser.newContext()
-  const page = await ctx.newPage()
-  const cdp = await ctx.newCDPSession(page)
+test('Domainwechsel: Anmeldung mit altem Passkey versucht die frühere Domain und erklärt sonst den Weg', async ({ page, context, request }) => {
+  // Die Brücke für Browser: Die frühere Domain nennt die aktuelle als erlaubte Adresse.
+  const wk = await request.get('/.well-known/webauthn')
+  expect(wk.ok()).toBe(true)
+  expect(wk.headers()['content-type']).toContain('application/json')
+  expect((await wk.json()).origins).toEqual([new URL(wk.url()).origin])
+
+  const cdp = await context.newCDPSession(page)
   await cdp.send('WebAuthn.enable')
-  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
     options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
   })
   const { username } = await register(page)
   await page.goto('/einstellungen')
   await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
-  await expect(page.getByText('Passkey eingerichtet.')).toBeVisible()
-  execSync(`npm run admin:grant -- ${username} ${role}`, { stdio: 'ignore' })
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    await pool.query(`UPDATE passkeys SET rp_id = 'alte-adresse.up.railway.app' WHERE user_id = (SELECT id FROM users WHERE username = $1)`, [username])
+  } finally {
+    await pool.end()
+  }
+  await cdp.send('WebAuthn.clearCredentials', { authenticatorId })
   await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
   await page.waitForURL('**/anmelden')
   await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
-  await page.waitForURL('**/start')
-  return page
-}
+  // Die alte Domain ist im Test nicht erreichbar: verständlicher Hinweis statt einer englischen Browser-Meldung.
+  await expect(page.locator('#form-error')).toContainText('Passkeys von vor dem Umzug auf jiaia.app')
+})
 
 test('Moderation: Krisen-Alarm, weichgezeichnet, Übernahme, Fürsorge, Einspruch, Kontoseite, Statistik', async ({ browser }) => {
   test.slow()
@@ -150,7 +167,7 @@ test('Moderation: Krisen-Alarm, weichgezeichnet, Übernahme, Fürsorge, Einspruc
   await appeal.getByRole('link', { name: /Mitglied/ }).click()
   await expect(mod.getByRole('heading', { name: /Mitglied/ })).toBeVisible()
   await expect(mod.locator('.facts')).toContainText('stumm')
-  await expect(mod.locator('table')).toContainText('mute24')
+  await expect(mod.locator('table')).toContainText('24 h stumm')
   await mod.getByRole('button', { name: 'Stummschaltung aufheben' }).click()
   await expect(mod.locator('.facts')).toContainText('aktiv')
   await mod.goto('/admin')
@@ -189,6 +206,8 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
   await share(user, body)
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   try {
+    // Teilen läuft im Hintergrund weiter – erst warten, bis der Gedanke gespeichert ist.
+    await expect.poll(async () => (await pool.query(`SELECT id FROM posts WHERE body = $1`, [body])).rows.length).toBe(1)
     const { rows } = await pool.query(`SELECT id FROM posts WHERE body = $1`, [body])
     await pool.query(`INSERT INTO reports (id, target_type, target_id, reason, priority, reporter_id) VALUES (gen_random_uuid(), 'post', $1, 'other', 2, NULL)`, [rows[0].id])
   } finally {
@@ -206,7 +225,7 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
   await expect(first.getByRole('button', { name: 'Bestätigen' })).toHaveCount(0)
   await expect(first.getByRole('button', { name: 'Zurückziehen' })).toBeVisible()
   await expect(first.locator('.facts')).toContainText('Mitglied')
-  await expect(first.locator('table')).toContainText('role_propose')
+  await expect(first.locator('table')).toContainText('Rolle vorgeschlagen')
 
   // Zweiter Admin: Glocke, offene Vorschläge in der Warteschlange, bestätigen.
   await second.reload()
@@ -219,7 +238,7 @@ test('Rollen: Vier-Augen-Prinzip – vorschlagen, nicht selbst bestätigen, zwei
   await open.getByRole('link', { name: /Mitglied/ }).click()
   await second.getByRole('button', { name: 'Bestätigen' }).click()
   await expect(second.locator('.facts')).toContainText('Moderation')
-  await expect(second.locator('table')).toContainText('role_accept')
+  await expect(second.locator('table')).toContainText('Rolle bestätigt')
   await expect(second.getByRole('button', { name: 'Vorschlagen' })).toBeVisible()
 
   await user.reload()

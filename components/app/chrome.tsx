@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { getSafetyPlan } from '@/app/(app)/(raum)/ich/actions'
 import { listNotifications, markNotificationsRead, type ClientNotification } from '@/app/(app)/actions'
@@ -25,6 +25,7 @@ import { AppealInline } from './appeal'
 import { Onboarding } from './onboarding'
 import { MobileNav } from './mobile-nav'
 import { useModerationAway } from './use-moderation-away'
+import { showCarriedNotice } from '@/lib/client/notice'
 
 /**
  * Alles, was auf jedem App-Screen da ist: Navigation, Hilfe, Benachrichtigungen, Composer.
@@ -59,6 +60,8 @@ export function AppChrome({
     } catch {}
   }, [viewer.theme, viewer.fontSize, viewer.motion, viewer.discreet])
   useEffect(() => on('help', () => setHelpOpen(true)), [])
+  // Hinweis aus der Anmeldung (z. B. «Löschung abgebrochen») – die Seite wurde dafür neu geladen.
+  useEffect(showCarriedNotice, [])
   useEffect(
     () =>
       on('notifications', async () => {
@@ -78,13 +81,29 @@ export function AppChrome({
   }, [pulseOnOpen])
 
   useEffect(() => {
-    const es = new EventSource('/api/events')
-    es.addEventListener('notification', (e) => {
-      const data = JSON.parse((e as MessageEvent<string>).data) as { unread: number; support: boolean }
-      setUnread(data.unread)
-      if (data.support) pulse()
-    })
-    return () => es.close()
+    let es: EventSource | null = null
+    const connect = () => {
+      if (es && es.readyState !== EventSource.CLOSED) return
+      es = new EventSource('/api/events')
+      es.addEventListener('notification', (e) => {
+        const data = JSON.parse((e as MessageEvent<string>).data) as { unread: number; support: boolean }
+        setUnread(data.unread)
+        if (data.support) pulse()
+      })
+      // Ein neuerer Tab hat die Verbindung übernommen (höchstens 4 je Konto): erst im Vordergrund wieder verbinden.
+      es.addEventListener('bye', () => es?.close())
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') connect()
+    }
+    connect()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+      es?.close()
+    }
   }, [])
 
   return (
@@ -171,7 +190,9 @@ export function AppChrome({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="notif-title">
                     {!n.read && <span className="sr-only">{m.notifications.unread}: </span>}
-                    {n.kind === 'reply'
+                    {n.followUp
+                      ? m.followUp.title
+                      : n.kind === 'reply'
                       ? m.notifications.reply
                       : n.kind === 'support'
                         ? m.notifications.support(n.count)
@@ -183,6 +204,27 @@ export function AppChrome({
                     <>
                       <p>{n.message}</p>
                       {n.appealable && <AppealInline />}
+                      {n.followUp && (
+                        <div className="row-actions" style={{ marginTop: 8 }}>
+                          <button type="button" className="btn small" onClick={() => (setNotifOpen(false), setHelpOpen(true))}>
+                            {m.followUp.help}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn ghost small"
+                            onClick={async () => {
+                              setNotifOpen(false)
+                              setPlan((await attempt(() => getSafetyPlan())) ?? null)
+                              setPlanOpen(true)
+                            }}
+                          >
+                            {m.followUp.plan}
+                          </button>
+                          <Link className="btn ghost small" href="/start?atmen=1" onClick={() => setNotifOpen(false)}>
+                            {m.followUp.breathe}
+                          </Link>
+                        </div>
+                      )}
                     </>
                   ) : n.postDeleted ? (
                     <p>{m.feed.deletedPost}</p>
@@ -214,11 +256,14 @@ export function AppChrome({
 
 /** /start?atmen=1 startet die Atemübung, ?teilen=1 öffnet den Composer (z. B. aus der PWA). */
 function ComposeOnQuery({ router }: { router: ReturnType<typeof useRouter> }) {
+  // Auch nach einer Navigation im Browser (z. B. «Atmen» auf /einstellungen → /start?atmen=1), nicht nur beim Laden:
+  // Das Layout bleibt stehen, darum hängt die Wirkung am Pfad.
+  const path = usePathname()
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     if (q.has('atmen')) setTimeout(() => emit('breathe'), 400)
     if (q.has('teilen')) emit('compose')
     if (q.has('atmen') || q.has('teilen')) router.replace(window.location.pathname)
-  }, [router])
+  }, [router, path])
   return null
 }

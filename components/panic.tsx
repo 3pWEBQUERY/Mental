@@ -15,7 +15,8 @@ export function panic() {
   forgetPrivate()
   document.title = 'MeteoSchweiz'
   document.body.style.visibility = 'hidden'
-  // replace(): Jiaia verschwindet aus dem Zurück-Verlauf dieses Tabs.
+  // replace(): Dieser Eintrag verschwindet aus dem Zurück-Verlauf. Frühere Jiaia-Seiten bleiben dort – ausser im
+  // Diskret-Modus, der gar keine weiteren Einträge anlegt (components/discreet.tsx).
   window.location.replace(m.panic.target)
 }
 
@@ -24,7 +25,13 @@ export function PanicGuard() {
   useEffect(() => {
     let presses: number[] = []
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
+      if (e.key !== 'Escape' || e.repeat) return
+      // Schliesst das Esc gerade einen Dialog oder ein Menü, zählt es nicht – sonst blendete «Menü zu, Dialog zu,
+      // noch einmal» die App ungewollt aus.
+      if (document.querySelector('dialog[open], [role="menu"]')) {
+        presses = []
+        return
+      }
       const now = Date.now()
       presses = [...presses.filter((t) => now - t < 1500), now]
       if (presses.length >= 3) panic()

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { cache } from 'react'
 import { localizeCircle } from '@/lib/localize'
 import Link from 'next/link'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { CirclesList } from '@/components/app/circles'
 import { Side } from '@/components/app/side'
@@ -14,7 +14,9 @@ import { db } from '@/db'
 import { circles } from '@/db/schema'
 import { getFeed, type FeedView } from '@/lib/server/posts'
 import { requireViewer } from '@/lib/server/session'
-import { m } from '@/messages'
+import { currentLocale, m } from '@/messages'
+import { HelpList } from '@/components/ui'
+import { getCircleHelp } from '@/lib/server/terms'
 import { currentStep, presenceCounts, touchCircle } from '../../actions'
 
 /** Ein Schritt pro Seitenaufruf: Feed (schmal) und Seitenleiste (breit) zeigen denselben – bei jedem Neuladen einen anderen. */
@@ -93,10 +95,15 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams
   const view: FeedView = sp.ansicht === 'unheard' || sp.ansicht === 'brave' ? sp.ansicht : 'all'
   const mine = sp.kreis === MINE
-  const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(eq(circles.slug, sp.kreis)) : []
+  const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(and(eq(circles.slug, sp.kreis), eq(circles.isActive, true))) : []
   const circle = raw ? localizeCircle(raw) : undefined
   if (circle) await touchCircle(circle.slug)
-  const [page, step] = await Promise.all([getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }), stepForRequest()])
+  const [page, step, topicHelp] = await Promise.all([
+    getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }),
+    stepForRequest(),
+    circle ? getCircleHelp(currentLocale()) : null,
+  ])
+  const circleHelp = circle ? (topicHelp?.[circle.slug] ?? []) : []
   const params = new URLSearchParams()
   if (view !== 'all') params.set('ansicht', view)
   return (
@@ -121,6 +128,12 @@ async function Feed({ searchParams }: { searchParams: Search }) {
             {circle.description} <span className="fine">{m.circles.rules}: {circle.rules}</span>
           </p>
         </div>
+      )}
+      {circleHelp.length > 0 && (
+        <section className="help circle-help" aria-label={m.circles.helpTitle}>
+          <h3>{m.circles.helpTitle}</h3>
+          <HelpList resources={circleHelp} eyebrow={false} intro={false} />
+        </section>
       )}
       {/* Unter 1200 px gibt es keine Seitenleiste – der kleine Schritt steht dann hier im Feed. */}
       <div className="step-inline">

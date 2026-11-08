@@ -14,6 +14,9 @@ import { RadioGroup } from '../radio-group'
 import { useViewer } from '../viewer'
 import { AcuteDialog, CareNote } from './care'
 
+/** Kreis für Gedanken ohne passendes Thema (db/seed.ts). */
+const DEFAULT_CIRCLE = 'einfach-so'
+
 type Draft = { text: string; need: Need; circle: string; cw: boolean }
 
 function readDraft(): Draft | null {
@@ -75,12 +78,26 @@ export function Composer() {
   const [edit, setEdit] = useState<PublicPost | null>(null)
   const [text, setText] = useState('')
   const [need, setNeed] = useState<Need>('listen')
-  const [circle, setCircle] = useState(viewer.circles[0]?.slug ?? '')
+  // Ohne eigene Wahl landet ein Gedanke in «Einfach so» (falls es den Kreis gibt) – nicht in einem Thema, das nicht passt.
+  const defaultCircle = viewer.circles.find((ci) => ci.slug === DEFAULT_CIRCLE)?.slug ?? viewer.circles[0]?.slug ?? ''
+  const [circle, setCircle] = useState(defaultCircle)
+  const forcedCw = viewer.circles.find((ci) => ci.slug === circle)?.requireCw ?? false
   const [mood, setMood] = useState(viewer.lastMood ?? 2)
   const [letGo, setLetGo] = useState<0 | 1 | 7 | 30>(0)
   const [anonymous, setAnonymous] = useState(viewer.defaultVisibility === 'anonymous')
   const [cw, setCw] = useState(false)
   const [upload, setUpload] = useState<Upload>(null)
+  // Laufender Upload: Entfernt die Person das Bild währenddessen (oder wählt ein anderes), wird er abgebrochen und
+  // sein Ergebnis verworfen – sonst hinge das entfernte Foto am Ende doch am Gedanken.
+  const uploading = useRef<AbortController | null>(null)
+  const dropUpload = () => {
+    uploading.current?.abort()
+    uploading.current = null
+    setUpload((u) => {
+      if (u) URL.revokeObjectURL(u.preview)
+      return null
+    })
+  }
   const [alt, setAlt] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -103,7 +120,12 @@ export function Composer() {
           setCircle(p.circle.slug)
           setCw(p.contentWarning)
         } else {
+          // Neu beginnen: Nach einem abgebrochenen Bearbeiten stünde sonst der alte Gedanke als «Entwurf» im Feld.
           setEdit(null)
+          setText('')
+          setNeed('listen')
+          setCircle(defaultCircle)
+          setCw(false)
           const draft = readDraft()
           if (detail?.text) setText(detail.text)
           else if (draft) {
@@ -118,7 +140,7 @@ export function Composer() {
         // Fokus setzt der Dialog nach showModal() auf das Textfeld (data-autofocus).
         setOpen(true)
       }),
-    [],
+    [defaultCircle],
   )
 
   // Entwürfe bleiben nur im Browser, nie auf dem Server – bis «Teilen».
@@ -145,20 +167,29 @@ export function Composer() {
     } catch (e) {
       return setError((e as Error).message)
     }
+    dropUpload()
+    const ctrl = new AbortController()
+    uploading.current = ctrl
     const preview = URL.createObjectURL(file)
     setUpload({ uploading: true, preview })
     try {
       const res = await fetch('/api/uploads', {
+        signal: ctrl.signal,
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ type: file.type, size: file.size }),
       })
       const data = (await res.json()) as { mediaId?: string; url?: string; error?: string }
       if (!res.ok || !data.url || !data.mediaId) throw new Error(data.error ?? m.common.error)
-      const put = await fetch(data.url, { method: 'PUT', body: file, headers: { 'content-type': file.type } })
+      const put = await fetch(data.url, { signal: ctrl.signal, method: 'PUT', body: file, headers: { 'content-type': file.type } })
       if (!put.ok) throw new Error(m.common.error)
+      if (uploading.current !== ctrl) return
+      uploading.current = null
       setUpload({ mediaId: data.mediaId, preview })
     } catch (e) {
+      // Abgebrochen (Bild entfernt): still, die Vorschau ist schon weg.
+      if (uploading.current !== ctrl) return
+      uploading.current = null
       URL.revokeObjectURL(preview)
       setUpload(null)
       setError(e instanceof Error ? e.message : m.common.error)
@@ -169,8 +200,7 @@ export function Composer() {
     setText('')
     setCw(false)
     setLetGo(0)
-    if (upload) URL.revokeObjectURL(upload.preview)
-    setUpload(null)
+    dropUpload()
     setAlt('')
     setEdit(null)
     try {
@@ -184,7 +214,7 @@ export function Composer() {
     setBusy(true)
     setError('')
     if (edit) {
-      const res = await updatePost({ id: edit.id, body: text, need, circle, contentWarning: cw }).catch(() => ({ ok: false as const, error: m.common.error }))
+      const res = await updatePost({ id: edit.id, body: text, need, circle, contentWarning: cw || forcedCw }).catch(() => ({ ok: false as const, error: m.common.error }))
       setBusy(false)
       if (!res.ok) return setError(res.error)
       emit('post-updated', res.post)
@@ -200,7 +230,7 @@ export function Composer() {
       circle,
       mood,
       visibility: anonymous ? 'anonymous' : 'pseudonym',
-      contentWarning: cw,
+      contentWarning: cw || forcedCw,
       mediaId: upload && 'mediaId' in upload ? upload.mediaId : null,
       mediaAlt: upload && alt.trim() ? alt.trim() : null,
       letGoDays: letGo,
@@ -318,11 +348,11 @@ export function Composer() {
               </div>
             )}
             <label className="switch">
-              <input type="checkbox" checked={cw} onChange={(e) => setCw(e.target.checked)} />
+              <input type="checkbox" checked={cw || forcedCw} disabled={forcedCw} onChange={(e) => setCw(e.target.checked)} />
               <i />
               <span>
                 {c.contentWarning}
-                <small>{c.contentWarningHint}</small>
+                <small>{forcedCw ? c.contentWarningRequired : c.contentWarningHint}</small>
               </span>
             </label>
             {!edit && (
@@ -332,7 +362,7 @@ export function Composer() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img className="thumb" src={upload.preview} alt="" />
                     <span className="fine">{'uploading' in upload ? c.imageUploading : ''}</span>
-                    <button type="button" className="opt" onClick={() => (URL.revokeObjectURL(upload.preview), setUpload(null))}>
+                    <button type="button" className="opt" onClick={dropUpload}>
                       {c.imageRemove}
                     </button>
                   </>

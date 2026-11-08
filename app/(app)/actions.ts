@@ -2,10 +2,11 @@
 
 import { randomInt } from 'node:crypto'
 import { localStepText } from '@/lib/localize'
-import { and, count, desc, eq, gt, gte, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gt, gte, inArray, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import {
+  moderationActions,
   blocks,
   bookmarks,
   breathLog,
@@ -26,23 +27,24 @@ import {
   support,
   users,
 } from '@/db/schema'
-import { LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
+import { ANON_HANDLE, LIMITS, MOOD_HEAVY, NEEDS, REPORT_REASONS, SUPPORT_KINDS } from '@/lib/constants'
 import { alertAcute } from '@/lib/acute-alert'
 import { openText, sealText } from '@/lib/at-rest'
 import { hardDeletePost } from '@/lib/post-delete'
-import { syncReplyCount } from '@/lib/reply-count'
+import { syncReplyCount, syncReplyCountsBetween } from '@/lib/reply-count'
 import { detectCrisis } from '@/lib/crisis'
 import { toPublicReply, type PublicPost, type PublicReply } from '@/lib/dto'
 import { enqueue, QUEUES } from '@/lib/jobs'
 import { randomSeed } from '@/lib/server/crypto'
 import { hit } from '@/lib/server/rate-limit'
-import { notifyReply, notifySupport } from '@/lib/server/notify'
+import { excerpt, notifyReply, notifySupport } from '@/lib/server/notify'
 import { getFeed, getPostById, type FeedPage, type FeedView } from '@/lib/server/posts'
 import { getViewer, type Viewer } from '@/lib/server/session'
 import { getCrisisTerms } from '@/lib/server/terms'
 import { zurichDay } from '@/lib/time'
 import { m } from '@/messages'
 import { safeMessage } from '@/lib/log-safe'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 type Fail = { ok: false; error: string }
 type Ok<T> = { ok: true } & T
@@ -106,6 +108,16 @@ async function visiblePost(viewerId: string, postId: string) {
   return blocked ? null : p
 }
 
+/** Blockiert in eine der beiden Richtungen? (Für anonyme Gedanken: still annehmen, aber nichts melden.) */
+async function blockedBetween(a: string, b: string) {
+  const [x] = await db
+    .select({ x: blocks.blockerId })
+    .from(blocks)
+    .where(sql`(${blocks.blockerId} = ${a} AND ${blocks.blockedId} = ${b}) OR (${blocks.blockerId} = ${b} AND ${blocks.blockedId} = ${a})`)
+    .limit(1)
+  return Boolean(x)
+}
+
 /* ------------------------------------------------------------- Gedanken */
 
 const postSchema = z.object({
@@ -130,17 +142,24 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
   const d = parsed.data
 
   const isNew = Date.now() - v.createdAt.getTime() < LIMITS.newAccountMs
+  // Atomarer Zähler zusätzlich zur Zählung: Gleichzeitig abgeschickte Gedanken (z. B. über /api/v1) kommen
+  // sonst alle an der Grenze vorbei, weil jeder vor dem Speichern der anderen zählt.
+  if (await limited(`post-day:${v.userId}`, isNew ? LIMITS.postsPerDayNew : LIMITS.postsPerDay, DAY)) return fail(m.composer.limit)
   const [{ n } = { n: 0 }] = await db
     .select({ n: count() })
     .from(posts)
     .where(and(eq(posts.userId, v.userId), gt(posts.createdAt, new Date(Date.now() - DAY))))
   if (n >= (isNew ? LIMITS.postsPerDayNew : LIMITS.postsPerDay)) return fail(m.composer.limit)
 
-  const [circle] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
+  const [circle] = await db
+    .select({ id: circles.id, requireCw: circles.requireCw })
+    .from(circles)
+    .where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
   if (!circle) return fail(m.common.error)
 
   // Stufe 2, sofort und lokal: «acute» ist bis zur Prüfung nur für die Autorin sichtbar.
-  const level = detectCrisis(d.body, await getCrisisTerms())
+  // Die Bildbeschreibung sehen alle – sie wird wie der Text geprüft.
+  const level = detectCrisis(`${d.body}\n${d.mediaAlt ?? ''}`, await getCrisisTerms())
   const anonymous = d.visibility === 'anonymous'
   const [row] = await db
     .insert(posts)
@@ -151,9 +170,10 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
       mood: d.mood,
       body: d.body,
       visibility: d.visibility,
-      authorHandle: anonymous ? m.common.anonymous : v.displayName,
+      // Fester Platzhalter statt der Oberflächensprache: angezeigt wird «Anonym» in der Sprache der Lesenden (lib/dto.ts).
+      authorHandle: anonymous ? ANON_HANDLE : v.displayName,
       glyphSeed: anonymous ? randomSeed() : v.glyphSeed,
-      contentWarning: d.contentWarning,
+      contentWarning: d.contentWarning || circle.requireCw,
       expiresAt: d.letGoDays ? new Date(Date.now() + d.letGoDays * DAY) : null,
       status: level === 'acute' ? 'pending' : 'visible',
       crisisLevel: level,
@@ -183,6 +203,15 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
 
 const editSchema = postSchema.pick({ body: true, need: true, circle: true, contentWarning: true }).extend({ id: z.uuid() })
 
+async function openAcuteReport(postId: string) {
+  const [r] = await db
+    .select({ id: reports.id })
+    .from(reports)
+    .where(and(eq(reports.targetType, 'post'), eq(reports.targetId, postId), eq(reports.reason, 'auto_acute'), eq(reports.status, 'open')))
+    .limit(1)
+  return Boolean(r)
+}
+
 export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<{ post: PublicPost }> | Fail> {
   const v = await writer()
   if (isFail(v)) return v
@@ -194,24 +223,47 @@ export async function updatePost(input: z.input<typeof editSchema>): Promise<Ok<
     .from(posts)
     .where(and(eq(posts.id, d.id), eq(posts.userId, v.userId), isNull(posts.deletedAt)))
   if (!p) return fail(m.common.error)
+  // Ausgeblendet oder entfernt (Moderation, drei Meldungen): nicht mehr bearbeitbar – sonst würde aus «ausgeblendet»
+  // über einen Krisenhinweis wieder «wartet», und eine Freigabe machte den Gedanken sichtbar.
+  if (p.status !== 'visible' && p.status !== 'pending') return fail(m.composer.editExpired)
   if (Date.now() - p.createdAt.getTime() > LIMITS.editWindowMs) return fail(m.composer.editExpired)
-  const [circle] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, d.circle))
+  // Mehr als ein paar Korrekturen braucht niemand – ohne Grenze liesse sich die Moderation mit Alarmen fluten.
+  if (await limited(`edit:${v.userId}`, 20, 60 * 60_000)) return fail(m.common.rateLimited)
+  const [circle] = await db
+    .select({ id: circles.id, requireCw: circles.requireCw })
+    .from(circles)
+    .where(and(eq(circles.slug, d.circle), eq(circles.isActive, true)))
   if (!circle) return fail(m.common.error)
 
-  const level = detectCrisis(d.body, await getCrisisTerms())
+  const [media] = await db.select({ alt: postMedia.alt }).from(postMedia).where(eq(postMedia.postId, d.id)).limit(1)
+  const level = detectCrisis(`${d.body}\n${media?.alt ?? ''}`, await getCrisisTerms())
+  // Einen Inhaltshinweis der Moderation kann die Verfasserin beim Bearbeiten nicht wieder abschalten.
+  const [modCw] = await db
+    .select({ id: moderationActions.id })
+    .from(moderationActions)
+    .where(and(eq(moderationActions.targetType, 'post'), eq(moderationActions.targetId, d.id), eq(moderationActions.action, 'cw')))
+    .limit(1)
   await db
     .update(posts)
     .set({
       body: d.body,
       need: d.need,
       circleId: circle.id,
-      contentWarning: d.contentWarning,
+      contentWarning: d.contentWarning || circle.requireCw || Boolean(modCw),
       editedAt: new Date(),
       crisisLevel: level,
+      // Neuer Text = neue Prüfung: Fällt das Einreihen aus, holt das Sicherheitsnetz (requeueUnmoderated) ihn nach.
+      moderatedAt: null,
       ...(level === 'acute' ? { status: 'pending' as const } : {}),
     })
     .where(eq(posts.id, d.id))
-  if (level === 'acute') {
+  // Auszug in den Benachrichtigungen der Verfasserin mitziehen – z. B. wenn sie eine Telefonnummer herausgenommen hat.
+  await db
+    .update(notifications)
+    .set({ payload: sql`${notifications.payload} || ${JSON.stringify({ excerpt: excerpt(d.body) })}::jsonb` })
+    .where(and(eq(notifications.postId, d.id), eq(notifications.userId, v.userId), sql`${notifications.payload} ? 'excerpt'`))
+  // Ein offener Krisenhinweis zu diesem Gedanken genügt: weitere Bearbeitungen erzeugen weder Meldung noch Alarm.
+  if (level === 'acute' && !(await openAcuteReport(d.id))) {
     await db.insert(reports).values({ targetType: 'post', targetId: d.id, reason: 'auto_acute', priority: 0 })
     await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }
@@ -251,8 +303,9 @@ export async function toggleSupport(postId: string, kind: string): Promise<Ok<{ 
     .where(and(eq(support.postId, postId), eq(support.userId, v.userId), eq(support.kind, k.data)))
     .returning({ k: support.kind })
   if (removed.length) return { ok: true, sent: false }
-  await db.insert(support).values({ postId, userId: v.userId, kind: k.data }).onConflictDoNothing()
-  await notifySupport(p.userId, postId, k.data, p.body)
+  // Nur melden, wenn wirklich neu eingefügt (Doppelklick, zwei Tabs) – und nie von blockierten Konten.
+  const added = await db.insert(support).values({ postId, userId: v.userId, kind: k.data }).onConflictDoNothing().returning({ k: support.kind })
+  if (added.length && !(await blockedBetween(v.userId, p.userId))) await notifySupport(p.userId, postId, k.data, p.body)
   await touchPresence(v.userId, p.circleId)
   return { ok: true, sent: true }
 }
@@ -269,6 +322,8 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
   if (p.closed) return fail(m.replies.closed)
 
   const isNew = Date.now() - v.createdAt.getTime() < LIMITS.newAccountMs
+  // Atomar wie bei Gedanken: gleichzeitige Antworten kommen nicht an der Tagesgrenze vorbei.
+  if (await limited(`reply-day:${v.userId}`, isNew ? LIMITS.repliesPerDayNew : LIMITS.repliesPerDay, DAY)) return fail(m.common.rateLimited)
   const [{ n } = { n: 0 }] = await db
     .select({ n: count() })
     .from(replies)
@@ -307,9 +362,10 @@ export async function createReply(postId: string, body: string): Promise<Ok<{ re
     await alertAcute().catch((e) => console.error('[acute] Alarm fehlgeschlagen:', safeMessage(e)))
   }
   await enqueue(QUEUES.moderate, { targetType: 'reply', targetId: r!.id }).catch((e) => console.error('[moderate] enqueue', safeMessage(e)))
-  if (!isAuthor && status === 'visible') await notifyReply(p.userId, postId, p.body)
+  // Blockiert (bei anonymen Gedanken still angenommen): keine Glocke, kein Push – die Antwort sieht die Verfasserin ohnehin nicht.
+  if (!isAuthor && status === 'visible' && !(await blockedBetween(v.userId, p.userId))) await notifyReply(p.userId, postId, p.body)
   await touchPresence(v.userId, p.circleId)
-  return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId), acute: level === 'acute' }
+  return { ok: true, reply: toPublicReply({ ...r!, deletedAt: null }, v.userId, p.userId, p.visibility === 'anonymous'), acute: level === 'acute' }
 }
 
 async function ownReplyTarget(viewerId: string, replyId: string) {
@@ -363,6 +419,7 @@ export async function deleteReply(replyId: string): Promise<Ok<object> | Fail> {
     await syncReplyCount(r.postId, tx)
     return true
   })
+  if (done) await journalDeletion('reply', id.data)
   return done ? { ok: true } : fail(m.common.error)
 }
 
@@ -382,12 +439,20 @@ export async function toggleBookmark(postId: string): Promise<Ok<{ bookmarked: b
   return { ok: true, bookmarked: true }
 }
 
+/** Nur sichtbare, nicht gelöschte Inhalte lassen sich melden – sonst landen leere oder verborgene Fälle in der Warteschlange. */
 async function targetOwner(type: 'post' | 'reply', id: string) {
   if (type === 'post') {
-    const [p] = await db.select({ u: posts.userId }).from(posts).where(eq(posts.id, id))
+    const [p] = await db
+      .select({ u: posts.userId })
+      .from(posts)
+      .where(and(eq(posts.id, id), isNull(posts.deletedAt), eq(posts.status, 'visible')))
     return p?.u ?? null
   }
-  const [r] = await db.select({ u: replies.userId }).from(replies).where(eq(replies.id, id))
+  const [r] = await db
+    .select({ u: replies.userId })
+    .from(replies)
+    .innerJoin(posts, eq(posts.id, replies.postId))
+    .where(and(eq(replies.id, id), isNull(replies.deletedAt), eq(replies.status, 'visible'), isNull(posts.deletedAt)))
   return r?.u ?? null
 }
 
@@ -465,7 +530,10 @@ export async function blockAuthor(input: { type: 'post' | 'reply'; id: string })
           .where(eq(replies.id, id))
   if (!t?.owner || t.owner === v.userId) return fail(m.common.error)
   if (t.anonymous) await db.insert(postHides).values({ userId: v.userId, postId: t.postId }).onConflictDoNothing()
-  else await db.insert(blocks).values({ blockerId: v.userId, blockedId: t.owner }).onConflictDoNothing()
+  else {
+    await db.insert(blocks).values({ blockerId: v.userId, blockedId: t.owner }).onConflictDoNothing()
+    await syncReplyCountsBetween(v.userId, t.owner)
+  }
   return { ok: true }
 }
 
@@ -487,7 +555,11 @@ export async function saveCheckin(input: { mood: number; note?: string }): Promi
     .where(and(eq(checkins.userId, v.userId), gte(checkins.createdAt, hourStart)))
     .limit(1)
   if (current) {
-    await db.update(checkins).set({ mood: mood.data, note: sealText(v.userId, note) ?? current.note }).where(eq(checkins.id, current.id))
+    // Ohne Notiz-Angabe (nur Stimmung geändert) bleibt die Notiz; eine geleerte Notiz wird gelöscht, nicht behalten.
+    await db
+      .update(checkins)
+      .set({ mood: mood.data, note: input.note === undefined ? current.note : sealText(v.userId, note) })
+      .where(eq(checkins.id, current.id))
   } else {
     await db.insert(checkins).values({ userId: v.userId, mood: mood.data, note: sealText(v.userId, note) })
   }
@@ -559,7 +631,16 @@ async function pickStep(userId: string): Promise<StepView> {
   const list = await db
     .select({ id: steps.id, text: steps.text, i18n: steps.i18n, circleId: steps.circleId })
     .from(steps)
-    .where(and(eq(steps.isActive, true), or(isNull(steps.circleId), notInArray(steps.circleId, muted))))
+    .where(
+      and(
+        eq(steps.isActive, true),
+        // Schritte eines deaktivierten Kreises gibt es so lange nicht, wie der Kreis aus ist.
+        or(
+          isNull(steps.circleId),
+          and(notInArray(steps.circleId, muted), inArray(steps.circleId, db.select({ id: circles.id }).from(circles).where(eq(circles.isActive, true)))),
+        ),
+      ),
+    )
     .orderBy(steps.sort)
   if (!list.length) return null
   const today = zurichDay()
@@ -570,16 +651,12 @@ async function pickStep(userId: string): Promise<StepView> {
     .where(and(eq(stepLog.userId, userId), gt(stepLog.createdAt, since)))
     .orderBy(desc(stepLog.createdAt))
   const todays = log.filter((l) => zurichDay(l.createdAt) === today)
-  const doneToday = todays.find((l) => l.action === 'done')
-  if (doneToday) {
-    const s = list.find((x) => x.id === doneToday.stepId)
-    if (s) return { id: s.id, text: localStepText(s.text, s.i18n), done: true }
-  }
-  // Bei jedem Laden ein anderer Schritt: zufällig, nie derselbe wie zuletzt gezeigt und keiner, der heute schon
-  // übersprungen wurde. Gibt es zu wenige, wird die Ausschlussliste schrittweise kleiner.
+  // Bei jedem Laden – und gleich nach «Gemacht» oder «Ein anderer» – ein anderer Schritt: zufällig, nie derselbe
+  // wie zuletzt gezeigt und keiner, der heute schon gemacht oder übersprungen wurde. Gibt es zu wenige, wird die
+  // Ausschlussliste schrittweise kleiner.
   const [p] = await db.select({ last: sql<string | null>`${profiles.settings}->>'lastStep'` }).from(profiles).where(eq(profiles.userId, userId))
   const last = p?.last ?? null
-  const skipped = new Set(todays.filter((l) => l.action === 'skip').map((l) => l.stepId))
+  const skipped = new Set(todays.map((l) => l.stepId))
   const pool = [list.filter((x) => x.id !== last && !skipped.has(x.id)), list.filter((x) => x.id !== last), list].find((c) => c.length)!
   const s = pool[randomInt(pool.length)]!
   if (s.id !== last)
@@ -608,12 +685,15 @@ export async function loadFeed(view: FeedView, circleSlug: string | null, cursor
   const v = await getViewer()
   if (!v) return null
   const safeView: FeedView = view === 'unheard' || view === 'brave' ? view : 'all'
+  // «Meine Kreise» auch auf den weiteren Seiten (sonst kämen ab Seite 2 alle Kreise).
+  const followed = circleSlug === 'meine'
   let circleId: string | null = null
-  if (circleSlug) {
-    const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, circleSlug))
+  if (circleSlug && !followed && typeof circleSlug === 'string') {
+    // Inaktive Kreise sind nicht mehr erreichbar – auch nicht über einen alten Link.
+    const [c] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, circleSlug), eq(circles.isActive, true)))
     circleId = c?.id ?? null
   }
-  return getFeed({ viewerId: v.userId, view: safeView, circleId, cursor })
+  return getFeed({ viewerId: v.userId, view: safeView, circleId, followed, cursor })
 }
 
 /** «Ein Gedanke wartet»: der nächste unbeantwortete Gedanke – genau einer, ohne Liste und ohne Zahlen. */
@@ -627,8 +707,11 @@ export async function nextWaiting(cursor: string | null): Promise<{ post: Public
 export async function setCirclePref(slug: string, state: 'follow' | 'mute' | null): Promise<Ok<object> | Fail> {
   const v = await getViewer()
   if (!v) return fail(m.common.sessionEnded)
-  const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, slug))
-  if (!c) return fail(m.common.error)
+  // Auch über /api/v1 erreichbar: unbekannte Werte sind ein normaler Fehler, kein Serverfehler.
+  if (typeof slug !== 'string' || slug.length > 40 || !(state === null || state === 'follow' || state === 'mute')) return fail(m.common.error)
+  const [c] = await db.select({ id: circles.id, isActive: circles.isActive }).from(circles).where(eq(circles.slug, slug))
+  // Einem deaktivierten Kreis folgt man nicht neu; Entfolgen geht weiterhin.
+  if (!c || (state !== null && !c.isActive)) return fail(m.common.error)
   if (state === null) {
     await db.delete(circlePrefs).where(and(eq(circlePrefs.userId, v.userId), eq(circlePrefs.circleId, c.id)))
   } else {
@@ -651,6 +734,7 @@ export type ClientNotification = {
   excerpt: string | null
   message: string | null
   appealable: boolean
+  followUp: boolean
   read: boolean
   createdAt: string
 }
@@ -682,6 +766,7 @@ export async function listNotifications(): Promise<ClientNotification[]> {
     excerpt: r.payload.excerpt ?? null,
     message: r.payload.message ?? null,
     appealable: Boolean(r.payload.appealable),
+    followUp: Boolean(r.payload.followUp),
     read: Boolean(r.readAt),
     createdAt: r.createdAt.toISOString(),
   }))
@@ -696,15 +781,18 @@ export async function markNotificationsRead(): Promise<void> {
 export async function unreadState(): Promise<{ unread: number; supportSinceLastVisit: boolean }> {
   const v = await getViewer()
   if (!v) return { unread: 0, supportSinceLastVisit: false }
-  const rows = await db
-    .select({ kind: notifications.kind })
+  // Zählen statt alle Zeilen laden – Moderierende sammeln viele Betriebs- und Alarmmeldungen.
+  const [r] = await db
+    .select({ n: count(), support: sql<boolean>`bool_or(${notifications.kind} = 'support')` })
     .from(notifications)
     .where(and(eq(notifications.userId, v.userId), isNull(notifications.readAt)))
-  return { unread: rows.length, supportSinceLastVisit: rows.some((r) => r.kind === 'support') }
+  return { unread: r?.n ?? 0, supportSinceLastVisit: Boolean(r?.support) }
 }
 
 /** Für die Kreis-Liste: Mitglieder der letzten 15 Minuten, auf 5 gerundet, unter 5 «ein paar». */
 export async function presenceCounts(): Promise<Record<string, number | null>> {
+  // Nur für angemeldete Mitglieder – sonst wäre die Aktivität je Kreis für alle abrufbar (auch über /api/v1).
+  if (!(await getViewer())) return {}
   const rows = await db.execute<{ slug: string; n: number }>(sql`
     SELECT c.slug, count(p.user_id)::int AS n
     FROM circles c LEFT JOIN circle_presence p ON p.circle_id = c.id AND p.seen_at > now() - interval '15 minutes'
@@ -716,8 +804,8 @@ export async function presenceCounts(): Promise<Record<string, number | null>> {
 
 export async function touchCircle(slug: string) {
   const v = await getViewer()
-  if (!v) return
-  const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.slug, slug))
+  if (!v || typeof slug !== 'string' || slug.length > 40) return
+  const [c] = await db.select({ id: circles.id }).from(circles).where(and(eq(circles.slug, slug), eq(circles.isActive, true)))
   if (c) await touchPresence(v.userId, c.id)
 }
 

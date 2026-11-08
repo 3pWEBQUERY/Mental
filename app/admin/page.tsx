@@ -1,13 +1,14 @@
-import { and, asc, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { caseClaims, posts, replies, reports, roleProposals } from '@/db/schema'
+import { caseClaims, posts, replies, reports, roleProposals, users } from '@/db/schema'
 import { canModerate, memberToken, requireModerator } from '@/lib/server/admin'
-import { memberRef } from '@/lib/server/crypto'
+import { memberRef, staffRef } from '@/lib/server/crypto'
 import { formatDate, relativeTime } from '@/lib/time'
 import { m } from '@/messages'
 import { Sensitive } from '@/components/admin/sensitive'
 import Link from 'next/link'
 import { claimCase, moderate, resolveAppeal } from './actions'
+import { ModForm } from '@/components/admin/mod-form'
 
 /** Frist für akute Hinweise – danach erscheint «überfällig» (und der Monitor erinnert das Team). */
 const ACUTE_SLA_MS = 30 * 60_000
@@ -59,6 +60,11 @@ export default async function QueuePage() {
     replyIds.length ? db.select().from(replies).where(inArray(replies.id, replyIds)) : [],
     list.length ? db.select().from(caseClaims).where(inArray(caseClaims.targetId, [...postIds, ...replyIds])) : [],
   ])
+  // Moderationskonten lassen sich nicht direkt stummschalten oder sperren (moderate in actions.ts).
+  const authorIds = [...new Set([...postRows, ...replyRows].map((r) => r.userId).filter((id): id is string => Boolean(id)))]
+  const staffIds = new Set(
+    authorIds.length ? (await db.select({ id: users.id }).from(users).where(and(inArray(users.id, authorIds), ne(users.role, 'member')))).map((u) => u.id) : [],
+  )
   const isMod = canModerate(mod, 'mod')
   const a = m.admin.actions
   // Einsprüche gegen Massnahmen – nur für die Moderation (mod), nicht für Peers.
@@ -110,7 +116,10 @@ export default async function QueuePage() {
               <span>{relativeTime(ap.createdAt)}</span>
             </div>
             <blockquote>{ap.note || '—'}</blockquote>
-            <form action={resolveAppeal} className="inline-form">
+            {ap.targetId === mod.userId ? (
+              <p className="fine">{m.admin.ownCase}</p>
+            ) : (
+            <ModForm action={resolveAppeal} className="inline-form">
               <input type="hidden" name="reportId" value={ap.id} />
               <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} />
               <button className="btn small" name="decision" value="accept">
@@ -119,7 +128,8 @@ export default async function QueuePage() {
               <button className="btn ghost small" name="decision" value="reject">
                 {m.admin.appealReject}
               </button>
-            </form>
+            </ModForm>
+            )}
           </li>
         ))}
       </ul>
@@ -132,8 +142,7 @@ export default async function QueuePage() {
       <>
         {title}
         {proposalList}
-        {proposalList}
-      {appealList}
+        {appealList}
         <p className="notice">{m.admin.queueEmpty}</p>
       </>
     )
@@ -159,15 +168,17 @@ export default async function QueuePage() {
                 <span className={`prio p${g.priority}`}>{m.admin.priority[g.priority]}</span>
                 {g.priority === 0 && now - g.first.getTime() > ACUTE_SLA_MS && <span className="prio overdue">{m.admin.overdue}</span>}
                 <span>{m.admin.targetType[g.type]}</span>
-                {isMod && content.userId ? (
-                  <Link className="member-link" href={`/admin/konto/${encodeURIComponent(memberToken(content.userId))}`}>
-                    {m.admin.member} {authorRef}
-                  </Link>
-                ) : (
-                  <span>
-                    {m.admin.member} {authorRef}
-                  </span>
-                )}
+                {/* Peers sehen keine Mitglieds-ID: Sie ist pro Konto gleich und verbände anonyme mit Gedanken unter Namen. */}
+                {isMod &&
+                  (content.userId ? (
+                    <Link className="member-link" href={`/admin/konto/${encodeURIComponent(memberToken(content.userId))}`}>
+                      {m.admin.member} {authorRef}
+                    </Link>
+                  ) : (
+                    <span>
+                      {m.admin.member} {authorRef}
+                    </span>
+                  ))}
                 <span>{m.admin.status[content.status]}</span>
                 <span>{relativeTime(content.createdAt)}</span>
               </div>
@@ -195,16 +206,21 @@ export default async function QueuePage() {
               {(() => {
                 const c = claims.find((x) => x.targetType === g.type && x.targetId === g.id && now - x.claimedAt.getTime() < CLAIM_MS)
                 if (c && c.userId === mod.userId) return <p className="claim mine">{m.admin.claim.mine}</p>
-                if (c) return <p className="claim">{m.admin.claim.other(memberRef(c.userId), relativeTime(c.claimedAt))}</p>
+                if (c) return <p className="claim">{m.admin.claim.other(staffRef(c.userId), relativeTime(c.claimedAt))}</p>
                 return (
-                  <form action={claimCase}>
+                  <ModForm action={claimCase}>
                     <input type="hidden" name="targetType" value={g.type} />
                     <input type="hidden" name="targetId" value={g.id} />
                     <button className="btn ghost small">{m.admin.claim.take}</button>
-                  </form>
+                  </ModForm>
                 )
               })()}
-              <form action={moderate} className="inline-form">
+              {content.userId === mod.userId ? (
+                <p className="fine">{m.admin.ownCase}</p>
+              ) : (
+              <>
+              {/* Die Rückfrage nur für Moderation: Sie trägt die Mitglieds-ID, und Peers bekämen sie sonst mit der Seite geliefert. */}
+              <ModForm action={moderate} className="inline-form" confirm={isMod ? { ban: { message: m.admin.account.banConfirm(authorRef), label: a.ban } } : undefined}>
                 <input type="hidden" name="targetType" value={g.type} />
                 <input type="hidden" name="targetId" value={g.id} />
                 <input className="input" name="reason" placeholder={m.admin.reason} maxLength={500} aria-label={m.admin.reason} list="mod-templates" />
@@ -228,24 +244,35 @@ export default async function QueuePage() {
                 )}
                 {isMod && (
                   <>
-                    <button className="btn ghost small" name="action" value="warn">
-                      {a.warn}
-                    </button>
-                    <button className="btn ghost small" name="action" value="mute24">
-                      {a.mute24}
-                    </button>
-                    <button className="btn ghost small" name="action" value="mute7">
-                      {a.mute7}
-                    </button>
-                    <button className="btn ghost small danger" name="action" value="ban">
-                      {a.ban}
-                    </button>
+                    {/* Moderationskonten verwarnen nur Admins (Server prüft dasselbe). */}
+                    {(!content.userId || !staffIds.has(content.userId) || canModerate(mod, 'admin')) && (
+                      <button className="btn ghost small" name="action" value="warn">
+                        {a.warn}
+                      </button>
+                    )}
+                    {content.userId && staffIds.has(content.userId) ? (
+                      <span className="fine">{m.admin.staffNoBan}</span>
+                    ) : (
+                      <>
+                        <button className="btn ghost small" name="action" value="mute24">
+                          {a.mute24}
+                        </button>
+                        <button className="btn ghost small" name="action" value="mute7">
+                          {a.mute7}
+                        </button>
+                        <button className="btn ghost small danger" name="action" value="ban">
+                          {a.ban}
+                        </button>
+                      </>
+                    )}
                     <button className="btn ghost small" name="action" value="dismiss">
                       {a.dismiss}
                     </button>
                   </>
                 )}
-              </form>
+              </ModForm>
+              </>
+              )}
             </li>
           )
         })}

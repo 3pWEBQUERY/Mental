@@ -7,6 +7,7 @@ import { apiContext, appLocale, bearerToken } from '@/lib/server/api-context'
 import * as mobile from '@/lib/server/mobile'
 import { destroySession, getViewer } from '@/lib/server/session'
 import { safeMessage } from '@/lib/log-safe'
+import { readLimited } from '@/lib/server/read-body'
 
 /**
  * Schnittstelle für die Apps: POST /api/v1/<name> mit { "args": [...] } ruft dieselbe Server Action auf wie
@@ -70,6 +71,8 @@ const CALLS: Record<string, Call> = {
   // Für mich
   journalState: me.journalState,
   setupJournal: me.setupJournal,
+  // Tagebuch-PIN vergessen: Einträge löschen und neu beginnen (mit Passwort bestätigt).
+  resetJournal: me.resetJournal,
   listJournal: me.listJournal,
   addJournalEntry: me.addJournalEntry,
   deleteJournalEntry: me.deleteJournalEntry,
@@ -92,6 +95,8 @@ const CALLS: Record<string, Call> = {
   requestExport: settings.requestExport,
   exportStatus: settings.exportStatus,
   deleteAccount: settings.deleteAccount,
+  // Ruhezeiten für Benachrichtigungen (wie in der Web-App, gilt für alle Geräte des Kontos).
+  updateQuietHours: settings.updateQuietHours,
 }
 
 const MAX_BODY = 64 * 1024
@@ -107,10 +112,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ nam
   if (!call) return Response.json({ error: 'unknown' }, { status: 404 })
   // Nur JSON: Ein Formular einer fremden Seite kann diesen Content-Type nicht ohne CORS-Vorabprüfung senden.
   if (!request.headers.get('content-type')?.startsWith('application/json')) return Response.json({ error: 'json' }, { status: 415 })
-  // Zu gross? Schon am Kopf ablehnen, bevor der Body gelesen wird.
-  if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY) return Response.json({ error: 'too large' }, { status: 413 })
-  const text = await request.text()
-  if (text.length > MAX_BODY) return Response.json({ error: 'too large' }, { status: 413 })
+  // Zu gross? Gelesen wird höchstens MAX_BODY – auch ohne Content-Length (chunked).
+  const text = await readLimited(request, MAX_BODY)
+  if (text === null) return Response.json({ error: 'too large' }, { status: 413 })
   let args: unknown[] = []
   try {
     const body = text ? (JSON.parse(text) as { args?: unknown }) : {}

@@ -10,9 +10,15 @@ export const MIN_COUNT = 10
 /** Eine Zahl oder «unterdrückt» (1 bis MIN_COUNT − 1). Null bleibt null – das verrät niemanden. */
 export type Figure = { n: number } | { below: number }
 
+/** Ab so vielen Gedanken in einem Quartal veröffentlichen wir seine Zahlen – darunter wären Einzelne erkennbar. */
+export const PUBLISH_MIN_POSTS = 100
+
 export type Quarter = {
-  /** z. B. «3. Quartal 2026» */
-  label: string
+  /** Quartal (1–4) und Jahr – beschriftet in der Sprache der Seite (m.transparency.quarter). */
+  q: number
+  year: number
+  /** Genug Austausch für eine Veröffentlichung (PUBLISH_MIN_POSTS). */
+  publishable: boolean
   posts: Figure
   replies: Figure
   /** Anteil der Gedanken mit einer Antwort innerhalb von 24 Stunden – nur ab MIN_COUNT Gedanken. */
@@ -50,7 +56,7 @@ export async function getTransparency(): Promise<Quarter[] | null> {
       SELECT q::text AS q, extract(quarter FROM q)::int AS label_q, extract(year FROM q)::int AS label_y
       FROM generate_series(date_trunc('quarter', now()) - interval '6 months', date_trunc('quarter', now()) - interval '3 months', interval '3 months') AS q
       ORDER BY q DESC`)
-    const out = await Promise.all(quarters.map((q) => quarter(q.q, `${q.label_q}. Quartal ${q.label_y}`)))
+    const out = await Promise.all(quarters.map((q) => quarter(q.q, q.label_q, q.label_y)))
     cacheLife('hours')
     return out
   } catch (e) {
@@ -60,7 +66,7 @@ export async function getTransparency(): Promise<Quarter[] | null> {
   }
 }
 
-async function quarter(from: string, label: string): Promise<Quarter> {
+async function quarter(from: string, q: number, year: number): Promise<Quarter> {
   const range = sql`>= ${from}::timestamptz AND created_at < ${from}::timestamptz + interval '3 months'`
   const pRange = sql`>= ${from}::timestamptz AND p.created_at < ${from}::timestamptz + interval '3 months'`
   const [content, reports, reasons, crisis, actions, userActs] = await Promise.all([
@@ -70,7 +76,9 @@ async function quarter(from: string, label: string): Promise<Quarter> {
         (SELECT count(*)::int FROM replies WHERE created_at ${range}) AS replies,
         (SELECT count(*)::int FROM posts p WHERE p.created_at ${pRange}
            AND p.status = 'visible'
-           AND EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.status = 'visible' AND r.created_at < p.created_at + interval '24 hours')) AS answered,
+           -- Nur Antworten anderer: Eine eigene Ergänzung der Verfasserin ist keine Antwort.
+           AND EXISTS (SELECT 1 FROM replies r WHERE r.post_id = p.id AND r.status = 'visible' AND NOT r.is_author AND r.deleted_at IS NULL
+                       AND r.created_at < p.created_at + interval '24 hours')) AS answered,
         (SELECT count(*)::int FROM posts p WHERE p.created_at ${pRange}
            AND p.status = 'visible') AS visible`),
     rows<{ total: number; appeals: number }>(sql`
@@ -80,10 +88,14 @@ async function quarter(from: string, label: string): Promise<Quarter> {
       SELECT CASE WHEN reason IN ('auto_acute', 'auto_flag') THEN 'auto' ELSE reason::text END AS reason, count(*)::int AS n
       FROM reports WHERE target_type <> 'user' AND created_at ${range} GROUP BY 1 ORDER BY n DESC`),
     rows<{ n: number; median: number | null }>(sql`
-      SELECT count(*)::int AS n, percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM resolved_at - created_at) / 60) AS median
-      FROM reports WHERE priority = 0 AND resolved_at IS NOT NULL AND target_type <> 'user' AND created_at ${range}`),
+      -- Je Fall (Inhalt) einmal: die erste Meldung bis zur Erledigung – mehrere akute Meldungen zu einem Inhalt sind ein Fall.
+      SELECT count(*)::int AS n, percentile_cont(0.5) WITHIN GROUP (ORDER BY minutes) AS median FROM (
+        SELECT min(extract(epoch FROM resolved_at - created_at) / 60) AS minutes FROM reports
+        WHERE priority = 0 AND resolved_at IS NOT NULL AND target_type <> 'user' AND created_at ${range}
+        GROUP BY target_type, target_id) cases`),
+    // Je Inhalt einmal: Wird derselbe Gedanke zweimal ausgeblendet (z. B. nach einer Freigabe), ist das ein Fall.
     rows<{ action: string; n: number }>(sql`
-      SELECT action, count(*)::int AS n FROM moderation_actions
+      SELECT action, count(DISTINCT (target_type, target_id))::int AS n FROM moderation_actions
       WHERE created_at ${range} AND (target_type <> 'user' OR action = 'appeal_accept') GROUP BY action`),
     // Stummschaltungen und Sperren stehen doppelt im Protokoll (am Inhalt und am Konto) – gezählt wird nur die Konto-Zeile.
     rows<{ action: string; n: number }>(sql`
@@ -96,7 +108,9 @@ async function quarter(from: string, label: string): Promise<Quarter> {
   const act = (name: string) => actions.find((a) => a.action === name)?.n ?? 0
   const userAct = (name: string) => userActs.find((a) => a.action === name)?.n ?? 0
   return {
-    label,
+    q,
+    year,
+    publishable: c.posts >= PUBLISH_MIN_POSTS,
     posts: figure(c.posts),
     replies: figure(c.replies),
     answeredShare: c.visible >= MIN_COUNT ? Math.round((c.answered / c.visible) * 100) : null,

@@ -36,6 +36,30 @@ export function Dialog({
     if (!open && d.open) d.close()
   }, [open])
 
+  // «Zurück» im Browser schliesst einen offenen Dialog (wie man es vom Handy kennt). Und wird die Seite verborgen
+  // (React Activity beim Seitenwechsel), schliesst er sich auch: Ein offener modaler Dialog machte sonst die neue
+  // Seite unbedienbar (inert) – und stünde beim Zurückkehren noch offen da.
+  const close = useRef(onClose)
+  useEffect(() => {
+    close.current = onClose
+  })
+  useEffect(() => {
+    if (!open) return
+    const onPop = () => close.current()
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [open])
+  useEffect(() => {
+    // Das Element jetzt festhalten: Beim Verbergen löst React die Ref vor diesem Aufräumen.
+    const d = ref.current
+    return () => {
+      if (d?.open) {
+        d.close()
+        close.current()
+      }
+    }
+  }, [])
+
   return (
     <dialog
       ref={ref}

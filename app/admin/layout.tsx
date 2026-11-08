@@ -1,15 +1,21 @@
 import { and, count, eq, inArray, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { connection } from 'next/server'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { NO_INDEX } from '@/lib/seo'
 import { db } from '@/db'
 import { postMedia, posts } from '@/db/schema'
 import { Mark } from '@/components/ui'
 import { AdminNav } from '@/components/admin/nav'
+import { ConfirmHost } from '@/components/confirm'
 import { canModerate, hasStrongAuth, requireModeratorRole } from '@/lib/server/admin'
 import { m } from '@/messages'
 
 export const instant = false
+
+/** Moderation: nie in Suchmaschinen. */
+export const metadata: Metadata = { robots: NO_INDEX }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await connection()
@@ -41,6 +47,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         {strong && <AdminNav level={level} imagesWaiting={waiting?.n ?? 0} />}
         {children}
       </main>
+      <ConfirmHost />
     </div>
   )
 }

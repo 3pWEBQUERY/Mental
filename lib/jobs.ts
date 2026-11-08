@@ -16,17 +16,20 @@ export const QUEUES = {
   cleanupNotifications: 'cleanup-notifications',
   cleanupPresence: 'cleanup-presence',
   cleanupExports: 'cleanup-exports',
+  sweepBucket: 'sweep-bucket',
   purgeDeleted: 'purge-deleted-accounts',
   purgeInactive: 'purge-inactive-accounts',
   retention: 'apply-retention',
   nudgeListeners: 'nudge-listeners',
+  requeueModeration: 'requeue-moderation',
+  crisisFollowUp: 'crisis-follow-up',
 } as const
 
 export type JobData = {
   'process-image': { mediaId: string }
   'moderate-content': { targetType: 'post' | 'reply'; targetId: string }
-  /** postId: neue Antwort · alert: akuter Krisen-Treffer an die Moderation (auch in den Ruhezeiten). */
-  'send-push': { userId: string; postId?: string; alert?: boolean }
+  /** postId: neue Antwort · alert: akuter Krisen-Treffer an die Moderation (auch in den Ruhezeiten) · followUp: Nachfrage am Tag danach. */
+  'send-push': { userId: string; postId?: string; alert?: boolean; followUp?: boolean }
   'export-account': { exportId: string }
   'purge-account': { userId: string }
 }
@@ -65,7 +68,8 @@ export function getBoss(role: 'web' | 'worker' = 'web'): Promise<PgBoss> {
 export async function enqueue<K extends keyof JobData>(
   name: K,
   data: JobData[K],
-  options: { singletonKey?: string; startAfter?: Date | number; priority?: number } = {},
+  /** singletonKey wirkt bei der Standard-Warteschlange nur zusammen mit singletonSeconds (pg-boss 12). */
+  options: { singletonKey?: string; singletonSeconds?: number; startAfter?: Date | number; priority?: number } = {},
 ) {
   const boss = await getBoss()
   return boss.send(name, data, { retryLimit: 3, retryBackoff: true, ...options })

@@ -2,12 +2,13 @@
 
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { BREATH, MOODS } from '@/lib/constants'
+import { MOODS } from '@/lib/constants'
+import { breathAt, breathPlan, type BreathPhase, type BreathPlan } from '@/lib/breath'
 
 export type OrbApi = {
   setMood(i: number): void
   pulse(): void
-  breathe(onTick: (phase: 'inhale' | 'hold' | 'exhale', secondsLeft: number) => void, onEnd: (finished: boolean) => void): void
+  breathe(onTick: (phase: BreathPhase, secondsLeft: number) => void, onEnd: (finished: boolean) => void, plan?: BreathPlan): void
   stopBreath(): void
   /** 5-4-3-2-1: Punkte fliessen zur Ziffer `n` (oder mit `null` zurück zur Kugel). `dir` +1 vorwärts, -1 zurück. */
   ground(n: number | null, dir: 1 | -1): void
@@ -378,9 +379,10 @@ export default function Orb({
       on: boolean
       start: number
       phase: string
-      tick: ((p: 'inhale' | 'hold' | 'exhale', left: number) => void) | null
+      tick: ((p: BreathPhase, left: number) => void) | null
       end: ((finished: boolean) => void) | null
-    } = { on: false, start: 0, phase: '', tick: null, end: null }
+      plan: BreathPlan
+    } = { on: false, start: 0, phase: '', tick: null, end: null, plan: breathPlan() }
     let audio: AudioContext | null = null
     // 5-4-3-2-1: laufende Verwandlung (uMix 0 → 1) und ein wartendes Ziel, falls schneller geklickt wird.
     const morph = { from: 0, dur: 1.5, running: false, digit: 0, pending: null as null | { n: number | null; dir: 1 | -1 } }
@@ -405,9 +407,6 @@ export default function Orb({
     const ro = new ResizeObserver(resize)
     ro.observe(host)
     resize()
-
-    const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
-    const CYCLE = BREATH.inhale + BREATH.hold + BREATH.exhale
 
     function stopBreath(finished: boolean) {
       if (!breath.on) return
@@ -436,26 +435,15 @@ export default function Orb({
 
       let b = 0.015 * Math.sin(now / 1600)
       if (breath.on) {
-        const t0 = (now - breath.start) / 1000
-        if (t0 >= CYCLE * BREATH.cycles) stopBreath(true)
+        const at = breathAt(breath.plan, (now - breath.start) / 1000)
+        if (!at) stopBreath(true)
         else {
-          const t = t0 % CYCLE
-          let phase: 'inhale' | 'hold' | 'exhale'
-          if (t < BREATH.inhale) {
-            b = ease(t / BREATH.inhale) * 0.22
-            phase = 'inhale'
-          } else if (t < BREATH.inhale + BREATH.hold) {
-            b = 0.22
-            phase = 'hold'
-          } else {
-            b = 0.22 * (1 - ease((t - BREATH.inhale - BREATH.hold) / BREATH.exhale))
-            phase = 'exhale'
+          b = at.level * 0.22
+          if (at.phase !== breath.phase) {
+            if (soundRef.current && breath.phase) chime(audio, at.phase === 'inhale' ? 392 : at.phase === 'hold' ? 440 : at.phase === 'rest' ? 349 : 330)
+            breath.phase = at.phase
           }
-          if (phase !== breath.phase) {
-            if (soundRef.current && breath.phase) chime(audio, phase === 'inhale' ? 392 : phase === 'hold' ? 440 : 330)
-            breath.phase = phase
-          }
-          breath.tick?.(phase, Math.ceil(CYCLE * BREATH.cycles - t0))
+          breath.tick?.(at.phase, at.left)
         }
       }
       uniforms.uBreath.value += (b - uniforms.uBreath.value) * 0.12
@@ -565,7 +553,7 @@ export default function Orb({
       pulse() {
         if (!reduce) uniforms.uPulse.value = 1
       },
-      breathe(tick, end) {
+      breathe(tick, end, plan = breathPlan()) {
         if (soundRef.current) {
           audio ??= new AudioContext()
           void audio.resume()
@@ -575,6 +563,7 @@ export default function Orb({
         breath.start = performance.now()
         breath.tick = tick
         breath.end = end
+        breath.plan = plan
         run()
       },
       stopBreath() {
@@ -591,6 +580,8 @@ export default function Orb({
     })
 
     return () => {
+      // Läuft gerade eine Atemübung, beendet sie hier – sonst bliebe der Raum nach dem Zurückkehren im Atmen hängen.
+      stopBreath(false)
       cancelAnimationFrame(raf)
       io.disconnect()
       ro.disconnect()

@@ -3,7 +3,7 @@ import webpush from 'web-push'
 import { localesOf } from '../../lib/recipient-locale'
 import { getMessages } from '../../messages'
 import { db } from '../../db'
-import { pushSubscriptions } from '../../db/schema'
+import { profiles, pushSubscriptions } from '../../db/schema'
 import { isPushEndpoint } from '../../lib/push-endpoint'
 import { inQuietHours } from '../../lib/quiet-hours'
 import { zurichHour } from '../../lib/time'
@@ -24,15 +24,22 @@ function configure() {
  * Nur für «neue Antwort», nur nach Zustimmung, nie in den Ruhezeiten.
  * Der Text ist neutral – auf dem Sperrbildschirm erscheint nichts Persönliches.
  */
-export async function sendPush({ userId, postId, alert }: { userId: string; postId?: string; alert?: boolean }) {
+export async function sendPush({ userId, postId, alert, followUp }: { userId: string; postId?: string; alert?: boolean; followUp?: boolean }) {
   if (!configure()) return
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId))
   const hour = zurichHour()
   // Neutral und in der Sprache der empfangenden Person.
   const t = getMessages((await localesOf([userId])).get(userId))
+  // Diskret-Modus: Auf dem Sperrbildschirm steht weder «Jiaia» noch, dass jemand geantwortet hat.
+  const [p] = await db.select({ settings: profiles.settings }).from(profiles).where(eq(profiles.userId, userId))
+  const discreet = Boolean(p?.settings?.discreet)
   const payload = alert
     ? JSON.stringify({ title: t.push.acuteTitle, body: t.push.acuteBody, url: '/admin', tag: 'lichtung-acute' })
-    : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
+    : discreet
+      ? JSON.stringify({ title: t.push.discreetTitle, body: t.push.discreetBody, url: followUp ? '/start' : `/start/gedanke/${postId}` })
+      : followUp
+        ? JSON.stringify({ title: 'Jiaia', body: t.push.followUp, url: '/start', tag: 'lichtung-follow-up' })
+        : JSON.stringify({ title: 'Jiaia', body: t.push.reply, url: `/start/gedanke/${postId}` })
   for (const s of subs) {
     // Ältere Abos von vor der Prüfung: nur an echte Push-Dienste senden, alles andere entfernen.
     if (!isPushEndpoint(s.endpoint)) {

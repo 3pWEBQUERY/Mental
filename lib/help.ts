@@ -27,5 +27,13 @@ export const DEFAULT_HELP_IT: HelpResource[] = [
   { name: 'Emergenza sanitaria', phone: '144', url: null, hours: '24 ore su 24', audience: 'in caso di pericolo immediato' },
 ]
 
-export type HelpLanguage = 'de' | 'fr' | 'it'
-export const defaultHelp = (language: HelpLanguage) => (language === 'fr' ? DEFAULT_HELP_FR : language === 'it' ? DEFAULT_HELP_IT : DEFAULT_HELP)
+/** Englische Fassung für /help. Gleiche Nummern; die offiziellen Namen bleiben, mit kurzer Erklärung. */
+export const DEFAULT_HELP_EN: HelpResource[] = [
+  { name: 'Die Dargebotene Hand (Helping Hand)', phone: '143', url: 'https://www.143.ch', hours: '24/7', audience: 'anonymous, for everyone' },
+  { name: 'Pro Juventute', phone: '147', url: 'https://www.147.ch', hours: '24/7', audience: 'for children and young people' },
+  { name: 'Medical emergency', phone: '144', url: null, hours: '24/7', audience: 'if you are in immediate danger' },
+]
+
+export type HelpLanguage = 'de' | 'fr' | 'it' | 'en'
+export const defaultHelp = (language: HelpLanguage) =>
+  language === 'fr' ? DEFAULT_HELP_FR : language === 'it' ? DEFAULT_HELP_IT : language === 'en' ? DEFAULT_HELP_EN : DEFAULT_HELP

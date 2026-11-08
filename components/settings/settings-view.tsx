@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from 'react'
-import { logout } from '@/app/(auth)/actions'
+import { LogoutButton } from '@/components/auth/logout-button'
 import { setCirclePref } from '@/app/(app)/actions'
 import {
   changePassword,
@@ -34,6 +34,8 @@ import { PanicButton } from '../panic'
 import { circleColor } from '../app/circles'
 import { attempt } from '@/lib/client/attempt'
 import { RadioGroup } from '../radio-group'
+import { BREATH_MINUTES } from '@/lib/breath'
+import { forgetPrivate } from '@/lib/client/private-storage'
 
 const s = lazy('settings')
 
@@ -103,9 +105,9 @@ export function SettingsView({ data }: { data: SettingsData }) {
       applyLocalPrefs({ theme: next.theme, fontSize: next.fontSize, motion: next.motion, discreet: next.discreet })
     }
     start(async () => {
-      const r = await updateSettings(patch)
+      const r = await updateSettings(patch).catch(() => ({ ok: false as const, error: m.common.error }))
       if (!r.ok) toast(r.error)
-      else if ('motion' in patch || 'breathSound' in patch || 'hidePresence' in patch || 'collapseWarnings' in patch) router.refresh()
+      else if ('motion' in patch || 'breathSound' in patch || 'breathPattern' in patch || 'breathMinutes' in patch || 'hidePresence' in patch || 'collapseWarnings' in patch) router.refresh()
     })
   }
 
@@ -136,6 +138,16 @@ export function SettingsView({ data }: { data: SettingsData }) {
   }, [data.vapidKey])
 
   async function togglePush(on: boolean) {
+    // subscribe() wirft z. B. in Safari ohne installierte Web-App – dann eine ruhige Meldung statt nichts.
+    try {
+      await applyPush(on)
+    } catch {
+      toast(m.common.error)
+      setPush(on ? 'off' : 'on')
+    }
+  }
+
+  async function applyPush(on: boolean) {
     const reg = await navigator.serviceWorker.ready
     if (on) {
       const perm = await Notification.requestPermission()
@@ -179,7 +191,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={(e: FormEvent) => {
             e.preventDefault()
             start(async () => {
-              const r = await updateIdentity({ displayName, defaultVisibility: visibility })
+              const r = await updateIdentity({ displayName, defaultVisibility: visibility }).catch(() => ({ ok: false as const, error: m.common.error }))
               toast(r.ok ? m.common.saved : r.error)
               if (r.ok) router.refresh()
             })
@@ -210,7 +222,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const r = await changePassword(pw)
+              const r = await changePassword(pw).catch(() => ({ ok: false as const, error: m.common.error }))
               setPwMsg(r.ok ? s.passwordChanged : r.error)
               if (r.ok) {
                 setPw({ current: '', next: '' })
@@ -317,7 +329,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const r = await regenerateRecoveryKey(keyPw)
+              const r = await regenerateRecoveryKey(keyPw).catch(() => ({ ok: false as const, error: m.common.error }))
               if (!r.ok) return toast(r.error)
               setNewKey(r.words)
               setKeyPw('')
@@ -426,6 +438,18 @@ export function SettingsView({ data }: { data: SettingsData }) {
           <span className="field-label">{s.motion}</span>
           <Segment value={prefs.motion ?? 'on'} options={s.motionOptions} onChange={(v) => setPref({ motion: v })} label={s.motion} />
           <Toggle checked={prefs.breathSound ?? false} onChange={(v) => setPref({ breathSound: v })} label={s.breathSound} />
+          <span className="field-label">{s.breathPattern}</span>
+          <Segment value={prefs.breathPattern ?? 'calm'} options={m.stage.patternNames} onChange={(v) => setPref({ breathPattern: v })} label={s.breathPattern} />
+          <p className="fine">{m.stage.patternHints[prefs.breathPattern ?? 'calm']}</p>
+          <span className="field-label">{s.breathMinutes}</span>
+          <RadioGroup
+            fluid
+            className="segment"
+            label={s.breathMinutes}
+            value={prefs.breathMinutes ?? 1}
+            onChange={(v) => setPref({ breathMinutes: v })}
+            options={BREATH_MINUTES.map((n) => ({ value: n, label: m.stage.minutesOption(n) }))}
+          />
         </div>
       </Section>
 
@@ -439,6 +463,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             <Toggle checked={push === 'on'} onChange={(v) => void togglePush(v)} label={s.push} hint={s.pushHint} />
           )}
           <Toggle checked={prefs.listener ?? false} onChange={(v) => setPref({ listener: v })} label={s.listener} hint={s.listenerHint} />
+          <Toggle checked={prefs.followUp ?? true} onChange={(v) => setPref({ followUp: v })} label={s.followUp} hint={s.followUpHint} />
           <div>
             <span className="field-label">{s.quiet}</span>
             <div className="row-actions">
@@ -462,7 +487,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                   </option>
                 ))}
               </select>
-              <button type="button" className="btn ghost small" onClick={async () => toast((await updateQuietHours(quiet.from, quiet.to)).ok ? m.common.saved : m.common.error)}>
+              <button type="button" className="btn ghost small" onClick={async () => toast((await updateQuietHours(quiet.from, quiet.to).catch(() => ({ ok: false as const, error: m.common.error }))).ok ? m.common.saved : m.common.error)}>
                 {m.common.save}
               </button>
             </div>
@@ -476,7 +501,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
           {/* Sprachnamen immer in ihrer eigenen Sprache. Wechsel lädt die Seite in der neuen Sprache neu. */}
           <Segment
             value={currentLocale()}
-            options={{ de: 'Deutsch', fr: 'Français', it: 'Italiano' }}
+            options={{ de: 'Deutsch', fr: 'Français', it: 'Italiano', en: 'English' }}
             onChange={(l) => window.location.assign(`/sprache?l=${l}&zurueck=/einstellungen`)}
             label={s.language}
           />
@@ -530,7 +555,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
                 type="button"
                 className="btn ghost"
                 onClick={async () => {
-                  const r = await requestExport()
+                  const r = await requestExport().catch(() => ({ ok: false as const, error: m.common.error }))
                   if (!r.ok) return toast(r.error)
                   setExp({ status: r.status, id: r.id })
                 }}
@@ -545,8 +570,10 @@ export function SettingsView({ data }: { data: SettingsData }) {
           onSubmit={async (e) => {
             e.preventDefault()
             if (!(await askConfirm(s.deleteHint, s.deleteButton))) return
-            const r = await deleteAccount(delPw)
+            const r = await deleteAccount(delPw).catch(() => ({ ok: false as const, error: m.common.error }))
             if (!r.ok) return setDelErr(r.error)
+            // Entwurf, Offline-Notfallplan und Push-Abo vom Gerät nehmen – sonst blieben sie nach der Löschung stehen.
+            forgetPrivate()
             window.location.replace('/')
           }}
         >
@@ -571,9 +598,7 @@ export function SettingsView({ data }: { data: SettingsData }) {
             {s.panicHint}
           </p>
           <div className="row-actions">
-            <form action={logout}>
-              <button className="btn ghost">{s.logout}</button>
-            </form>
+            <LogoutButton label={s.logout} />
             <PanicButton />
           </div>
           <p className="fine">

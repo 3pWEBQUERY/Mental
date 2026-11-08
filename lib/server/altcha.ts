@@ -10,8 +10,9 @@ export function newChallenge() {
   return createChallenge({ hmacKey: key(), maxNumber: 120_000, expires: new Date(Date.now() + 10 * 60_000) })
 }
 
-export async function verifyPow(payload: string | undefined | null): Promise<boolean> {
-  if (!payload) return false
+export async function verifyPow(payload: unknown): Promise<boolean> {
+  // Nur ein kurzer Text (Base64) – kein Objekt: Sonst landete eine fremde «length» in Buffer.from (Speicher, Rechenzeit).
+  if (typeof payload !== 'string' || !payload || payload.length > 2000) return false
   try {
     const ok = await verifySolution(payload, key(), true)
     if (!ok) return false

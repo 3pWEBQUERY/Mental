@@ -4,7 +4,8 @@ import { createContext, use, type ReactNode } from 'react'
 import type { CrisisTerm } from '@/lib/crisis'
 import type { HelpResource } from '@/lib/help'
 
-export type ClientCircle = { id: string; slug: string; name: string; color: string; description: string; rules: string }
+/** requireCw: Jeder Gedanke im Kreis hat einen Inhaltshinweis. */
+export type ClientCircle = { id: string; slug: string; name: string; color: string; description: string; rules: string; requireCw: boolean }
 
 /** Was der Browser über die angemeldete Person wissen darf – bewusst schmal, ohne Konto-ID. */
 export type ClientViewer = {
@@ -25,6 +26,8 @@ export type ClientViewer = {
   /** Nachtbereitschaft der Moderation (NIGHT_MODERATION) – sonst ist das Team 22–7 Uhr nicht da. */
   nightModeration: boolean
   breathSound: boolean
+  breathPattern: 'calm' | 'box' | 'relax'
+  breathMinutes: 1 | 3 | 5
   collapseWarnings: boolean
   hidePresence: boolean
   circles: ClientCircle[]

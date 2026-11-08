@@ -19,14 +19,14 @@
   - Sie kommen in der Sprache der **empfangenden** Person an. Dafür nehmen `notifySystem`, `notifyModeration` und `notifyAdmins` eine Funktion `(t) => t.…` entgegen (`lib/recipient-locale.ts`).
 - **Inhalte aus der Datenbank**
   - Kreise und kleine Schritte haben eine Spalte `i18n` (`fr`, `it`). Fehlt dort eine Übersetzung, gilt der deutsche Text.
-  - Hilfe-Nummern und Krisenbegriffe haben die Spalte `language`.
+  - Hilfe-Nummern und Krisenbegriffe haben die Spalte `language`. Hilfe-Nummern können zusätzlich einem Kreis zugeordnet sein (`circle_id`, siehe `docs/kreise-hilfe-pruefung.md`).
   - Gepflegt wird alles im Admin-Bereich. Der Seed ergänzt die französischen Standardtexte einmalig.
   - Krisenbegriffe aller Sprachen gelten immer, egal welche Sprache die Oberfläche hat.
 
 ## Bewusst (noch) nur Deutsch
 
 - **Vorgerenderte Seiten:** `/hilfe`, `/offline` und die Fehlerseiten müssen auch ohne Datenbank und offline funktionieren. Die französische Hilfe ist `/aide`, die italienische `/aiuto`, beide ebenfalls vorgerendert. «Sofort Hilfe» in der App folgt der gewählten Sprache.
-- **Rechtstexte** (`/datenschutz`, `/impressum`): Ein Hinweis auf Französisch und Italienisch steht oben auf der Seite. Die Übersetzung folgt nach rechtlicher Prüfung.
+- **Rechtstexte** (`/datenschutz`, `/impressum`): Wer Französisch oder Italienisch gewählt hat, sieht oben einen Hinweis in seiner Sprache, dass es den Text vorerst nur auf Deutsch gibt (`.legal-note`, gesteuert über `data-ui` aus `lib/prefs-script.ts`). Auf Deutsch ist die Seite ganz deutsch. Die Übersetzung folgt nach rechtlicher Prüfung.
 - **Moderationsbereich:** Ein Teil der Beschriftungen ist dort fest auf Deutsch.
 - **Gespeicherte Benachrichtigungen** bleiben in der Sprache, die beim Erstellen galt.
 - **Datenexport** und PWA-Manifest.

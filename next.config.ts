@@ -16,6 +16,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Eingebauter Speicher-Cache plus Abgleich der Invalidierungen zwischen den Web-Replikas (siehe Datei).
+  cacheHandlers: { default: require.resolve('./cache-handlers/default.cjs') },
   partialPrefetching: true,
   poweredByHeader: false,
   reactStrictMode: true,
@@ -28,6 +30,8 @@ const nextConfig: NextConfig = {
     return [
       { source: '/:path*', headers: securityHeaders },
       { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }, { key: 'Service-Worker-Allowed', value: '/' }] },
+      // Hero-Video: versionierter Ordner (/hero/v1) – darf ein Jahr im Browser-Cache bleiben. Neue Fassung = neuer Ordner.
+      { source: '/hero/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
     ]
   },
 }

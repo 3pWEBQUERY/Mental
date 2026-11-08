@@ -42,11 +42,11 @@ async function Data() {
       data={{
         displayName: v.displayName,
         defaultVisibility: v.defaultVisibility,
-        settings: { theme: v.settings.theme, fontSize: v.settings.fontSize, motion: v.settings.motion, breathSound: v.settings.breathSound, hidePresence: v.settings.hidePresence, collapseWarnings: v.settings.collapseWarnings, discreet: v.settings.discreet, listener: v.settings.listener },
+        settings: { theme: v.settings.theme, fontSize: v.settings.fontSize, motion: v.settings.motion, breathSound: v.settings.breathSound, breathPattern: v.settings.breathPattern, breathMinutes: v.settings.breathMinutes, hidePresence: v.settings.hidePresence, collapseWarnings: v.settings.collapseWarnings, discreet: v.settings.discreet, listener: v.settings.listener },
         circles: circleRows.map((c) => ({ slug: c.slug, name: localCircleName(c.name, c.i18n), color: c.color, state: prefs.find((p) => p.circleId === c.id)?.state ?? null })),
         sessions,
         blocked,
-        quiet: { from: sub?.quietFrom ?? 22, to: sub?.quietTo ?? 7 },
+        quiet: sub ? { from: sub.quietFrom, to: sub.quietTo } : (v.settings.quiet ?? { from: 22, to: 7 }),
         vapidKey: process.env.VAPID_PUBLIC_KEY ?? null,
       }}
     />

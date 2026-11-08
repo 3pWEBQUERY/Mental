@@ -1,5 +1,5 @@
 import 'server-only'
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { env } from './env'
 
 export const sha256 = (v: string) => createHash('sha256').update(v).digest('hex')
@@ -28,6 +28,41 @@ export function unseal<T>(sealed: string | undefined, purpose: string): T | null
   } catch {
     return null
   }
+}
+
+/**
+ * Wie seal, aber verschlüsselt (AES-256-GCM, Schlüssel aus dem App-Geheimnis je Zweck): Der Inhalt ist nicht
+ * lesbar – z. B. die Konto-ID im Link auf die Kontoseite der Moderation.
+ */
+export function encSeal<T>(value: T, ttlMs: number, purpose: string): string {
+  const key = createHash('sha256').update(`${env.secret}:enc:${purpose}`).digest()
+  const iv = randomBytes(12)
+  const c = createCipheriv('aes-256-gcm', key, iv)
+  const body = Buffer.concat([c.update(JSON.stringify({ v: value, exp: Date.now() + ttlMs }), 'utf8'), c.final()])
+  return Buffer.concat([iv, c.getAuthTag(), body]).toString('base64url')
+}
+
+export function encUnseal<T>(sealed: string | undefined, purpose: string): T | null {
+  if (!sealed || sealed.length > 512) return null
+  try {
+    const raw = Buffer.from(sealed, 'base64url')
+    if (raw.length < 29) return null
+    const key = createHash('sha256').update(`${env.secret}:enc:${purpose}`).digest()
+    const d = createDecipheriv('aes-256-gcm', key, raw.subarray(0, 12))
+    d.setAuthTag(raw.subarray(12, 28))
+    const { v, exp } = JSON.parse(Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8')) as { v: T; exp: number }
+    return exp > Date.now() ? v : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Kennung eines Teammitglieds in Audit-Log und Fallübernahme – bewusst eine andere als memberRef: Sonst liesse sich
+ * im Moderationsbereich verknüpfen, welche anonymen Gedanken von welcher Kollegin stammen.
+ */
+export function staffRef(userId: string) {
+  return `T-${hmac(userId, 'staff-ref').slice(0, 6).toUpperCase()}`
 }
 
 /** Interne, nicht rückführbare Mitglieds-ID für Moderator:innen – nie der Benutzername. */

@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 
 export const PASSWORD = 'ein ruhiger langer satz 2026'
@@ -41,7 +42,9 @@ export async function register(page: Page, displayName = 'Testperson', opts: { k
 /** Die Einführung beim ersten Besuch überspringen – und warten, bis der Server sich das gemerkt hat. */
 export async function skipOnboarding(page: Page) {
   const dialog = page.getByRole('dialog', { name: 'Willkommen' })
-  await expect(dialog).toBeVisible({ timeout: 10_000 })
+  // Der Dialog öffnet erst nach dem Hydrieren (+600 ms). Gegen Ende eines vollen Laufs (WebGL in Software, zwei
+  // Server) dauerte das vereinzelt über 10 s – ohne dass etwas fehlte.
+  await expect(dialog).toBeVisible({ timeout: 25_000 })
   const saved = page.waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined)
   await dialog.getByRole('button', { name: 'Überspringen' }).click()
   await expect(dialog).toBeHidden()
@@ -75,7 +78,13 @@ export async function share(page: Page, text: string, opts: { anonymous?: boolea
     await page.locator('label.switch', { hasText: 'Ganz anonym teilen' }).click()
     await expect(toggle).toBeChecked({ checked: opts.anonymous })
   }
+  // Auf die Antwort des Servers warten: Der Gedanke erscheint sofort (optimistisch) – lädt ein zweites Konto direkt
+  // danach, wäre er sonst manchmal noch nicht gespeichert. Höchstens 10 s (z. B. wenn erst ein Hinweis bestätigt wird).
+  const saved = page
+    .waitForResponse((r) => r.request().method() === 'POST' && r.request().headers()['next-action'] !== undefined, { timeout: 10_000 })
+    .catch(() => null)
   await page.getByRole('button', { name: 'Teilen', exact: true }).click()
+  await saved
 }
 
 /**
@@ -84,4 +93,25 @@ export async function share(page: Page, text: string, opts: { anonymous?: boolea
  */
 export async function closeExtraContexts({ browser, context }: { browser: Browser; context: BrowserContext }) {
   await Promise.all(browser.contexts().filter((c) => c !== context).map((c) => c.close()))
+}
+
+/** Moderationskonto mit echter Passkey-Sitzung (virtueller Authenticator) – nur so öffnet sich /admin. */
+export async function moderator(browser: Browser, role: 'mod' | 'admin' = 'mod') {
+  const ctx = await browser.newContext()
+  const page = await ctx.newPage()
+  const cdp = await ctx.newCDPSession(page)
+  await cdp.send('WebAuthn.enable')
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true },
+  })
+  const { username } = await register(page)
+  await page.goto('/einstellungen')
+  await page.getByRole('button', { name: 'Passkey hinzufügen' }).click()
+  await expect(page.getByText('Passkey eingerichtet.', { exact: true })).toBeVisible()
+  execSync(`npm run admin:grant -- ${username} ${role}`, { stdio: 'ignore' })
+  await page.getByRole('button', { name: 'Abmelden', exact: true }).click()
+  await page.waitForURL('**/anmelden')
+  await page.getByRole('button', { name: 'Mit Passkey anmelden' }).click()
+  await page.waitForURL('**/start')
+  return page
 }

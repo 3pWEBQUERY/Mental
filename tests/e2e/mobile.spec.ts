@@ -38,7 +38,7 @@ test('Mobil: Kreise samt «gerade hier» und der kleine Schritt sind erreichbar'
 })
 
 test('Mobil: Kopf der öffentlichen Seiten mit Sprachumschalter passt ohne seitliches Scrollen', async ({ page }) => {
-  for (const path of ['/', '/hilfe', '/aide', '/aiuto']) {
+  for (const path of ['/', '/hilfe', '/aide', '/aiuto', '/help']) {
     await page.goto(path)
     await expect(page.locator('.lang-switch').first()).toBeVisible()
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)

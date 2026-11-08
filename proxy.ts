@@ -6,15 +6,17 @@ const SESSION_COOKIE = 'lichtung_session'
 const PROTECTED = ['/start', '/ich', '/einstellungen', '/admin']
 const AUTH_ONLY = ['/anmelden', '/registrieren']
 /** Vollständig vorgerenderte Seiten ohne Nutzerinhalte – hier kann es keine Nonce geben. */
-const STATIC_PAGES = ['/hilfe', '/datenschutz', '/impressum', '/offline', '/aide', '/aiuto']
+const STATIC_PAGES = ['/datenschutz', '/impressum', '/offline']
+/** Hilfeseiten: bei jeder Anfrage gerendert (siehe app/(public)/hilfe/page.tsx) – also mit Nonce wie alle anderen. */
+const HELP_PAGES = ['/hilfe', '/aide', '/aiuto', '/help']
 /** Alle Seiten-Routen der App. Was hier nicht drin ist, endet auf der vorgerenderten 404-Seite. */
-const APP_ROUTES = ['/', '/regeln', '/transparenz', ...STATIC_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen', '/sprache']
+const APP_ROUTES = ['/', '/regeln', '/transparenz', '/blog', ...STATIC_PAGES, ...HELP_PAGES, ...PROTECTED, ...AUTH_ONLY, '/wiederherstellen', '/sprache']
 const isAppRoute = (p: string) => APP_ROUTES.some((r) => p === r || (r !== '/' && p.startsWith(`${r}/`)))
 /** Gleich wie LOCALE_COOKIE in messages/index.ts – hier ohne Import, damit die Wörterbücher nicht im Proxy landen. */
 const LOCALE_COOKIE = 'lichtung_lang'
 
-/** Erste unterstützte Sprache aus Accept-Language (Deutsch, Französisch, Italienisch), sonst Deutsch. */
-export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' | 'it' {
+/** Erste unterstützte Sprache aus Accept-Language (Deutsch, Französisch, Italienisch, Englisch), sonst Deutsch. */
+export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' | 'it' | 'en' {
   const langs = (acceptLanguage ?? '')
     .split(',')
     .map((part) => {
@@ -28,6 +30,7 @@ export function pickLocale(acceptLanguage: string | null): 'de' | 'fr' | 'it' {
     if (l.tag.startsWith('fr')) return 'fr'
     if (l.tag.startsWith('it')) return 'it'
     if (l.tag.startsWith('de')) return 'de'
+    if (l.tag.startsWith('en')) return 'en'
   }
   return 'de'
 }
@@ -44,14 +47,19 @@ export function proxy(request: NextRequest) {
   // Alte Railway-Adresse → die eigene Domain aus APP_URL (sobald APP_URL dorthin zeigt). Cookies und Passkeys
   // gelten pro Domain – so landen alle auf derselben.
   const canonical = process.env.APP_URL?.startsWith('https://') ? new URL(process.env.APP_URL) : null
+  // Weiterleitungen immer auf die öffentliche Adresse: Hinter dem Proxy von Railway kennt der Server sich selbst nur
+  // als localhost:8080 – daraus gebaute Ziele führten ins Leere.
+  const to = (path: string) => new URL(path, canonical?.origin ?? request.nextUrl.origin)
   const host = request.headers.get('host')
-  if (canonical && host && host !== canonical.host && host.endsWith('.up.railway.app')) {
+  // Ausnahme /.well-known/webauthn: Browser prüfen dort, ob alte Passkeys auf der neuen Domain gelten dürfen –
+  // ohne Weiterleitung.
+  if (canonical && host && host !== canonical.host && host.endsWith('.up.railway.app') && pathname !== '/.well-known/webauthn') {
     return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, canonical.origin), 308)
   }
   // Früher hiess der Feed /lichtung: alte Lesezeichen, Push-Nachrichten und installierte Apps landen dauerhaft auf /start.
   if (pathname === '/lichtung' || pathname.startsWith('/lichtung/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = `/start${pathname.slice('/lichtung'.length)}`
+    const url = to(`/start${pathname.slice('/lichtung'.length)}`)
+    url.search = request.nextUrl.search
     return NextResponse.redirect(url, 308)
   }
   const hasSession = request.cookies.has(SESSION_COOKIE)
@@ -59,16 +67,10 @@ export function proxy(request: NextRequest) {
   const isPage = request.method === 'GET'
 
   if (isPage && !hasSession && PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/anmelden'
-    url.search = ''
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(to('/anmelden'))
   }
   if (isPage && hasSession && (pathname === '/' || AUTH_ONLY.includes(pathname))) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/start'
-    url.search = ''
-    return NextResponse.redirect(url)
+    return NextResponse.redirect(to('/start'))
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
@@ -132,7 +134,7 @@ export const config = {
   matcher: [
     {
       // .well-known: Apples Verknüpfungsdatei ohne Cookies und ohne CSP.
-      source: '/((?!api|_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw.js|icons/|jiaia-logo.svg|\\.well-known).*)',
+      source: '/((?!api|_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw.js|icons/|hero/|jiaia-logo.svg|\\.well-known).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

@@ -53,7 +53,9 @@ export const exportStatusEnum = pgEnum('export_status', ['pending', 'ready', 'fa
 /* ---------------------------------------------------- Konto & Sitzungen */
 
 /** Login-Daten. Keine E-Mail, kein Geburtsdatum, keine IP. */
-export const users = pgTable('users', {
+export const users = pgTable(
+  'users',
+  {
   id: id(),
   username: citext('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
@@ -66,7 +68,13 @@ export const users = pgTable('users', {
   createdAt: createdAt(),
   lastLoginAt: ts('last_login_at'),
   deleteAfter: ts('delete_after'),
-})
+  /** Letzte Wiederherstellung per Schlüssel: Moderationskonten legen danach 72 h keinen Passkey an. */
+  recoveredAt: ts('recovered_at'),
+  /** Mitglieds-ID (M-…, HMAC) für die Suche im Moderationsbereich – nicht rückrechenbar, nur schneller zu finden. */
+  memberRef: text('member_ref'),
+  },
+  (t) => [index('users_member_ref_idx').on(t.memberRef)],
+)
 
 export const passkeys = pgTable(
   'passkeys',
@@ -119,6 +127,11 @@ export type Settings = {
   fontSize?: 'normal' | 'large' | 'xlarge'
   motion?: 'on' | 'reduced' | 'off'
   breathSound?: boolean
+  /** Atemmuster und Dauer im Raum (lib/breath.ts). */
+  breathPattern?: 'calm' | 'box' | 'relax'
+  breathMinutes?: 1 | 3 | 5
+  /** Ruhezeiten für Benachrichtigungen (Stunden, Ortszeit Schweiz). */
+  quiet?: { from: number; to: number }
   hidePresence?: boolean
   collapseWarnings?: boolean
   /** Diskret: neutraler Tab-Titel, Inhalt verschwimmt beim Verlassen des Fensters. */
@@ -129,11 +142,13 @@ export type Settings = {
   /** Zuletzt gezeigter kleiner Schritt – der nächste ist ein anderer. */
   lastStep?: string
   /** Sprache der App für dieses Konto – gilt auf jedem Gerät nach der Anmeldung (Cookie lichtung_lang). */
-  locale?: 'de' | 'fr' | 'it'
+  locale?: 'de' | 'fr' | 'it' | 'en'
   /** Neues Konto: kurze Einführung beim ersten Besuch (wird danach entfernt). */
   onboard?: boolean
   /** «Zuhören, wenn es still bleibt»: Hinweis auf Gedanken, die lange ohne Antwort sind. */
   listener?: boolean
+  /** Nachfrage am Tag nach einem schweren Moment (Standard: an). */
+  followUp?: boolean
 }
 
 /** Öffentliche Seite eines Kontos – der Anzeigename ist nicht unique. */
@@ -147,13 +162,15 @@ export const profiles = pgTable('profiles', {
   settings: jsonb('settings').$type<Settings>().notNull().default({}),
   /** Letzter Hinweis «Ein Gedanke wartet» an diese zuhörende Person – höchstens einer pro Tag. */
   listenerNudgedAt: ts('listener_nudged_at'),
+  /** Zuletzt «Wie geht es dir heute?» nach einem akuten Krisen-Treffer (worker/jobs/follow-up.ts). */
+  followUpAt: ts('follow_up_at'),
 })
 
 /* --------------------------------------------------------------- Kreise */
 
 type CircleText = { name?: string; description?: string; rules?: string }
-export type CircleI18n = { fr?: CircleText; it?: CircleText }
-export type StepI18n = { fr?: { text?: string }; it?: { text?: string } }
+export type CircleI18n = { fr?: CircleText; it?: CircleText; en?: CircleText }
+export type StepI18n = { fr?: { text?: string }; it?: { text?: string }; en?: { text?: string } }
 
 export const circles = pgTable('circles', {
   id: id(),
@@ -166,6 +183,8 @@ export const circles = pgTable('circles', {
   isActive: boolean('is_active').notNull().default(true),
   /** Übersetzungen (z. B. fr) – fehlt ein Feld, gilt das deutsche. */
   i18n: jsonb('i18n').$type<CircleI18n>().notNull().default({}),
+  /** Schwere Themen: Jeder Gedanke im Kreis hat einen Inhaltshinweis (verschwommen bis zum Aufdecken). */
+  requireCw: boolean('require_cw').notNull().default(false),
 })
 
 export const circlePrefs = pgTable(
@@ -216,6 +235,8 @@ export const posts = pgTable(
     expiresAt: ts('expires_at'),
     /** Zuhörende wurden auf diesen unbeantworteten Gedanken hingewiesen (höchstens einmal). */
     nudgedAt: ts('nudged_at'),
+    /** Zweite Prüfstufe (Worker) gelaufen. Fehlt der Wert nach 10 Minuten, reiht der Worker die Prüfung erneut ein. */
+    moderatedAt: ts('moderated_at'),
   },
   (t) => [
     index('posts_expires_idx').on(t.expiresAt).where(sql`expires_at IS NOT NULL AND deleted_at IS NULL`),
@@ -268,6 +289,8 @@ export const replies = pgTable(
     hiddenByAuthor: boolean('hidden_by_author').notNull().default(false),
     createdAt: createdAt(),
     deletedAt: ts('deleted_at'),
+    /** Zweite Prüfstufe (Worker) gelaufen – siehe posts.moderatedAt. */
+    moderatedAt: ts('moderated_at'),
   },
   (t) => [index('replies_post_created_idx').on(t.postId, t.createdAt), index('replies_user_idx').on(t.userId)],
 )
@@ -389,6 +412,8 @@ export type NotificationPayload = {
   kinds?: Partial<Record<'hear' | 'same' | 'strong', number>>
   excerpt?: string
   message?: string
+  /** Nachfrage nach einem schweren Moment: zeigt Knöpfe zu Hilfe und Notfallplan. */
+  followUp?: boolean
   /** Moderationsmassnahme, gegen die Einspruch möglich ist (ausblenden, verwarnen, stummschalten). */
   appealable?: boolean
 }
@@ -542,8 +567,80 @@ export const helpResources = pgTable('help_resources', {
   audience: text('audience').notNull(),
   sort: integer('sort').notNull().default(0),
   region: text('region').notNull().default('CH'),
-  /** Sprache der Texte (Name, Zeiten, Für wen): «de» für /hilfe, «fr» für /aide. */
+  /** Sprache der Texte (Name, Zeiten, Für wen): «de» für /hilfe, «fr» für /aide, «it» für /aiuto. */
   language: text('language').notNull().default('de'),
+  /** Hilfe zu einem Thema: erscheint beim Kreis (und auf den Hilfeseiten unter «Nach Thema»). Leer = allgemein. */
+  circleId: uuid('circle_id').references(() => circles.id, { onDelete: 'cascade' }),
+})
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' })
+
+/**
+ * Logos der Partner (Admin → Partner): beim Hochladen mit sharp neu gerechnet (WebP, höchstens 800×400, SVG gerastert),
+ * darum klein genug für die Datenbank. Inhalt ändert sich nie – ein neues Logo ist eine neue Zeile (lange cachebar).
+ */
+export const partnerMedia = pgTable('partner_media', {
+  id: id(),
+  /** Ursprünglicher Dateiname, nur zur Orientierung im Admin-Bereich. */
+  name: text('name').notNull(),
+  contentType: text('content_type').notNull().default('image/webp'),
+  data: bytea('data').notNull(),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: createdAt(),
+})
+
+/** Partner auf der Startseite (z. B. Die Dargebotene Hand, Pro Juventute): Name, Link und Logo. */
+export const partners = pgTable('partners', {
+  id: id(),
+  name: text('name').notNull(),
+  url: text('url'),
+  mediaId: uuid('media_id').references(() => partnerMedia.id, { onDelete: 'set null' }),
+  sort: integer('sort').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: createdAt(),
+})
+
+/** Titelbilder für Blogbeiträge – neu gerechnet (WebP, ohne Metadaten), in der Datenbank wie die Partner-Logos. */
+export const blogMedia = pgTable('blog_media', {
+  id: id(),
+  data: bytea('data').notNull(),
+  contentType: text('content_type').notNull().default('image/webp'),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: createdAt(),
+})
+
+/**
+ * Blog: Neuigkeiten über Jiaia und Wissen rund um mentale Gesundheit. Eine Sprache je Beitrag. Öffentlich erst mit
+ * status «published»; Entwürfe sieht nur das Admin-Team (Vorschau). Verfasst «vom Team Jiaia» – nie mit Namen.
+ */
+export const blogPosts = pgTable(
+  'blog_posts',
+  {
+    id: id(),
+    slug: text('slug').notNull(),
+    locale: text('locale').notNull().default('de'),
+    category: text('category').notNull().default('news'),
+    title: text('title').notNull(),
+    excerpt: text('excerpt').notNull(),
+    body: text('body').notNull(),
+    coverId: uuid('cover_id').references(() => blogMedia.id, { onDelete: 'set null' }),
+    coverAlt: text('cover_alt'),
+    status: text('status').notNull().default('draft'),
+    publishedAt: ts('published_at'),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('blog_posts_slug_idx').on(t.slug), index('blog_posts_list_idx').on(t.status, t.locale, t.publishedAt.desc())],
+)
+
+/** Einmalige Seed-Schritte (z. B. Standard-Hilfe je Kreis): einmal ausgeführt, danach pflegt das Admin-Team. */
+export const seedMarks = pgTable('seed_marks', {
+  key: text('key').primaryKey(),
+  doneAt: ts('done_at').notNull().defaultNow(),
 })
 
 export const crisisTerms = pgTable(

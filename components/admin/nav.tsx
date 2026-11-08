@@ -8,10 +8,13 @@ type Level = 'peer' | 'mod' | 'admin'
 const items = (): { href: string; label: string; level: Level }[] => [
   { href: '/admin', label: m.admin.nav.queue, level: 'peer' },
   { href: '/admin/bilder', label: m.admin.nav.images, level: 'mod' },
+  { href: '/admin/mitglieder', label: m.admin.nav.members, level: 'mod' },
   { href: '/admin/kreise', label: m.admin.nav.circles, level: 'admin' },
   { href: '/admin/hilfe', label: m.admin.nav.help, level: 'admin' },
   { href: '/admin/begriffe', label: m.admin.nav.terms, level: 'admin' },
   { href: '/admin/schritte', label: m.admin.nav.steps, level: 'admin' },
+  { href: '/admin/partner', label: m.admin.nav.partners, level: 'admin' },
+  { href: '/admin/blog', label: m.admin.nav.blog, level: 'admin' },
   { href: '/admin/audit', label: m.admin.nav.audit, level: 'mod' },
   { href: '/admin/statistik', label: m.admin.nav.stats, level: 'mod' },
 ]

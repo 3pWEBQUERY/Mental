@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { checkPassword, checkUsername, prepareRecoveryKey, register, setInitialDisplayName } from '@/app/(auth)/actions'
 import { forgetPrivate } from '@/lib/client/private-storage'
@@ -37,7 +36,6 @@ function pickTwo(): [number, number] {
 }
 
 export function RegisterFlow() {
-  const router = useRouter()
   const [step, setStep] = useState(0)
   const [welcome, setWelcome] = useState(0)
   const [rules, setRules] = useState(false)
@@ -54,13 +52,18 @@ export function RegisterFlow() {
   const [error, setError] = useState('')
   const [pending, setPending] = useState('')
   const [busy, setBusy] = useState(false)
-  const pow = useRef<Promise<string | null> | null>(null)
+  // Die Bot-Prüfung gilt 10 Minuten (lib/server/altcha.ts): Wer länger liest, bekommt beim Abschicken eine frische.
+  const pow = useRef<{ at: number; payload: Promise<string | null> } | null>(null)
+  const freshPow = () => {
+    pow.current = { at: Date.now(), payload: solvePow() }
+    return pow.current.payload
+  }
   const heading = useRef<HTMLHeadingElement>(null)
   const passkey = usePasskeySetup()
 
   // Bot-Schutz rechnet unsichtbar im Hintergrund, während die Person liest.
   useEffect(() => {
-    pow.current = solvePow()
+    void freshPow()
     // Neues Konto auf diesem Gerät: Entwurf und Aufgedecktes einer vorigen Person entfernen.
     forgetPrivate()
   }, [])
@@ -77,7 +80,7 @@ export function RegisterFlow() {
   async function submitUsername(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
-    const res = await checkUsername(username)
+    const res = await checkUsername(username).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
     if (res.realName && !realName) {
@@ -92,13 +95,15 @@ export function RegisterFlow() {
     if (password.length < 10) return setError(r.passwordShort)
     if (password !== password2) return setError(r.passwordMismatch)
     setBusy(true)
-    const res = await checkPassword(password)
+    const res = await checkPassword(password).catch(() => ({ ok: false as const, error: m.common.error }))
     if (!res.ok) {
       setBusy(false)
       return setError(res.error)
     }
-    setKey(await prepareRecoveryKey())
+    const prepared = await prepareRecoveryKey().catch(() => null)
     setBusy(false)
+    if (!prepared) return setError(m.common.error)
+    setKey(prepared)
     go(4)
   }
 
@@ -111,18 +116,34 @@ export function RegisterFlow() {
     setError('')
     // Kein Fehler, sondern ein Zwischenstand – als Status, nicht als Alarm.
     setPending(r.botCheck)
-    const payload = await (pow.current ?? solvePow())
-    setPending('')
-    if (!payload) {
-      setBusy(false)
-      return setError(r.botFailed)
+    const send = async (fresh: boolean) => {
+      const payload = await (!fresh && pow.current && Date.now() - pow.current.at < 8 * 60_000 ? pow.current.payload : freshPow())
+      if (!payload) return { ok: false as const, error: r.botFailed, field: undefined }
+      return register({ username, password, sealedKey: key.sealed, ageConfirmed: true, rulesAccepted: true, pow: payload }).catch(() => ({
+        ok: false as const,
+        error: m.common.error,
+        field: undefined,
+      }))
     }
-    const res = await register({ username, password, sealedKey: key.sealed, ageConfirmed: true, rulesAccepted: true, pow: payload })
+    let res = await send(false)
+    // Prüfung inzwischen abgelaufen: einmal still mit einer frischen nachholen, statt «Seite neu laden» zu verlangen.
+    if (!res.ok && res.field === 'pow') res = await send(true)
+    setPending('')
+    if (!res.ok && res.field === 'key') {
+      // Die versiegelten Wörter gelten nur begrenzt: neue zeigen und erklären, statt eines allgemeinen Fehlers.
+      const prepared = await prepareRecoveryKey().catch(() => null)
+      setBusy(false)
+      if (!prepared) return setError(m.common.error)
+      setKey(prepared)
+      setAnswers(['', ''])
+      setConfirming(false)
+      return setError(res.error)
+    }
     setBusy(false)
     if (!res.ok) {
       setError(res.error)
       if (res.field === 'username') setStep(2)
-      pow.current = solvePow()
+      void freshPow()
       return
     }
     go(passkey.supported ? 5 : 6)
@@ -131,11 +152,12 @@ export function RegisterFlow() {
   async function submitName(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
-    const res = await setInitialDisplayName(displayName)
+    const res = await setInitialDisplayName(displayName).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     // Die genaue Meldung zeigen (z. B. «keine Telefonnummer im Anzeigenamen»), nicht nur «Fehler».
     if (!res.ok) return setError(res.error)
-    router.replace('/start')
+    // Ganzer Seitenaufbau statt Client-Navigation: kein Zustand einer vorherigen Sitzung im Tab.
+    window.location.replace('/start')
   }
 
   const errorEl = error ? (

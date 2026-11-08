@@ -57,19 +57,21 @@ Projekt «Lichtung» (Railway-Projektname, unverändert), alles in **EU West (Am
 
 | Service | Einstellungen |
 | --- | --- |
-| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts && npx tsx scripts/bootstrap-admins.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
+| `web` | Build `npm run build`, Start `npm run start`, Pre-Deploy `npx drizzle-kit migrate && npx tsx db/seed.ts && npx tsx scripts/bucket-cors.ts && npx tsx scripts/bootstrap-admins.ts && npx tsx scripts/encrypt-at-rest.ts`, Healthcheck `/api/health`, 2 Replikas, Region `europe-west4-drams3a` |
 | `worker` | Start `npm run worker`, Restart immer, 1 Replika, Region `europe-west4-drams3a`. Wartet beim Start, bis alle Migrationen angewendet sind (die laufen im Pre-Deploy von `web`). |
 | `monitor` | Cron-Service, Start `npm run monitor`, Zeitplan `*/5 * * * *`, Restart nie, Region `europe-west4-drams3a`. Variablen `DATABASE_URL`, `VAPID_*`. |
 | `Postgres` | Railway-Template, Volume in `europe-west4-drams3a` |
 | `media` | Storage Bucket (privat), Region `ams` |
 
-**Überwachung:** `/api/health` prüft nur die Datenbank (Railway-Healthcheck des Web-Service). Der Cron-Service `monitor` (`scripts/monitor.ts`) prüft alle 5 Minuten das Lebenszeichen des Workers und den Stau in den Warteschlangen; bei einer Störung bekommen Admins und Moderator:innen einmalig eine Benachrichtigung «Betrieb» in der Glocke und per Push, danach eine Entwarnung. Zusätzlich antwortet `/api/health/worker` mit 503, wenn der Worker schweigt – für einen externen Uptime-Dienst, der auch einen Ausfall von ganz Railway bemerken würde. Fehlgeschlagene Jobs und pg-boss-Warnungen stehen im Log des Workers.
+**Überwachung:** `/api/health` prüft nur die Datenbank (Railway-Healthcheck des Web-Service). Der Cron-Service `monitor` (`scripts/monitor.ts`) prüft alle 5 Minuten das Lebenszeichen des Workers und den Stau in den Warteschlangen; bei einer Störung bekommen Admins und Moderator:innen einmalig eine Benachrichtigung «Betrieb» in der Glocke und per Push, danach eine Entwarnung. Zusätzlich antwortet `/api/health/worker` mit 503, wenn der Worker schweigt – für einen externen Uptime-Dienst, der auch einen Ausfall von ganz Railway bemerken würde. Öffentlich kommt nur `{ ok }`; Rückstau und Fehlerzahlen nur mit `Authorization: Bearer <HEALTH_TOKEN>` (Variable am web-Service). Fehlgeschlagene Jobs und pg-boss-Warnungen stehen im Log des Workers.
 
 Variablen beider Services: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `BUCKET`/`ACCESS_KEY_ID`/`SECRET_ACCESS_KEY`/`REGION`/`ENDPOINT` als `${{media.*}}`-Referenzen, `APP_URL`, `VAPID_*`; im Web zusätzlich `SESSION_SECRET`. Die CORS-Regel des Buckets (PUT, nur `APP_URL`) setzt `scripts/bucket-cors.ts` bei jedem Deploy selbst. VAPID-Schlüssel erzeugen mit `npm run vapid:generate`.
 
 ### Verschlüsselung besonders schützenswerter Daten
 
 Notfallplan, Briefe an sich selbst und Check-in-Notizen werden mit AES-256-GCM verschlüsselt gespeichert, sobald `DATA_ENCRYPTION_KEY` gesetzt ist (32 Byte Base64: `openssl rand -base64 32`). Der Schlüssel gehört in **web und worker**, nie in die Datenbank – und muss zusätzlich offline gesichert werden (Passwort-Manager des Teams): **Ohne ihn sind diese Texte nicht mehr lesbar**, auch nicht aus Backups. Den Schlüssel nur am web-Service eintragen, der worker übernimmt ihn per Referenz (`DATA_ENCRYPTION_KEY=${{web.DATA_ENCRYPTION_KEY}}`). Der Pre-Deploy des web-Service führt danach `scripts/encrypt-at-rest.ts` aus und verschlüsselt alte Klartext-Werte; das ist beliebig wiederholbar und ohne Schlüssel wirkungslos. Ohne Schlüssel läuft alles wie bisher im Klartext. Das Tagebuch ist unabhängig davon Ende-zu-Ende verschlüsselt (Schlüssel nur bei der Person).
+
+**Schlüsselwechsel:** neuen Schlüssel als `DATA_ENCRYPTION_KEY` setzen und den bisherigen nach `DATA_ENCRYPTION_KEYS_OLD` verschieben (mehrere durch Komma getrennt; am worker per Referenz `DATA_ENCRYPTION_KEYS_OLD=${{web.DATA_ENCRYPTION_KEYS_OLD}}`), deployen. Der Pre-Deploy verschlüsselt dann alles mit dem neuen Schlüssel neu (`enc:v2:<Schlüssel-ID>:…`). Der Worker prüft 5 Minuten nach seinem Start noch einmal nach (alte Replikas schreiben während des Deploys noch mit dem alten Schlüssel). Erst wenn im Log `[encrypt] alles mit Schlüssel … verschlüsselt – erledigt` steht, den alten Schlüssel entfernen. Werte, die zu keinem gesetzten Schlüssel passen, rührt das Skript nie an.
 
 ### Backups und Wiederherstellung
 

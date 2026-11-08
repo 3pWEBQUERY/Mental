@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { and, count, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm'
+import { and, count, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { Suspense } from 'react'
 import { TabBar } from '@/components/tab-bar'
 import { Loading } from '@/components/ui'
@@ -9,7 +9,7 @@ import { Letters, SafetyPlanEditor } from '@/components/me/for-me'
 import { Journal } from '@/components/me/journal'
 import { db } from '@/db'
 import { breathLog, checkins, posts, replies, stepLog } from '@/db/schema'
-import { getBookmarkedPosts, getMyPosts } from '@/lib/server/posts'
+import { getBookmarkedPosts, getMyPosts, notBlocked } from '@/lib/server/posts'
 import { requireViewer, type Viewer } from '@/lib/server/session'
 import { formatDate, zurichDay } from '@/lib/time'
 import { openText } from '@/lib/at-rest'
@@ -83,8 +83,10 @@ async function History({ v }: { v: Viewer }) {
     db.select({ n: count() }).from(breathLog).where(eq(breathLog.userId, v.userId)),
     db.select({ n: count() }).from(stepLog).where(and(eq(stepLog.userId, v.userId), eq(stepLog.action, 'done'))),
   ])
+  // Von heute (Schweizer Kalender) mittags aus zurückzählen – so gibt es auch bei der Zeitumstellung jeden Tag genau einmal.
+  const noon = Date.parse(`${zurichDay()}T12:00:00Z`)
   const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000)
+    const d = new Date(noon - (29 - i) * 24 * 60 * 60 * 1000)
     return { key: zurichDay(d), date: d }
   })
   const byDay = new Map<string, number[]>()
@@ -108,7 +110,7 @@ async function History({ v }: { v: Viewer }) {
                   {formatDate(d.date, { weekday: 'long', day: 'numeric', month: 'long' })}:{' '}
                   {(byDay.get(d.key) ?? []).map((mood) => m.moods.labels[mood]).join(', ') || m.me.historyNone}
                 </span>
-                <span aria-hidden="true">{d.date.getDate() === 1 || d.key === days[0]!.key ? formatDate(d.date, { day: 'numeric', month: 'short' }) : ''}</span>
+                <span aria-hidden="true">{d.key.endsWith('-01') || d.key === days[0]!.key ? formatDate(d.date, { day: 'numeric', month: 'short' }) : ''}</span>
                 {(byDay.get(d.key) ?? []).map((mood, i) => (
                   <i key={i} aria-hidden="true" style={{ background: `var(--mood-${mood})` }} title={m.moods.labels[mood]} />
                 ))}
@@ -158,8 +160,22 @@ async function Saved({ v }: { v: Viewer }) {
     .select({ id: replies.id, body: replies.body, handle: replies.authorHandle, createdAt: replies.createdAt, postBody: posts.body })
     .from(replies)
     .innerJoin(posts, eq(posts.id, replies.postId))
-    .where(and(eq(posts.userId, v.userId), eq(replies.helpful, true), isNull(replies.deletedAt), isNull(posts.deletedAt), isNotNull(replies.body)))
+    .where(
+      and(
+        eq(posts.userId, v.userId),
+        eq(replies.helpful, true),
+        // Von der Moderation ausgeblendete Antworten und solche von Konten in Löschung gehören nicht mehr hierher.
+        eq(replies.status, 'visible'),
+        isNull(replies.deletedAt),
+        isNull(posts.deletedAt),
+        isNotNull(replies.body),
+        sql`NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ${replies.userId} AND u.status = 'deleting')`,
+        // Blockiert (in eine Richtung): wie im Feed nicht mehr zeigen.
+        or(isNull(replies.userId), notBlocked(v.userId, replies.userId)),
+      ),
+    )
     .orderBy(desc(replies.createdAt))
+    .limit(100)
   return (
     <section>
       <h2 className="section-label">{m.me.savedTitle}</h2>
@@ -171,7 +187,7 @@ async function Saved({ v }: { v: Viewer }) {
             <li key={r.id} className="saved-reply">
               <blockquote>«{r.body}»</blockquote>
               <small>
-                {r.handle} · {formatDate(r.createdAt)} · zu «{r.postBody.length > 60 ? `${r.postBody.slice(0, 58)} …` : r.postBody}»
+                {r.handle} · {formatDate(r.createdAt)} · {m.me.savedTo(r.postBody.length > 60 ? `${r.postBody.slice(0, 58)} …` : r.postBody)}
               </small>
             </li>
           ))}

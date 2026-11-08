@@ -3,11 +3,13 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
-import { journalEntries, letters, profiles, safetyPlans, type SafetyPlan } from '@/db/schema'
+import { journalEntries, letters, profiles, safetyPlans, users, type SafetyPlan } from '@/db/schema'
 import { openJson, openText, sealJson, sealText } from '@/lib/at-rest'
+import { verifySecret } from '@/lib/server/password'
 import { hit } from '@/lib/server/rate-limit'
 import { getViewer } from '@/lib/server/session'
 import { m } from '@/messages'
+import { journalDeletion } from '@/lib/deletion-journal'
 
 const b64 = z.string().regex(/^[A-Za-z0-9+/=]+$/)
 
@@ -32,6 +34,28 @@ export async function setupJournal(input: { salt: string; check: { iv: string; c
     .set({ settings: sql`${profiles.settings} || ${JSON.stringify({ journalSalt: parsed.data.salt, journalCheck: parsed.data.check })}::jsonb` })
     .where(and(eq(profiles.userId, v.userId), sql`NOT (${profiles.settings} ? 'journalSalt')`))
   return true
+}
+
+/**
+ * PIN vergessen: Die Einträge sind ohne PIN unlesbar (auch für uns). Wer das Passwort kennt, kann das Tagebuch
+ * löschen und neu beginnen. Das Passwort schützt davor, dass jemand am entsperrten Gerät alles löscht.
+ */
+export async function resetJournal(password: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const v = await getViewer()
+  if (!v) return { ok: false, error: m.common.sessionEnded }
+  if (typeof password !== 'string' || !password) return { ok: false, error: m.auth.invalid }
+  if (!(await hit(`pw-check:${v.userId}`, 10, 15 * 60_000)).ok) return { ok: false, error: m.common.rateLimited }
+  const [u] = await db.select({ hash: users.passwordHash }).from(users).where(eq(users.id, v.userId))
+  if (!u || !(await verifySecret(u.hash, password))) return { ok: false, error: m.auth.invalid }
+  await db.transaction(async (tx) => {
+    await tx.delete(journalEntries).where(eq(journalEntries.userId, v.userId))
+    await tx
+      .update(profiles)
+      .set({ settings: sql`${profiles.settings} - 'journalSalt' - 'journalCheck'` })
+      .where(eq(profiles.userId, v.userId))
+  })
+  await journalDeletion('journal-reset', v.userId)
+  return { ok: true }
 }
 
 export async function listJournal(): Promise<JournalCipher[]> {
@@ -64,7 +88,8 @@ export async function addJournalEntry(input: { ciphertext: string; iv: string; s
 export async function deleteJournalEntry(id: string) {
   const v = await getViewer()
   if (!v || !z.uuid().safeParse(id).success) return false
-  await db.delete(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.userId, v.userId)))
+  const gone = await db.delete(journalEntries).where(and(eq(journalEntries.id, id), eq(journalEntries.userId, v.userId))).returning({ id: journalEntries.id })
+  if (gone.length) await journalDeletion('journal', id)
   return true
 }
 
@@ -89,6 +114,7 @@ export async function saveSafetyPlan(input: SafetyPlan): Promise<{ ok: true } | 
   // Ganz leer = kein Plan; so verschwindet er auch wieder aus dem Hilfe-Dialog.
   if (PLAN_KEYS.every((k) => !plan[k])) {
     await db.delete(safetyPlans).where(eq(safetyPlans.userId, v.userId))
+    await journalDeletion('safety-plan', v.userId)
     return { ok: true }
   }
   await db
@@ -124,5 +150,6 @@ export async function deleteLetter(id: string): Promise<boolean> {
   const v = await getViewer()
   if (!v || !z.uuid().safeParse(id).success) return false
   const done = await db.delete(letters).where(and(eq(letters.id, id), eq(letters.userId, v.userId))).returning({ id: letters.id })
+  if (done.length) await journalDeletion('letter', id)
   return done.length > 0
 }

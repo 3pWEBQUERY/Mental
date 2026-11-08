@@ -8,16 +8,40 @@ import { env } from '@/lib/server/env'
 import { isLocale, LOCALE_COOKIE } from '@/messages'
 
 /** Die beiden Hilfeseiten sind vorgerendert und einsprachig – beim Wechsel auf die jeweils andere springen. */
-const HELP_PAGE = { de: '/hilfe', fr: '/aide', it: '/aiuto' } as const
+const HELP_PAGE = { de: '/hilfe', fr: '/aide', it: '/aiuto', en: '/help' } as const
 
 /**
  * Sprache wechseln: /sprache?l=fr&zurueck=/einstellungen. Setzt das Cookie für dieses Gerät, merkt es sich
  * bei Angemeldeten im Konto und kehrt auf die Seite zurück (nur interne Pfade).
  */
+/**
+ * Nur Pfade auf dieser Seite. Geprüft wird das Ergebnis des URL-Parsers, nicht der Text: Browser lesen z. B.
+ * «/\evil.com» oder «/<Tab>/evil.com» als fremde Adresse – ein einfacher startsWith-Test liesse das durch.
+ */
+function internalPath(raw: string): string {
+  try {
+    const base = new URL(env.appUrl)
+    const url = new URL(raw, base)
+    if (!raw.startsWith('/') || url.origin !== base.origin || url.pathname.startsWith('/sprache')) return '/'
+    return url.pathname + url.search + url.hash
+  } catch {
+    return '/'
+  }
+}
+
+function refererPath(request: NextRequest): string {
+  try {
+    return new URL(request.headers.get('referer') ?? '/', request.url).pathname
+  } catch {
+    return '/'
+  }
+}
+
 export async function GET(request: NextRequest) {
   const l = request.nextUrl.searchParams.get('l')
-  const back = request.nextUrl.searchParams.get('zurueck') ?? new URL(request.headers.get('referer') ?? '/', request.url).pathname
-  let target = back.startsWith('/') && !back.startsWith('//') && !back.startsWith('/sprache') ? back : '/'
+  // Ein kaputter Referer-Kopf («http://», Steuerzeichen) liess new URL() werfen – Serverfehler statt Sprachwechsel.
+  const back = request.nextUrl.searchParams.get('zurueck') ?? refererPath(request)
+  let target = internalPath(back)
   if (!isLocale(l)) return NextResponse.redirect(new URL(target, env.appUrl))
 
   if (Object.values(HELP_PAGE).includes(target as never)) target = HELP_PAGE[l]

@@ -22,8 +22,12 @@ export async function cleanupQuarantine() {
     .from(postMedia)
     .where(and(eq(postMedia.status, 'quarantine'), isNull(postMedia.postId), lt(postMedia.createdAt, new Date(Date.now() - 60 * 60 * 1000))))
   for (const r of old) {
-    await deleteObject(r.key).catch(() => {})
-    await db.delete(postMedia).where(eq(postMedia.id, r.id))
+    // Erst die Zeile (nur wenn sie noch keinem Gedanken gehört – das Teilen kann gerade jetzt passieren), dann die Datei.
+    const gone = await db
+      .delete(postMedia)
+      .where(and(eq(postMedia.id, r.id), isNull(postMedia.postId), eq(postMedia.status, 'quarantine')))
+      .returning({ id: postMedia.id })
+    if (gone.length) await deleteObject(r.key).catch(() => {})
   }
   if (old.length) console.log(`[media] ${old.length} Quarantäne-Dateien entfernt`)
 }
@@ -45,6 +49,7 @@ export async function requeueStuckMedia() {
         gt(postMedia.createdAt, new Date(now - 6 * 60 * 60_000)),
       ),
     )
-  for (const r of stuck) await enqueue(QUEUES.processImage, { mediaId: r.id })
+  // Höchstens ein Nachzügler pro Bild und Stunde – sonst stapelten sich bei einer Störung alle 10 Minuten neue Jobs.
+  for (const r of stuck) await enqueue(QUEUES.processImage, { mediaId: r.id }, { singletonKey: `media:${r.id}`, singletonSeconds: 3600 })
   if (stuck.length) console.log(`[media] ${stuck.length} hängende Bilder erneut eingereiht`)
 }

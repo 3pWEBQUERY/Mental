@@ -32,11 +32,11 @@ export function mediaKeys(mediaId: string) {
 }
 
 /** Lehnt ab, solange das Bild noch nicht freigegeben ist. Gibt zurück, ob dieser Aufruf es abgelehnt hat. */
-export async function rejectMedia(mediaId: string, why: string): Promise<boolean> {
+export async function rejectMedia(mediaId: string, why: string, only?: 'quarantine'): Promise<boolean> {
   const done = await db
     .update(postMedia)
     .set({ status: 'rejected' })
-    .where(and(eq(postMedia.id, mediaId), inArray(postMedia.status, ['quarantine', 'review'])))
+    .where(and(eq(postMedia.id, mediaId), inArray(postMedia.status, only ? [only] : ['quarantine', 'review'])))
     .returning({ id: postMedia.id })
   if (!done.length) return false
   console.warn(`[media] ${mediaId} abgelehnt: ${why}`)
@@ -46,6 +46,8 @@ export async function rejectMedia(mediaId: string, why: string): Promise<boolean
 
 /** Das Bild selbst ist unbrauchbar – kein Grund, es erneut zu versuchen. */
 class BadImage extends Error {}
+/** Ein anderer Lauf war schneller. */
+class AlreadyDone extends Error {}
 
 /**
  * Bereinigt ein Bild aus der Quarantäne: Format prüfen, EXIF/GPS entfernen, als WebP + AVIF neu kodieren.
@@ -60,14 +62,20 @@ export async function processMedia(mediaId: string, next: 'review' | 'ready' = '
 
   let encoded: Awaited<ReturnType<typeof encode_>>
   try {
-    const input = await getObjectBytes(row.bucketKey).catch((e: Error) => {
-      if (e.name === 'NoSuchKey') throw new BadImage('Datei fehlt im Bucket')
+    const input = await getObjectBytes(row.bucketKey).catch(async (e: Error) => {
+      if (e.name === 'NoSuchKey') {
+        // Fehlt die Quarantäne-Datei, weil ein anderer Lauf das Bild schon bereinigt hat? Dann nichts ablehnen.
+        const [now] = await db.select({ status: postMedia.status, key: postMedia.bucketKey }).from(postMedia).where(eq(postMedia.id, mediaId))
+        if (!now || now.status !== 'quarantine' || now.key !== row.bucketKey) throw new AlreadyDone()
+        throw new BadImage('Datei fehlt im Bucket')
+      }
       throw e
     })
     encoded = await encode_(input)
     if (!(await imageAllowed(encoded.webp.data))) throw new BadImage('Inhaltsprüfung')
   } catch (e) {
-    if (e instanceof BadImage) return (await rejectMedia(mediaId, e.message)) ? 'rejected' : 'skipped'
+    if (e instanceof AlreadyDone) return 'skipped'
+    if (e instanceof BadImage) return (await rejectMedia(mediaId, e.message, 'quarantine')) ? 'rejected' : 'skipped'
     throw e
   }
 

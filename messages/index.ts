@@ -1,21 +1,22 @@
 import { de, type Messages } from './de'
 import { fr } from './fr'
 import { it } from './it'
+import { en } from './en'
 
-export const LOCALES = ['de', 'fr', 'it'] as const
+export const LOCALES = ['de', 'fr', 'it', 'en'] as const
 export type Locale = (typeof LOCALES)[number]
 export const DEFAULT_LOCALE: Locale = 'de'
 /** Gewählte Sprache dieses Browsers. Nicht httpOnly: Der Browser liest sie beim Laden der Skripte. */
 export const LOCALE_COOKIE = 'lichtung_lang'
 /** BCP-47 für <html lang>, Intl und Screenreader. */
-export const LOCALE_TAG: Record<Locale, string> = { de: 'de-CH', fr: 'fr-CH', it: 'it-CH' }
+export const LOCALE_TAG: Record<Locale, string> = { de: 'de-CH', fr: 'fr-CH', it: 'it-CH', en: 'en-CH' }
 
-const dictionaries: Record<Locale, Messages> = { de, fr, it }
+const dictionaries: Record<Locale, Messages> = { de, fr, it, en }
 
-export const isLocale = (x: unknown): x is Locale => x === 'de' || x === 'fr' || x === 'it'
+export const isLocale = (x: unknown): x is Locale => x === 'de' || x === 'fr' || x === 'it' || x === 'en'
 
 export function getMessages(locale: Locale = DEFAULT_LOCALE): Messages {
-  return dictionaries[locale]
+  return dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE]
 }
 
 /**

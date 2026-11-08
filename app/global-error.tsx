@@ -1,8 +1,8 @@
 'use client'
 
 import { HelpList } from '@/components/ui'
-import { DEFAULT_HELP } from '@/lib/help'
-import { m } from '@/messages'
+import { defaultHelp } from '@/lib/help'
+import { currentLocale, m } from '@/messages'
 import './globals.css'
 
 /** Fällt sogar das Root-Layout aus, ersetzt diese Seite das ganze Dokument – mit den Nummern. */
@@ -11,7 +11,7 @@ export default function GlobalError({ retry }: { error: unknown; retry: () => vo
   return (
     <html lang="de-CH">
       <body>
-        <title>{`${m.brand} · Fehler`}</title>
+        <title>{`${m.brand} · ${m.errors.errorTitle}`}</title>
         <main className="public-main" style={{ maxWidth: 760, margin: '0 auto', padding: '48px 20px' }}>
           <div className="help-page">
             <h1 className="display">
@@ -26,7 +26,7 @@ export default function GlobalError({ retry }: { error: unknown; retry: () => vo
               </button>
             </p>
             <section className="help">
-              <HelpList resources={DEFAULT_HELP} />
+              <HelpList resources={defaultHelp(currentLocale())} />
             </section>
           </div>
         </main>

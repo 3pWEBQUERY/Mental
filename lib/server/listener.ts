@@ -26,11 +26,15 @@ function hub(): Hub {
 async function connect(h: Hub) {
   if (h.client || h.connecting) return
   h.connecting = true
-  const client = new Client({ connectionString: process.env.DATABASE_URL })
+  // keepAlive + regelmässiges SELECT 1: Eine still abgebrochene Verbindung (NAT, Proxy) meldet sonst nie einen
+  // Fehler – die Glocken blieben stumm, ohne dass es jemand merkt.
+  const client = new Client({ connectionString: process.env.DATABASE_URL, keepAlive: true, query_timeout: 10_000, connectionTimeoutMillis: 10_000 })
   let gone = false
+  let ping: ReturnType<typeof setInterval> | undefined
   const lost = (why: string) => {
     if (gone) return
     gone = true
+    clearInterval(ping)
     console.error('[listener] Verbindung verloren:', why)
     if (h.client === client) h.client = null
     h.connecting = false
@@ -51,8 +55,11 @@ async function connect(h: Hub) {
   h.client = client
   h.connecting = false
   h.attempt = 0
-  // Während der Lücke kann ein NOTIFY verloren gegangen sein: alle offenen Glocken einmal auffrischen.
-  if (reconnected) h.subs.forEach((set) => set.forEach((fn) => fn()))
+  ping = setInterval(() => void client.query('SELECT 1').catch((e) => lost(`Ping: ${safeMessage(e)}`)), 60_000)
+  ping.unref?.()
+  // Während der Lücke kann ein NOTIFY verloren gegangen sein: alle offenen Glocken einmal auffrischen – verteilt über
+  // ein paar Sekunden, damit nicht alle Tabs gleichzeitig die Datenbank fragen.
+  if (reconnected) h.subs.forEach((set) => set.forEach((fn) => setTimeout(fn, Math.random() * 5_000).unref?.()))
 }
 
 export async function subscribe(userId: string, fn: Listener) {

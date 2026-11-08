@@ -41,7 +41,8 @@ test('Konto löschen – ein Login innerhalb von 7 Tagen bricht die Löschung ab
   await page.waitForURL((u) => u.pathname === '/')
   await login(page, username)
   await page.waitForURL('**/start')
-  await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible()
+  // Nach der Anmeldung lädt /start ganz neu – unter Last dauert das ein paar Sekunden.
+  await expect(page.getByRole('status').filter({ hasText: 'Löschung' })).toBeVisible({ timeout: 15_000 })
 })
 
 test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
@@ -58,15 +59,25 @@ test('Entwurf bleibt nach Abmelden nicht auf dem Gerät', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => localStorage.getItem('lichtung-draft'))).toBeNull()
   await login(page, username)
   await page.waitForURL('**/start')
-  await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+  // Nach der Anmeldung lädt die Seite ganz neu – klicken, sobald sie bereit ist.
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Was trägst du heute mit dir?' }).click()
+    await expect(page.locator('#composer-text')).toBeVisible({ timeout: 1_000 })
+    // Gegen Ende eines vollen Laufs (WebGL in Software) braucht das Hydrieren nach der Anmeldung manchmal über 10 s.
+  }).toPass({ timeout: 25_000 })
   await expect(page.locator('#composer-text')).toHaveValue('')
 })
 
-test('Transparenz: öffentliche Zahlen pro Quartal, ohne Anmeldung', async ({ page }) => {
+test('Transparenz: ohne genug Austausch keine leeren Zahlen, sondern Versprechen und Arbeitsweise', async ({ page }) => {
   await page.goto('/transparenz')
   await expect(page.getByRole('heading', { name: 'Transparenz', level: 1 })).toBeVisible()
-  await expect(page.getByRole('heading', { name: /Quartal \d{4}/ }).first()).toBeVisible()
-  await expect(page.getByText('Geteilte Gedanken').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Noch keine Zahlen – mit Absicht' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Was wir versprechen' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'So arbeitet die Moderation' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Was wir veröffentlichen werden' })).toBeVisible()
+  // Keine Quartalszahlen, solange niemand sie lesen könnte, ohne Einzelne zu erkennen.
+  await expect(page.getByRole('heading', { name: /Quartal \d{4}/ })).toHaveCount(0)
+  await expect(page.getByText('Geteilte Gedanken')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Transparenz' })).toBeVisible()
 })
 
@@ -101,7 +112,7 @@ test('Aide immédiate: französische Hilfeseite ohne Anmeldung, verlinkt mit /hi
   await expect(aide.locator('main')).not.toContainText('Dargebotene Hand')
   await page.getByRole('group', { name: 'Langue' }).getByRole('link', { name: 'Deutsch' }).click()
   await page.waitForURL('**/hilfe')
-  await expect(page.locator('.public:not([lang]) a[href="tel:143"]').first()).toContainText('Die Dargebotene Hand')
+  await expect(page.locator('.public[lang="de-CH"] a[href="tel:143"]').first()).toContainText('Die Dargebotene Hand')
 })
 
 test('Krisensprache auf Französisch löst denselben Hinweis aus', async ({ page }) => {

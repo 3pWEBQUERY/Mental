@@ -8,14 +8,16 @@ import { db, pool } from '../db'
 import { workerHeartbeats } from '../db/schema'
 import { getBoss, QUEUES, type JobData } from '../lib/jobs'
 import { exportAccount, purgeAccount, purgeDueAccounts, purgeInactiveAccounts } from './jobs/account'
-import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimits } from './jobs/cleanup'
+import { cleanupExports, cleanupNotifications, cleanupPresence, cleanupRateLimits, sweepBucket } from './jobs/cleanup'
 import { cleanupQuarantine, processImage, requeueStuckMedia } from './jobs/media'
-import { moderateContent } from './jobs/moderation'
+import { moderateContent, requeueUnmoderated } from './jobs/moderation'
 import { expirePosts } from './jobs/posts'
+import { crisisFollowUp } from './jobs/follow-up'
 import { applyRetention } from './jobs/retention'
 import { nudgeListeners } from './jobs/listeners'
 import { sendPush } from './jobs/push'
 import { safeMessage } from '../lib/log-safe'
+import { reencryptAtRest } from '../lib/reencrypt'
 
 const TZ = 'Europe/Zurich'
 
@@ -70,14 +72,20 @@ async function main() {
     [QUEUES.cleanupRateLimits, '7 * * * *', cleanupRateLimits],
     [QUEUES.cleanupPresence, '*/20 * * * *', cleanupPresence],
     [QUEUES.cleanupExports, '23 * * * *', cleanupExports],
+    [QUEUES.sweepBucket, '37 5 * * *', sweepBucket],
     [QUEUES.cleanupNotifications, '41 3 * * *', cleanupNotifications],
     [QUEUES.purgeDeleted, '17 4 * * *', purgeDueAccounts],
     [QUEUES.purgeInactive, '29 4 * * 0', purgeInactiveAccounts],
     [QUEUES.retention, '53 4 * * *', applyRetention],
     [QUEUES.nudgeListeners, '*/30 * * * *', nudgeListeners],
+    [QUEUES.requeueModeration, '*/10 * * * *', requeueUnmoderated],
+    [QUEUES.crisisFollowUp, '13 * * * *', () => crisisFollowUp()],
   ]
   for (const [name, schedule, fn] of cron) {
-    await boss.schedule(name, schedule, null, { tz: TZ })
+    // missed: 'once' – startet der Worker gerade zur geplanten Minute neu (Deploy), holt er den Lauf einmal nach.
+    // Sonst fielen z. B. die nächtlichen Löschungen einen ganzen Tag aus. Alle Jobs lesen den aktuellen Stand – ein
+    // Nachholen ist also immer richtig.
+    await boss.schedule(name, schedule, null, { tz: TZ, missed: 'once' })
     await boss.work(name, async () => {
       await fn()
     })
@@ -95,7 +103,13 @@ async function main() {
   const heartbeat = setInterval(() => void beat(), 30_000)
 
   console.log('[worker] bereit')
+  // Nach einem Schlüsselwechsel: zweiter Durchlauf, wenn die alten Web-Replikas weg sind (sie schrieben bis zuletzt
+  // mit dem alten Schlüssel). Ohne Schlüssel oder schon erledigt kostet das eine Abfrage.
+  const reencrypt = setTimeout(() => {
+    void reencryptAtRest((msg) => console.log(msg)).catch((e) => console.error('[encrypt] Worker-Durchlauf fehlgeschlagen:', safeMessage(e)))
+  }, 5 * 60_000)
   const stop = async () => {
+    clearTimeout(reencrypt)
     console.log('[worker] fährt herunter …')
     clearInterval(heartbeat)
     await boss.stop({ graceful: true, timeout: 20_000 })

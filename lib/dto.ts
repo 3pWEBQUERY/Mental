@@ -1,6 +1,7 @@
 import { LIMITS, type Need, type SupportKind } from './constants'
 import type { CircleI18n } from '../db/schema'
 import { localCircleName } from './localize'
+import { m } from '../messages'
 
 /**
  * Öffentliche Datenformen. Sie enthalten NIE user_id oder username –
@@ -87,6 +88,8 @@ export type PostRow = {
   /** Übersetzte Kreisnamen; optional, damit ältere Abfragen/Tests ohne sie auskommen. */
   circleI18n?: CircleI18n | null
   circleColor: string
+  /** Kreis mit Pflicht-Inhaltshinweis: gilt auch für ältere Gedanken darin. */
+  circleCw?: boolean
 }
 
 export type ReplyRow = {
@@ -104,15 +107,20 @@ export type ReplyRow = {
   deletedAt: Date | null
 }
 
-export function toPublicReply(r: ReplyRow, viewerId: string, postOwnerId: string): PublicReply {
+/**
+ * postAnonymous: Antwortet die Verfasserin eines anonymen Gedankens, heisst sie «Anonym» in der Sprache der
+ * lesenden Person – gespeichert ist es in ihrer eigenen, und das verriete ihre Sprache.
+ * Gelöschte Antworten tragen weder Namen noch Zeichen noch die Kennzeichnung «Verfasserin».
+ */
+export function toPublicReply(r: ReplyRow, viewerId: string, postOwnerId: string, postAnonymous = false): PublicReply {
   const isMine = r.userId === viewerId
   const viewerIsOwner = postOwnerId === viewerId
   const deleted = r.deletedAt !== null || r.status === 'removed'
   return {
     id: r.id,
-    authorHandle: r.authorHandle,
-    glyphSeed: r.glyphSeed,
-    isAuthor: r.isAuthor,
+    authorHandle: deleted ? '' : r.isAuthor && postAnonymous ? m.common.anonymous : r.authorHandle,
+    glyphSeed: deleted ? 0 : r.glyphSeed,
+    isAuthor: deleted ? false : r.isAuthor,
     body: deleted ? null : r.body,
     deleted,
     isMine,
@@ -137,20 +145,24 @@ export function toPublicPost(
 ): PublicPost {
   const isMine = p.userId === ctx.viewerId
   const now = ctx.now ?? Date.now()
+  const shown = ctx.replies.filter((r) => !r.hiddenByAuthor || r.userId === ctx.viewerId || isMine)
   return {
     id: p.id,
-    authorHandle: p.authorHandle,
+    // Anonym: in der Sprache der lesenden Person, nie in der gespeicherten (die verriete die Sprache der Verfasserin).
+    authorHandle: p.visibility === 'anonymous' ? m.common.anonymous : p.authorHandle,
     anonymous: p.visibility === 'anonymous',
     glyphSeed: p.glyphSeed,
     mood: p.mood,
     circle: { slug: p.circleSlug, name: localCircleName(p.circleName, p.circleI18n), color: p.circleColor },
     need: p.need,
     body: p.body,
-    contentWarning: p.contentWarning,
+    contentWarning: p.contentWarning || Boolean(p.circleCw),
     createdAt: p.createdAt.toISOString(),
     editedAt: p.editedAt?.toISOString() ?? null,
     expiresAt: isMine ? (p.expiresAt?.toISOString() ?? null) : null,
-    replyCount: p.replyCount,
+    // Die gespeicherte Zahl nur für die Verfasserin. Andere bekommen nur, was sie ohnehin sehen – sonst verriete die
+    // Zahl über Blockierungen, wer hinter einem anonymen Gedanken steht («Keine öffentlichen Zahlen»).
+    replyCount: isMine ? p.replyCount : shown.filter((r) => !r.isAuthor && !r.deletedAt).length,
     closed: p.closed,
     isMine,
     canEdit: isMine && now - p.createdAt.getTime() < LIMITS.editWindowMs,
@@ -161,8 +173,6 @@ export function toPublicPost(
     mySupport: isMine ? [] : ctx.mySupport,
     bookmarked: ctx.bookmarked,
     media: ctx.media,
-    replies: ctx.replies
-      .filter((r) => !r.hiddenByAuthor || r.userId === ctx.viewerId || isMine)
-      .map((r) => toPublicReply(r, ctx.viewerId, p.userId)),
+    replies: shown.map((r) => toPublicReply(r, ctx.viewerId, p.userId, p.visibility === 'anonymous')),
   }
 }
