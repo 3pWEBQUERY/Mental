@@ -32,7 +32,7 @@ test('SEO: erster Blogbeitrag in vier Sprachen, als Artikel ausgezeichnet; inter
     ['jiaia-est-la', 'Jiaia est là – sur le web et en application'],
     ['jiaia-e-qui', 'Jiaia è qui – sul web e come app'],
     ['jiaia-is-here', 'Jiaia is here – on the web and as an app'],
-  ]) {
+  ] as const) {
     await page.goto(`/blog/${slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(title)
   }
