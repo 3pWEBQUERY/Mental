@@ -271,6 +271,7 @@ export const it: Messages = {
   },
   help: {
     title: 'Aiuto immediato',
+    metaDescription: 'Aiuto immediato in Svizzera: Telefono Amico 143, Pro Juventute 147, emergenza 144 – 24 ore su 24, anonimo e gratuito. Anche senza registrazione.',
     /** Die vorgerenderte Hilfeseite dieser Sprache. */
     href: '/aiuto',
     eyebrow: 'Aiuto immediato',
@@ -657,6 +658,15 @@ export const it: Messages = {
     helpLink: 'Aiuto immediato',
     draft: 'Bozza – visibile solo al team.',
     notFound: 'Questo articolo non esiste (più).',
+  },
+  seo: {
+    title: 'Jiaia – condividere pensieri in modo anonimo, ricevere sostegno',
+    home: 'Un luogo tranquillo e anonimo in Svizzera: condividere pensieri, ricevere sostegno, l’aiuto sempre a un tocco. Senza e-mail, senza like, senza pubblicità – sul web e come app per iPhone.',
+    ogAlt: 'Jiaia – un luogo dove nessuno giudica.',
+    blog: 'Le novità di Jiaia e conoscenze chiare sulla salute mentale, scritte dal team di Jiaia.',
+    rules: 'Come ci comportiamo su Jiaia: le regole della casa e quelle di ogni cerchia.',
+    transparency: 'Che cosa promette Jiaia e come lavora la moderazione – apertamente, senza contenuti e senza numeri in cui qualcuno sarebbe riconoscibile.',
+    register: 'Crea un account Jiaia – anonimo, senza e-mail e senza numero di telefono. Dai 16 anni.',
   },
   transparency: {
     title: 'Trasparenza',

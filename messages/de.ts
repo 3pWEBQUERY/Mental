@@ -268,6 +268,7 @@ export const de = {
   },
   help: {
     title: 'Sofort Hilfe',
+    metaDescription: 'Sofort Hilfe in der Schweiz: Die Dargebotene Hand 143, Pro Juventute 147, Notruf 144 – rund um die Uhr, anonym und kostenlos. Auch ohne Anmeldung.',
     /** Die vorgerenderte Hilfeseite dieser Sprache. */
     href: '/hilfe',
     eyebrow: 'Sofort Hilfe',
@@ -654,6 +655,15 @@ export const de = {
     helpLink: 'Sofort Hilfe',
     draft: 'Entwurf – nur für das Team sichtbar.',
     notFound: 'Diesen Beitrag gibt es nicht (mehr).',
+  },
+  seo: {
+    title: 'Jiaia – anonym Gedanken teilen, Zuspruch bekommen',
+    home: 'Ein ruhiger, anonymer Ort in der Schweiz: Gedanken teilen, Zuspruch bekommen, Hilfe immer einen Tipp entfernt. Ohne E-Mail, ohne Likes, ohne Werbung – im Web und als App für iPhone.',
+    ogAlt: 'Jiaia – ein Ort, an dem niemand bewertet wird.',
+    blog: 'Neuigkeiten von Jiaia und verständliches Wissen rund um mentale Gesundheit, geschrieben vom Team Jiaia.',
+    rules: 'Wie wir auf Jiaia miteinander umgehen: die Hausregeln und die Regeln der einzelnen Kreise.',
+    transparency: 'Was Jiaia verspricht und wie die Moderation arbeitet – offen, ohne Inhalte und ohne Zahlen, in denen Einzelne erkennbar wären.',
+    register: 'Konto bei Jiaia erstellen – anonym, ohne E-Mail und ohne Telefonnummer. Ab 16 Jahren.',
   },
   transparency: {
     title: 'Transparenz',

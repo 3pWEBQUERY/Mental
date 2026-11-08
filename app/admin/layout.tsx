@@ -1,7 +1,9 @@
 import { and, count, eq, inArray, isNull } from 'drizzle-orm'
 import Link from 'next/link'
 import { connection } from 'next/server'
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { NO_INDEX } from '@/lib/seo'
 import { db } from '@/db'
 import { postMedia, posts } from '@/db/schema'
 import { Mark } from '@/components/ui'
@@ -11,6 +13,9 @@ import { canModerate, hasStrongAuth, requireModeratorRole } from '@/lib/server/a
 import { m } from '@/messages'
 
 export const instant = false
+
+/** Moderation: nie in Suchmaschinen. */
+export const metadata: Metadata = { robots: NO_INDEX }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await connection()

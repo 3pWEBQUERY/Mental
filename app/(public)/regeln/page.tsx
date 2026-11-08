@@ -4,13 +4,14 @@ import { PublicShell } from '@/components/ui'
 import { getCirclesForStaticPage } from '@/lib/server/terms'
 import { localizeCircle } from '@/lib/localize'
 import { m } from '@/messages'
+import { pageMeta } from '@/lib/seo'
 
 // Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
 export const instant = false
 
 // Pro Anfrage, damit der Titel in der gewählten Sprache erscheint.
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: m.rules.title }
+  return pageMeta({ title: m.rules.title, description: m.seo.rules, path: '/regeln' })
 }
 
 export default async function RulesPage() {

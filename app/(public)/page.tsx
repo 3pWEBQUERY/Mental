@@ -1,4 +1,4 @@
-import type { Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { connection } from 'next/server'
 import { LandingHero } from '@/components/landing/hero'
 import { PublicShell } from '@/components/ui'
@@ -7,12 +7,19 @@ import { getPostsFor } from '@/lib/server/blog'
 import { getPartners } from '@/lib/server/partners'
 import { currentLocale, m } from '@/messages'
 import Link from 'next/link'
+import { JsonLd } from '@/components/seo/json-ld'
+import { pageMeta } from '@/lib/seo'
+import { siteGraph } from '@/lib/structured-data'
 
 // Pro Anfrage in der gewählten Sprache (Cookie) – bewusst kein vorgerenderter Shell.
 export const instant = false
 
 /** Der Hero ist immer Nacht: Statusleiste und Browser-Leisten dunkel statt hell (wie der Himmel ganz oben). */
 export const viewport: Viewport = { themeColor: '#050a16' }
+
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMeta({ absoluteTitle: m.seo.title, description: m.seo.home, path: '/' })
+}
 
 /** Landing-Page in der gewählten Sprache (pro Anfrage). Eingeloggte leitet der Proxy direkt auf /start. */
 export default async function Landing() {
@@ -22,6 +29,7 @@ export default async function Landing() {
   const latest = posts.slice(0, 3)
   return (
     <PublicShell hero={<LandingHero />}>
+      <JsonLd data={siteGraph(m.seo.home)} />
       <div className="landing">
         <section aria-labelledby="prinzipien">
           <h2 id="prinzipien" className="section-label">

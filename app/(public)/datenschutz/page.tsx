@@ -2,7 +2,11 @@ import type { Metadata } from 'next'
 import { PublicShell } from '@/components/ui'
 import { atRestEnabled } from '@/lib/at-rest'
 
-export const metadata: Metadata = { title: 'Datenschutz' }
+export const metadata: Metadata = {
+  title: 'Datenschutz',
+  description: 'Wie Jiaia mit deinen Daten umgeht: keine E-Mail, keine Telefonnummer, kein Tracking – Daten in Europa, Gesundheitsdaten verschlüsselt.',
+  alternates: { canonical: '/datenschutz' },
+}
 
 /** Datenschutzerklärung in einfacher Sprache. Vor dem Launch von einer Fachperson zu prüfen (nDSG). */
 export default function PrivacyPage() {

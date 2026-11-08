@@ -270,6 +270,7 @@ export const en: Messages = {
   },
   help: {
     title: 'Help now',
+    metaDescription: 'Immediate help in Switzerland: Die Dargebotene Hand (Helping Hand) 143, Pro Juventute 147, emergency 144 – 24/7, anonymous and free. No sign-up needed.',
     href: '/help',
     eyebrow: 'Help now',
     intro: 'If it’s all too much right now, you don’t have to wait for someone here to reply.',
@@ -655,6 +656,15 @@ export const en: Messages = {
     helpLink: 'Help now',
     draft: 'Draft – only visible to the team.',
     notFound: 'This post doesn’t exist (any more).',
+  },
+  seo: {
+    title: 'Jiaia – share your thoughts anonymously, find support',
+    home: 'A calm, anonymous place in Switzerland: share your thoughts, receive support, with help always one tap away. No email, no likes, no ads – on the web and as an iPhone app.',
+    ogAlt: 'Jiaia – a place where no one judges you.',
+    blog: 'News from Jiaia and clear, honest writing about mental health, by the Jiaia team.',
+    rules: 'How we treat each other on Jiaia: the house rules and the rules of each circle.',
+    transparency: 'What Jiaia promises and how moderation works – openly, without content and without numbers in which individuals could be recognised.',
+    register: 'Create a Jiaia account – anonymous, with no email and no phone number. Aged 16 and over.',
   },
   transparency: {
     title: 'Transparency',

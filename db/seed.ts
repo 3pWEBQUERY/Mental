@@ -6,9 +6,12 @@ import { eq, sql } from 'drizzle-orm'
 import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_EN, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
 import { DEFAULT_HELP, DEFAULT_HELP_EN, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
 import { db, pool } from './index'
-import { circles, crisisTerms, helpResources, seedMarks, steps } from './schema'
+import { blogMedia, blogPosts, circles, crisisTerms, helpResources, seedMarks, steps } from './schema'
 import { CIRCLE_HELP, NEW_CIRCLES, NEW_STEPS } from './seed-kreise'
 import { CIRCLE_HELP_EN, CIRCLES_EN, DEFAULT_HELP_CHATS_EN, STEPS_EN } from './seed-en'
+import { LAUNCH_COVER_ALT, LAUNCH_POSTS } from './seed-launch'
+import { readFile } from 'node:fs/promises'
+import sharp from 'sharp'
 
 const CIRCLES = [
   {
@@ -234,6 +237,25 @@ async function main() {
       idOf.has(slug) ? list.map((h, i) => ({ ...h, language: 'en', sort: 100 + i * 10, circleId: idOf.get(slug)! })) : [],
     )
     if (help.length) await tx.insert(helpResources).values(help)
+  })
+
+  // Erster Blogbeitrag (November 2026): Jiaia ist live – im Web und als App. Einmal; danach pflegt das Team ihn im Admin.
+  await once('blog-launch-2026-11', async (tx) => {
+    // Titelbild: das Sternenhimmel-Motiv der Startseite (WebP, ohne Metadaten, wie jeder Upload).
+    const poster = await readFile(new URL('../components/landing/hero-poster.webp', import.meta.url)).catch(() => null)
+    let coverId: string | null = null
+    if (poster) {
+      const { data, info } = await sharp(poster).resize({ width: 2000, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
+      const [m] = await tx.insert(blogMedia).values({ data, width: info.width, height: info.height, bytes: data.length }).returning({ id: blogMedia.id })
+      coverId = m!.id
+    }
+    const now = new Date()
+    for (const p of LAUNCH_POSTS) {
+      await tx
+        .insert(blogPosts)
+        .values({ ...p, category: 'news', status: 'published', publishedAt: now, coverId, coverAlt: coverId ? LAUNCH_COVER_ALT[p.locale] : null })
+        .onConflictDoNothing({ target: blogPosts.slug })
+    }
   })
 
   // Passkeys von vor der Spalte rp_id gehören zur Domain, die jetzt gilt. Läuft dieses Deploy noch auf der alten
