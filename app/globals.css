@@ -660,14 +660,31 @@ html:has(.with-hero:not([style*='display: none'])), html:has(.with-hero:not([sty
 .principles li { padding: 24px 22px 24px 0; border-bottom: 1px solid var(--line); }
 .principles b { display: block; font-family: var(--serif); font-weight: 400; font-size: calc(26px * var(--fz)); line-height: 1.1; margin-bottom: 8px; }
 .principles span { color: var(--ink-2); font-size: calc(14px * var(--fz)); }
-/* Partner: Logos auf hellen Kacheln – auch im dunklen Farbschema, sonst verschwinden dunkle Logos. Flach, schmaler Rand. */
-.partners { margin-top: 72px; }
-.partner-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 18px; }
-.partner-tile { display: grid; place-items: center; height: 128px; padding: 22px 26px; border-radius: 18px; background: #fbfaf6; border: var(--bw) solid color-mix(in srgb, var(--ink) 18%, transparent); color: #2b2a26; text-decoration: none; transition: border-color 0.2s; }
-a.partner-tile:hover { border-color: color-mix(in srgb, var(--ink) 45%, transparent); }
-.partner-tile img { max-width: 100%; max-height: 80px; width: auto; height: auto; object-fit: contain; }
-@media (max-width: 640px) { .partner-list { grid-template-columns: 1fr 1fr; gap: 10px; } .partner-tile { height: 96px; padding: 14px 16px; border-radius: 14px; } .partner-tile img { max-height: 56px; } }
-.partner-name { font-family: var(--serif); font-size: calc(22px * var(--fz)); line-height: 1.15; text-align: center; }
+/* Wichtige Anlaufstellen: keine Kacheln, sondern eine ruhige Liste wie die Prinzipien darüber. Weisse Logo-Hintergründe
+   gehen per «multiply» im Papierton auf; im dunklen Schema werden die Logos einfarbig hell (invertiert, «screen»). */
+.partners { margin-top: clamp(56px, 7vw, 88px); }
+.partners .section-label { margin-bottom: 10px; }
+.partners-lead { max-width: 54ch; color: var(--ink-2); font-size: calc(15px * var(--fz)); line-height: 1.55; }
+.partner-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); border-top: 1px solid var(--line); margin-top: 26px; }
+.partner-list li { border-bottom: 1px solid var(--line); }
+.partner { display: grid; grid-template-rows: 64px auto; gap: 14px; align-content: start; height: 100%; padding: 28px 24px 22px 0; color: var(--ink); text-decoration: none; }
+.partner-logo { display: flex; align-items: center; min-width: 0; }
+.partner-logo img { display: block; width: auto; height: auto; max-width: min(100%, 230px); max-height: 56px; object-fit: contain; mix-blend-mode: multiply; transition: opacity 0.2s; }
+.partner-name { font-family: var(--serif); font-size: calc(23px * var(--fz)); line-height: 1.12; }
+.partner-host { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-3); font-size: calc(13px * var(--fz)); transition: color 0.2s; }
+.partner-host svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s; }
+a.partner:hover .partner-host { color: var(--ink); }
+a.partner:hover .partner-host svg { transform: translate(2px, -2px); }
+a.partner:hover .partner-logo img { opacity: 0.8; }
+:root[data-theme='dark'] .partner-logo img { filter: grayscale(1) invert(1); mix-blend-mode: screen; }
+@media (prefers-color-scheme: dark) { :root[data-theme='system'] .partner-logo img { filter: grayscale(1) invert(1); mix-blend-mode: screen; } }
+@media (prefers-reduced-motion: reduce) { .partner-host svg { transition: none; } }
+@media (max-width: 640px) {
+  .partner-list { grid-template-columns: 1fr 1fr; }
+  .partner { grid-template-rows: 52px auto; gap: 10px; padding: 22px 14px 18px 0; }
+  .partner-logo img { max-height: 44px; }
+  .partner-name { font-size: calc(19px * var(--fz)); }
+}
 /* Admin → Partner: Karte mit Vorschau links, Feldern mit Beschriftung und Aktionen rechts. */
 .partner-thumb { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; overflow: hidden; width: 168px; height: 96px; padding: 10px; border-radius: 12px; background: #fbfaf6; border: var(--bw) solid var(--line); color: #2b2a26; }
 /* Feste Box mit object-fit: Das Logo passt immer hinein, egal wie gross die Datei ist. */
