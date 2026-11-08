@@ -65,27 +65,39 @@ export default async function Landing() {
           </section>
         )}
         {partners.length > 0 && (
-          <section aria-labelledby="partner" className="partners">
-            <h2 id="partner" className="section-label">
+          <section aria-labelledby="anlaufstellen" className="partners">
+            <h2 id="anlaufstellen" className="section-label">
               {l.partners}
             </h2>
+            <p className="partners-lead">{l.partnersLead}</p>
             <ul className="partner-list">
               {partners.map((p) => {
-                const inner = p.logo ? (
+                const logo = p.logo ? (
                   // Logo ist schon klein gerechnet (WebP, max. 800×400) und lange cachebar – kein next/image nötig.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.logo.src} alt={p.name} width={p.logo.width} height={p.logo.height} loading="lazy" decoding="async" />
                 ) : (
                   <span className="partner-name">{p.name}</span>
                 )
+                const host = hostOf(p.url)
                 return (
                   <li key={p.id}>
                     {p.url ? (
-                      <a className="partner-tile" href={p.url} target="_blank" rel="noopener noreferrer" aria-label={l.partnerLink(p.name)}>
-                        {inner}
+                      <a className="partner" href={p.url} target="_blank" rel="noopener noreferrer" aria-label={l.partnerLink(p.name)}>
+                        <span className="partner-logo">{logo}</span>
+                        {host && (
+                          <span className="partner-host">
+                            {host}
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M7 17 17 7M9 7h8v8" />
+                            </svg>
+                          </span>
+                        )}
                       </a>
                     ) : (
-                      <span className="partner-tile">{inner}</span>
+                      <span className="partner">
+                        <span className="partner-logo">{logo}</span>
+                      </span>
                     )}
                   </li>
                 )
@@ -96,4 +108,14 @@ export default async function Landing() {
       </div>
     </PublicShell>
   )
+}
+
+/** «https://www.143.ch/hilfe» → «143.ch»: zeigt, wohin der Link führt. */
+function hostOf(url: string | null) {
+  if (!url) return null
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
 }
