@@ -903,7 +903,7 @@ export const en: Messages = {
   },
   admin: {
     title: 'Moderation',
-    nav: { queue: 'Queue', images: 'Images', circles: 'Circles', help: 'Helpline numbers', terms: 'Crisis word list', steps: 'Small steps', prompts: 'Team questions', audit: 'Audit log', stats: 'Statistics', members: 'Members', partners: 'Partners', blog: 'Blog' },
+    nav: { queue: 'Queue', entries: 'Entries', images: 'Images', circles: 'Circles', help: 'Helpline numbers', terms: 'Crisis word list', steps: 'Small steps', prompts: 'Team questions', audit: 'Audit log', stats: 'Statistics', members: 'Members', partners: 'Partners', blog: 'Blog' },
     passkeyRequired:
       'The moderation area can only be accessed with a passkey. Sign out and sign in again with your passkey. Don’t have one yet? Create one under Settings → Security.',
     passkeyRelogin: 'Sign out and sign in with passkey',
@@ -924,6 +924,7 @@ export const en: Messages = {
       'crisis-terms:update': 'Crisis word list changed',
       'steps:create': 'Step created', 'steps:update': 'Step changed', 'steps:delete': 'Step deleted',
       'prompts:create': 'Question created', 'prompts:update': 'Question changed', 'prompts:delete': 'Question deleted',
+      'content:hide': 'Entry hidden', 'content:show': 'Entry shown again', 'content:delete': 'Entry deleted', 'content:cw-on': 'Content warning added', 'content:cw-off': 'Content warning removed', 'content:close': 'Replies closed', 'content:open': 'Replies opened', 'content:warn': 'Warned (from entries)', 'content:mute24': 'Muted 24 h (from entries)', 'content:mute7': 'Muted 7 days (from entries)', 'content:ban': 'Banned (from entries)',
       'partner:create': 'Partner added', 'partner:update': 'Partner changed', 'partner:delete': 'Partner deleted',
       'partner-media:upload': 'Logo uploaded', 'partner-media:delete': 'Logo deleted',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

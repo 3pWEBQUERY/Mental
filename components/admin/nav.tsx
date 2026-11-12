@@ -7,6 +7,7 @@ import { m } from '@/messages'
 type Level = 'peer' | 'mod' | 'admin'
 const items = (): { href: string; label: string; level: Level }[] => [
   { href: '/admin', label: m.admin.nav.queue, level: 'peer' },
+  { href: '/admin/eintraege', label: m.admin.nav.entries, level: 'mod' },
   { href: '/admin/bilder', label: m.admin.nav.images, level: 'mod' },
   { href: '/admin/mitglieder', label: m.admin.nav.members, level: 'mod' },
   { href: '/admin/kreise', label: m.admin.nav.circles, level: 'admin' },
