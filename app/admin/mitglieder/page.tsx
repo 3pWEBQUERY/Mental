@@ -11,12 +11,18 @@ const PAGE = 50
 const FILTERS = ['all', 'active', 'muted', 'banned', 'deleting', 'staff', 'reported'] as const
 type Filter = (typeof FILTERS)[number]
 
+/**
+ * Konto-Spalte ausdrücklich mit Tabellennamen: In der Spaltenauswahl einer Abfrage auf nur eine Tabelle schreibt
+ * Drizzle sonst nur «"id"» – in den Unterabfragen hiesse das dann die ID des Gedankens bzw. der Meldung (Zähler immer 0).
+ */
+const USER_ID = sql.raw('"users"."id"')
+
 /** Offene Meldungen zu Inhalten eines Kontos (Gedanken und Antworten). */
 const openReports = sql<number>`(
   SELECT count(*)::int FROM reports r
   WHERE r.status = 'open' AND (
-    (r.target_type = 'post' AND r.target_id IN (SELECT p.id FROM posts p WHERE p.user_id = ${users.id}))
-    OR (r.target_type = 'reply' AND r.target_id IN (SELECT rp.id FROM replies rp WHERE rp.user_id = ${users.id}))
+    (r.target_type = 'post' AND r.target_id IN (SELECT p.id FROM posts p WHERE p.user_id = ${USER_ID}))
+    OR (r.target_type = 'reply' AND r.target_id IN (SELECT rp.id FROM replies rp WHERE rp.user_id = ${USER_ID}))
   )
 )`
 
@@ -63,8 +69,8 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
       mutedUntil: users.mutedUntil,
       createdAt: users.createdAt,
       lastLoginAt: users.lastLoginAt,
-      posts: sql<number>`(SELECT count(*)::int FROM posts p WHERE p.user_id = ${users.id} AND p.deleted_at IS NULL)`,
-      replies: sql<number>`(SELECT count(*)::int FROM replies r WHERE r.user_id = ${users.id} AND r.deleted_at IS NULL)`,
+      posts: sql<number>`(SELECT count(*)::int FROM posts p WHERE p.user_id = ${USER_ID} AND p.deleted_at IS NULL)`,
+      replies: sql<number>`(SELECT count(*)::int FROM replies r WHERE r.user_id = ${USER_ID} AND r.deleted_at IS NULL)`,
       reports: openReports,
     })
     .from(users)

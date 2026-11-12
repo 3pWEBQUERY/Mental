@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function Page() {
   return (
-    <PublicShell>
+    <PublicShell active="recover">
       <Suspense>
         <RecoverForm />
       </Suspense>
