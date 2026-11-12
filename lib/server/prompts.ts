@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, notInArray } from 'drizzle-orm'
 import { db } from '@/db'
 import { circlePrefs, circles, prompts } from '@/db/schema'
 import { localCircleName, localPromptText } from '@/lib/localize'
-import { zurichDay } from '@/lib/time'
+import { randomInt } from 'node:crypto'
 
 export type TeamPrompt = { id: string; text: string; circle: { slug: string; name: string; color: string } }
 
@@ -35,11 +35,14 @@ export async function getCirclePrompts(circleId: string): Promise<TeamPrompt[]> 
   return rows.map(toPrompt)
 }
 
+/** Cookie mit der zuletzt in «Alle» gezeigten Frage – damit beim nächsten Laden eine andere kommt. */
+export const LAST_PROMPT_COOKIE = 'jiaia_tp'
+
 /**
- * Eine Frage für «Alle»: wechselt jeden Tag, aus allen aktiven Kreisen ausser stummgeschalteten (oder nur aus den
- * gefolgten bei «Meine Kreise»). Alle sehen am selben Tag dieselbe Frage – sie gilt für den ganzen Raum.
+ * Eine Frage für «Alle»: bei jedem Laden zufällig eine andere – nie dieselbe wie beim letzten Mal (`lastId`).
+ * Aus allen aktiven Kreisen ausser stummgeschalteten (oder nur aus den gefolgten bei «Meine Kreise»).
  */
-export async function getPromptOfDay(viewerId: string, followedOnly = false): Promise<TeamPrompt | null> {
+export async function getFeedPrompt(viewerId: string, followedOnly = false, lastId?: string | null): Promise<TeamPrompt | null> {
   const prefs = (state: 'follow' | 'mute') =>
     db
       .select({ id: circlePrefs.circleId })
@@ -56,12 +59,9 @@ export async function getPromptOfDay(viewerId: string, followedOnly = false): Pr
         followedOnly ? inArray(prompts.circleId, prefs('follow')) : notInArray(prompts.circleId, prefs('mute')),
       ),
     )
-    .orderBy(asc(prompts.sort), asc(prompts.id))
   if (!rows.length) return null
-  const day = zurichDay()
-  // Tag als Zahl (z. B. 2026-11-12 → 20261112): einfache, stabile Rotation.
-  const n = Number(String(day).replace(/\D/g, '')) || 0
-  return toPrompt(rows[n % rows.length]!)
+  const pool = rows.length > 1 ? rows.filter((r) => r.id !== lastId) : rows
+  return toPrompt(pool[randomInt(pool.length)]!)
 }
 
 /** Prüft beim Teilen, ob die Frage aktiv ist und zum gewählten Kreis gehört – sonst wird sie nicht verknüpft. */

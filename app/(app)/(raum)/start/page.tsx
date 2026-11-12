@@ -9,7 +9,8 @@ import { Side } from '@/components/app/side'
 import { StepCard } from '@/components/app/step-card'
 import { PromptButton } from '@/components/feed/prompt'
 import { TeamPrompts } from '@/components/feed/team-prompt'
-import { getCirclePrompts, getPromptOfDay } from '@/lib/server/prompts'
+import { getCirclePrompts, getFeedPrompt, LAST_PROMPT_COOKIE } from '@/lib/server/prompts'
+import { cookies } from 'next/headers'
 import { FeedList } from '@/components/feed/feed-list'
 import { TabBar } from '@/components/tab-bar'
 import { db } from '@/db'
@@ -104,8 +105,12 @@ async function Feed({ searchParams }: { searchParams: Search }) {
     getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }),
     stepForRequest(),
     circle ? getCircleHelp(currentLocale()) : null,
-    // Im Kreis alle seine Fragen; in «Alle» und «Meine Kreise» eine Frage des Tages. Nicht in den anderen Ansichten.
-    view !== 'all' ? [] : circle ? getCirclePrompts(circle.id) : getPromptOfDay(v.userId, mine).then((p) => (p ? [p] : [])),
+    // Im Kreis alle seine Fragen; in «Alle» und «Meine Kreise» bei jedem Laden eine andere. Nicht in den anderen Ansichten.
+    view !== 'all'
+      ? []
+      : circle
+        ? getCirclePrompts(circle.id)
+        : cookies().then((c) => getFeedPrompt(v.userId, mine, c.get(LAST_PROMPT_COOKIE)?.value).then((p) => (p ? [p] : []))),
   ])
   const circleHelp = circle ? (topicHelp?.[circle.slug] ?? []) : []
   const params = new URLSearchParams()
