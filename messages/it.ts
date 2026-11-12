@@ -905,7 +905,7 @@ export const it: Messages = {
   },
   admin: {
     title: 'Moderazione',
-    nav: { queue: 'Coda', images: 'Immagini', circles: 'Cerchi', help: 'Numeri d’aiuto', terms: 'Elenco termini di crisi', steps: 'Piccoli passi', audit: 'Registro di audit', stats: 'Statistiche', members: 'Membri', partners: 'Partner', blog: 'Blog' },
+    nav: { queue: 'Coda', images: 'Immagini', circles: 'Cerchi', help: 'Numeri d’aiuto', terms: 'Elenco termini di crisi', steps: 'Piccoli passi', prompts: 'Domande del team', audit: 'Registro di audit', stats: 'Statistiche', members: 'Membri', partners: 'Partner', blog: 'Blog' },
     passkeyRequired:
       'L’area di moderazione è accessibile solo con una passkey. Esci e accedi di nuovo con la tua passkey. Non ne hai ancora una? Creala in Impostazioni → Sicurezza.',
     passkeyRelogin: 'Esci e accedi con la passkey',
@@ -925,6 +925,7 @@ export const it: Messages = {
       'crisis-terms:remove': 'Termine di crisi rimosso',
       'crisis-terms:update': 'Elenco termini di crisi modificato',
       'steps:create': 'Piccolo passo creato', 'steps:update': 'Piccolo passo modificato', 'steps:delete': 'Piccolo passo eliminato',
+      'prompts:create': 'Domanda creata', 'prompts:update': 'Domanda modificata', 'prompts:delete': 'Domanda eliminata',
       'partner:create': 'Partner creato', 'partner:update': 'Partner modificato', 'partner:delete': 'Partner eliminato',
       'partner-media:upload': 'Logo caricato', 'partner-media:delete': 'Logo eliminato',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

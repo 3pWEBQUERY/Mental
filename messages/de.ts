@@ -903,7 +903,7 @@ export const de = {
   },
   admin: {
     title: 'Moderation',
-    nav: { queue: 'Warteschlange', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', audit: 'Audit-Log', stats: 'Statistik', members: 'Mitglieder', partners: 'Partner', blog: 'Blog' },
+    nav: { queue: 'Warteschlange', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', prompts: 'Fragen vom Team', audit: 'Audit-Log', stats: 'Statistik', members: 'Mitglieder', partners: 'Partner', blog: 'Blog' },
     passkeyRequired:
       'Der Moderationsbereich ist nur mit einem Passkey erreichbar. Melde dich ab und wieder mit deinem Passkey an. Noch keinen? Lege ihn unter Einstellungen → Sicherheit an.',
     passkeyRelogin: 'Abmelden und mit Passkey anmelden',
@@ -923,6 +923,7 @@ export const de = {
       'crisis-terms:remove': 'Krisenbegriff entfernt',
       'crisis-terms:update': 'Krisen-Wortliste geändert',
       'steps:create': 'Schritt angelegt', 'steps:update': 'Schritt geändert', 'steps:delete': 'Schritt gelöscht',
+      'prompts:create': 'Frage angelegt', 'prompts:update': 'Frage geändert', 'prompts:delete': 'Frage gelöscht',
       'partner:create': 'Partner angelegt', 'partner:update': 'Partner geändert', 'partner:delete': 'Partner gelöscht',
       'partner-media:upload': 'Logo hochgeladen', 'partner-media:delete': 'Logo gelöscht',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

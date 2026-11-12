@@ -905,7 +905,7 @@ export const fr: Messages = {
   },
   admin: {
     title: 'Modération',
-    nav: { queue: 'File d’attente', images: 'Images', circles: 'Cercles', help: 'Numéros d’aide', terms: 'Liste de termes de crise', steps: 'Petits pas', audit: 'Journal d’audit', stats: 'Statistiques', members: 'Membres', partners: 'Partenaires', blog: 'Blog' },
+    nav: { queue: 'File d’attente', images: 'Images', circles: 'Cercles', help: 'Numéros d’aide', terms: 'Liste de termes de crise', steps: 'Petits pas', prompts: 'Questions de l’équipe', audit: 'Journal d’audit', stats: 'Statistiques', members: 'Membres', partners: 'Partenaires', blog: 'Blog' },
     passkeyRequired:
       'L’espace de modération n’est accessible qu’avec un passkey. Déconnecte-toi et reconnecte-toi avec ton passkey. Pas encore de passkey ? Crée-le sous Réglages → Sécurité.',
     passkeyRelogin: 'Se déconnecter et se reconnecter avec un passkey',
@@ -925,6 +925,7 @@ export const fr: Messages = {
       'crisis-terms:remove': 'Terme de crise retiré',
       'crisis-terms:update': 'Liste de termes de crise modifiée',
       'steps:create': 'Petit pas créé', 'steps:update': 'Petit pas modifié', 'steps:delete': 'Petit pas supprimé',
+      'prompts:create': 'Question créée', 'prompts:update': 'Question modifiée', 'prompts:delete': 'Question supprimée',
       'partner:create': 'Partenaire créé', 'partner:update': 'Partenaire modifié', 'partner:delete': 'Partenaire supprimé',
       'partner-media:upload': 'Logo téléversé', 'partner-media:delete': 'Logo supprimé',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

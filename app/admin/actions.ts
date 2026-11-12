@@ -19,6 +19,7 @@ import {
   reports,
   roleProposals,
   sessions,
+  prompts,
   steps,
   users,
 } from '@/db/schema'
@@ -707,6 +708,54 @@ export async function deleteStep(form: FormData): Promise<AdminResult> {
   await audit(admin.userId, 'steps:delete', admin.userId, row.text.slice(0, 60))
   changed()
   return done('Schritt gelöscht.')
+}
+
+/* ------------------------------------------------------ Fragen vom Team */
+
+export async function savePrompt(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const parsed = z
+    .object({
+      id: z.uuid().optional().or(z.literal('')),
+      text: str(200),
+      circleId: z.uuid(),
+      sort: z.coerce.number().int().min(0).max(999),
+      isActive: z.string().optional(),
+      textFr: optional(200),
+      textIt: optional(200),
+      textEn: optional(200),
+    })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) return nope(INVALID)
+  const d = parsed.data
+  const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.id, d.circleId))
+  if (!c) return nope('Den gewählten Kreis gibt es nicht mehr.')
+  const i18n = {
+    ...(d.textFr ? { fr: { text: d.textFr } } : {}),
+    ...(d.textIt ? { it: { text: d.textIt } } : {}),
+    ...(d.textEn ? { en: { text: d.textEn } } : {}),
+  }
+  const values = { text: d.text, circleId: d.circleId, sort: d.sort, isActive: d.isActive === 'on', i18n }
+  if (d.id) {
+    const [row] = await db.update(prompts).set(values).where(eq(prompts.id, d.id)).returning({ id: prompts.id })
+    if (!row) return nope('Diese Frage gibt es nicht mehr.')
+  } else await db.insert(prompts).values(values)
+  await audit(admin.userId, d.id ? 'prompts:update' : 'prompts:create', admin.userId, d.text.slice(0, 60))
+  // Die App liest die Fragen direkt aus der Datenbank – sie gelten ab dem nächsten Laden.
+  changed()
+  return done(d.id ? 'Frage gespeichert.' : 'Frage hinzugefügt.')
+}
+
+/** Löschen: Gedanken, die darauf geantwortet haben, bleiben – nur ohne den Hinweis auf die Frage. */
+export async function deletePrompt(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const id = z.uuid().safeParse(form.get('id'))
+  if (!id.success) return nope(INVALID)
+  const [row] = await db.delete(prompts).where(eq(prompts.id, id.data)).returning({ text: prompts.text })
+  if (!row) return nope('Diese Frage gibt es nicht mehr.')
+  await audit(admin.userId, 'prompts:delete', admin.userId, row.text.slice(0, 60))
+  changed()
+  return done('Frage gelöscht.')
 }
 
 /* ------------------------------------------------------------- Partner */

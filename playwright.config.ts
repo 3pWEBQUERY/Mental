@@ -26,7 +26,14 @@ export default defineConfig({
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', locale: 'de-CH', timezoneId: 'Europe/Zurich' },
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+    trace: 'retain-on-failure',
+    locale: 'de-CH',
+    timezoneId: 'Europe/Zurich',
+    // Optional ein vorinstalliertes Chromium (z. B. wenn die Playwright-Version nicht zum installierten Browser passt).
+    ...(process.env.PW_CHROMIUM_PATH ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } } : {}),
+  },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }, testIgnore: /mobile\.spec\.ts/ },
     { name: 'mobil', use: { ...devices['Pixel 7'] }, testMatch: /mobile\.spec\.ts/ },

@@ -419,6 +419,7 @@ ul, ol { list-style: none; }
 .circle[aria-pressed='true'], .circle[aria-current='true'] { background: var(--ink); color: var(--paper); }
 .circle[aria-pressed='true'] small, .circle[aria-current='true'] small { color: var(--paper); }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.admin-circle-head { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: calc(15px * var(--fz)); font-weight: 600; }
 .circle span { flex: 1; font-size: calc(14px * var(--fz)); }
 .circle small { font-size: calc(12px * var(--fz)); color: var(--ink-3); }
 .step { --inset: 12px; background: var(--ink); color: var(--paper); border-radius: var(--r-l); padding: var(--inset); }
