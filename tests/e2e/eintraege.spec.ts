@@ -22,7 +22,7 @@ test('Admin → Einträge: alle Gedanken sehen, suchen und verwalten – samt An
   await admin.waitForURL('**/admin/eintraege')
   await admin.getByRole('searchbox', { name: 'Im Text suchen' }).fill(text)
   await admin.getByRole('button', { name: 'Anzeigen' }).click()
-  await expect(admin.getByRole('status')).toHaveText('1 Gedanke')
+  await expect(admin.locator('.entries [role="status"]')).toHaveText('1 Gedanke')
   const entry = admin.locator('li.entry', { hasText: text })
   await expect(entry).toBeVisible()
   // Nie der Benutzername – nur die Mitglieds-ID.
