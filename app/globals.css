@@ -816,7 +816,21 @@ select.input { appearance: none; -webkit-appearance: none; padding-right: 40px; 
 .entry-member { display: inline-flex; gap: 10px; align-items: baseline; }
 .entry-sep { flex-basis: 100%; height: 0; }
 .entry-replies { border-left: 2px solid var(--line); padding-left: 16px; }
-.entry-replies summary { cursor: pointer; font-size: calc(14px * var(--fz)); font-weight: 500; min-height: 32px; display: flex; align-items: center; }
+.entry-replies .eyebrow { margin-bottom: 4px; }
+/* Liste: eine Zeile je Gedanke, ganz anklickbar – Details und Massnahmen auf der Eintragsseite. */
+.entry-list { border-top: 1px solid var(--line); }
+.entry-list li { border-bottom: 1px solid var(--line); }
+.entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'meta go' 'text go' 'badges go'; gap: 6px 16px; align-items: center; padding: 14px 10px; color: var(--ink); text-decoration: none; border-radius: 10px; transition: background 0.15s; }
+.entry-row:hover { background: var(--paper-2); }
+.entry-row-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: calc(13px * var(--fz)); color: var(--ink-3); }
+.entry-row-text { grid-area: text; font-size: calc(15px * var(--fz)); line-height: 1.45; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.entry-row-text.muted { color: var(--ink-3); font-style: italic; }
+.entry-row-badges { grid-area: badges; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.entry-row-count { font-size: calc(12px * var(--fz)); color: var(--ink-3); }
+.entry-row-go { grid-area: go; width: 18px; height: 18px; fill: none; stroke: var(--ink-3); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.back-link { align-self: flex-start; display: inline-flex; align-items: center; min-height: 32px; color: var(--ink-2); font-size: calc(14px * var(--fz)); text-decoration: none; }
+.back-link:hover { color: var(--ink); }
+.entry-detail .page-title { margin-bottom: 4px; }
 .entry-replies li { display: grid; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line); }
 .entry-reply-body { font-size: calc(16px * var(--fz)); line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
 .queue-item .reasons-list { font-size: calc(13px * var(--fz)); color: var(--ink-2); }

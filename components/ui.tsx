@@ -80,7 +80,7 @@ export function PublicShell({
   hero,
 }: {
   children: ReactNode
-  active?: 'login' | 'register' | 'help'
+  active?: 'login' | 'register' | 'recover' | 'help'
   /** Bildfüllender Bereich ganz oben (Startseite): Der Header liegt dann ohne Hintergrund darauf. */
   hero?: ReactNode
   /** Wörterbuch und Sprache der Seite – Standard Deutsch (das <html>-Element bleibt de-CH). */
@@ -120,7 +120,7 @@ export function PublicShell({
         {hero}
         {children}
       </main>
-      {/* Nicht auf den Hilfeseiten (nichts soll von den Nummern ablenken) und nicht beim Anmelden und Registrieren. */}
+      {/* Nicht auf den Hilfeseiten (nichts soll von den Nummern ablenken) und nicht beim Anmelden, Registrieren und Wiederherstellen. */}
       {!active && <AppStore t={t} />}
       <footer className="public-foot">
         <span>{t.common.fine}</span>
