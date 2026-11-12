@@ -9,6 +9,7 @@ import { AdminForm } from '@/components/admin/admin-form'
 import { decideRole, moderateAccount, proposeRole, restoreAccount } from '../../actions'
 import { ModForm } from '@/components/admin/mod-form'
 import { auditLabel } from '@/lib/audit-label'
+import Link from 'next/link'
 
 /**
  * Kontoseite in der Moderation: Status, Rolle, bisherige Massnahmen (am Konto und an seinen Inhalten) und das
@@ -95,6 +96,13 @@ export default async function AccountPage({ params }: { params: Promise<{ token:
           <dd>{r}</dd>
         </div>
       </dl>
+      {p + r > 0 && (
+        <p>
+          <Link className="btn ghost small" href={`/admin/eintraege?mitglied=${encodeURIComponent(tok)}`}>
+            Einträge dieses Mitglieds ansehen
+          </Link>
+        </p>
+      )}
 
       {userId === mod.userId ? (
         <p className="fine">{t.self}</p>

@@ -8,6 +8,8 @@ import { CirclesList } from '@/components/app/circles'
 import { Side } from '@/components/app/side'
 import { StepCard } from '@/components/app/step-card'
 import { PromptButton } from '@/components/feed/prompt'
+import { TeamPrompts } from '@/components/feed/team-prompt'
+import { getCirclePrompts, getPromptOfDay } from '@/lib/server/prompts'
 import { FeedList } from '@/components/feed/feed-list'
 import { TabBar } from '@/components/tab-bar'
 import { db } from '@/db'
@@ -98,10 +100,12 @@ async function Feed({ searchParams }: { searchParams: Search }) {
   const [raw] = sp.kreis && !mine ? await db.select().from(circles).where(and(eq(circles.slug, sp.kreis), eq(circles.isActive, true))) : []
   const circle = raw ? localizeCircle(raw) : undefined
   if (circle) await touchCircle(circle.slug)
-  const [page, step, topicHelp] = await Promise.all([
+  const [page, step, topicHelp, teamPrompts] = await Promise.all([
     getFeed({ viewerId: v.userId, view, circleId: circle?.id ?? null, followed: mine }),
     stepForRequest(),
     circle ? getCircleHelp(currentLocale()) : null,
+    // Im Kreis alle seine Fragen; in «Alle» und «Meine Kreise» eine Frage des Tages. Nicht in den anderen Ansichten.
+    view !== 'all' ? [] : circle ? getCirclePrompts(circle.id) : getPromptOfDay(v.userId, mine).then((p) => (p ? [p] : [])),
   ])
   const circleHelp = circle ? (topicHelp?.[circle.slug] ?? []) : []
   const params = new URLSearchParams()
@@ -135,6 +139,7 @@ async function Feed({ searchParams }: { searchParams: Search }) {
           <HelpList resources={circleHelp} eyebrow={false} intro={false} />
         </section>
       )}
+      <TeamPrompts prompts={teamPrompts} showCircle={!circle} />
       {/* Unter 1200 px gibt es keine Seitenleiste – der kleine Schritt steht dann hier im Feed. */}
       <div className="step-inline">
         <StepCard initial={step} />

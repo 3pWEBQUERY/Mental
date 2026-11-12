@@ -9,7 +9,8 @@ import type { PublicPost } from '../dto'
 export type BusEvents = {
   toast: string
   pulse: undefined
-  compose: { text?: string; edit?: PublicPost; circle?: string } | undefined
+  /** prompt: «Frage vom Team», auf die der neue Gedanke antwortet (circle = Kreis der Frage). */
+  compose: { text?: string; edit?: PublicPost; circle?: string; prompt?: { id: string; text: string; circle: string } } | undefined
   help: undefined
   breathe: undefined
   grounding: undefined

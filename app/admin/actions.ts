@@ -19,11 +19,14 @@ import {
   reports,
   roleProposals,
   sessions,
+  prompts,
   steps,
   users,
 } from '@/db/schema'
 import { processMedia, rejectMedia } from '@/lib/media'
 import { syncReplyCount } from '@/lib/reply-count'
+import { hardDeletePost } from '@/lib/post-delete'
+import { journalDeletion } from '@/lib/deletion-journal'
 import { assertModerator, canModerate, memberFromToken, ROLE_PROPOSAL_DAYS } from '@/lib/server/admin'
 import { notifyAdmins, notifyModeration, notifyReply, notifySystem } from '@/lib/server/notify'
 import { m, type Messages } from '@/messages'
@@ -230,6 +233,119 @@ export async function moderateAccount(form: FormData): Promise<AdminResult> {
   if (message) await notifyModeration(userId, null, message, true)
   refresh()
   return done(action === 'logout' ? t.loggedOut : t.done)
+}
+
+/* -------------------------------------------------------------- Einträge */
+
+const CONTENT_ACTIONS = ['hide', 'show', 'delete', 'cw-on', 'cw-off', 'close', 'open', 'warn', 'mute24', 'mute7', 'ban'] as const
+type ContentAction = (typeof CONTENT_ACTIONS)[number]
+const POST_ONLY: ContentAction[] = ['cw-on', 'cw-off', 'close', 'open']
+
+/**
+ * «Einträge»: jeden Gedanken und jede Antwort direkt verwalten – ohne dass es eine Meldung dazu gibt.
+ * Ausblenden/wieder zeigen, endgültig löschen, Inhaltshinweis, Antworten schliessen; dazu Massnahmen am Konto der
+ * Person (verwarnen, stumm, sperren) mit denselben Regeln wie in der Warteschlange: nie eigene Inhalte, Moderationskonten
+ * nie stumm oder gesperrt. Offene Meldungen zum Inhalt gelten danach als erledigt. Alles steht im Audit-Log.
+ */
+export async function manageContent(form: FormData) {
+  const parsed = z
+    .object({
+      targetType: z.enum(['post', 'reply']),
+      targetId: z.uuid(),
+      action: z.enum(CONTENT_ACTIONS),
+      reason: z.string().trim().max(500).optional(),
+    })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) throw new Error('invalid')
+  const { targetType, targetId, action } = parsed.data
+  const reason = parsed.data.reason ?? ''
+  if (targetType === 'reply' && POST_ONLY.includes(action)) throw new Error('invalid')
+  const mod = await assertModerator('mod')
+
+  const [target] =
+    targetType === 'post'
+      ? await db
+          .select({ userId: posts.userId, postId: posts.id })
+          .from(posts)
+          .where(and(eq(posts.id, targetId), isNull(posts.deletedAt)))
+      : await db
+          .select({ userId: replies.userId, postId: replies.postId })
+          .from(replies)
+          .where(and(eq(replies.id, targetId), isNull(replies.deletedAt)))
+  if (!target) throw new Error('not found')
+  if (target.userId === mod.userId) throw new Error('own content')
+
+  const sanction = action === 'warn' || action === 'mute24' || action === 'mute7' || action === 'ban'
+  if (sanction) {
+    if (!target.userId) throw new Error('not found')
+    const [u] = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, target.userId))
+    if (!u) throw new Error('not found')
+    if (u.role !== 'member') {
+      if (!canModerate(mod, 'admin')) throw new Error('forbidden')
+      if (action !== 'warn') throw new Error('forbidden')
+    }
+  }
+
+  const resolveReports = () =>
+    db
+      .update(reports)
+      .set({ status: 'resolved', resolvedAt: new Date() })
+      .where(and(eq(reports.targetType, targetType), eq(reports.targetId, targetId), eq(reports.status, 'open')))
+
+  let sanctioned = false
+  switch (action) {
+    case 'hide':
+    case 'show': {
+      const status = action === 'hide' ? 'hidden' : 'visible'
+      if (targetType === 'post')
+        await db.update(posts).set({ status, moderationNote: action === 'hide' ? reason || null : null }).where(eq(posts.id, targetId))
+      else {
+        await db.update(replies).set({ status }).where(eq(replies.id, targetId))
+        await syncReplyCount(target.postId)
+      }
+      await resolveReports()
+      break
+    }
+    case 'delete': {
+      if (targetType === 'post') {
+        if (!(await hardDeletePost(targetId))) throw new Error('not found')
+      } else {
+        await db.transaction(async (tx) => {
+          await tx.update(replies).set({ body: '', deletedAt: new Date() }).where(eq(replies.id, targetId))
+          await tx
+            .update(reports)
+            .set({ status: 'resolved', resolvedAt: new Date() })
+            .where(and(eq(reports.targetType, 'reply'), eq(reports.targetId, targetId), eq(reports.status, 'open')))
+          await syncReplyCount(target.postId, tx)
+        })
+      }
+      await journalDeletion(targetType, targetId)
+      break
+    }
+    case 'cw-on':
+    case 'cw-off':
+      await db.update(posts).set({ contentWarning: action === 'cw-on' }).where(eq(posts.id, targetId))
+      break
+    case 'close':
+    case 'open':
+      await db.update(posts).set({ closed: action === 'close' }).where(eq(posts.id, targetId))
+      break
+    case 'mute24':
+    case 'mute7':
+    case 'ban':
+      sanctioned = await sanctionAccount(target.userId!, action)
+      if (!sanctioned) throw new Error('not allowed')
+      break
+  }
+
+  await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType, targetId, action: `content:${action}`, reason: reason || null })
+  if (sanctioned) await db.insert(moderationActions).values({ moderatorId: mod.userId, targetType: 'user', targetId: target.userId!, action, reason: reason || null })
+  // Die Person erfährt es bei Ausblenden, Verwarnen und Stummschalten – wie in der Warteschlange (Sperre ohne Nachricht,
+  // die Sitzungen enden ohnehin; beim Löschen gibt es nichts mehr, worauf die Nachricht zeigen könnte).
+  const message = action === 'hide' || action === 'warn' || action === 'mute24' || action === 'mute7' ? notice(action, reason) : null
+  if (message && target.userId)
+    await notifyModeration(target.userId, action === 'hide' || targetType === 'post' ? target.postId : null, message, true)
+  refresh()
 }
 
 /* ----------------------------------------------------------- Übernahme */
@@ -707,6 +823,54 @@ export async function deleteStep(form: FormData): Promise<AdminResult> {
   await audit(admin.userId, 'steps:delete', admin.userId, row.text.slice(0, 60))
   changed()
   return done('Schritt gelöscht.')
+}
+
+/* ------------------------------------------------------ Fragen vom Team */
+
+export async function savePrompt(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const parsed = z
+    .object({
+      id: z.uuid().optional().or(z.literal('')),
+      text: str(200),
+      circleId: z.uuid(),
+      sort: z.coerce.number().int().min(0).max(999),
+      isActive: z.string().optional(),
+      textFr: optional(200),
+      textIt: optional(200),
+      textEn: optional(200),
+    })
+    .safeParse(Object.fromEntries(form))
+  if (!parsed.success) return nope(INVALID)
+  const d = parsed.data
+  const [c] = await db.select({ id: circles.id }).from(circles).where(eq(circles.id, d.circleId))
+  if (!c) return nope('Den gewählten Kreis gibt es nicht mehr.')
+  const i18n = {
+    ...(d.textFr ? { fr: { text: d.textFr } } : {}),
+    ...(d.textIt ? { it: { text: d.textIt } } : {}),
+    ...(d.textEn ? { en: { text: d.textEn } } : {}),
+  }
+  const values = { text: d.text, circleId: d.circleId, sort: d.sort, isActive: d.isActive === 'on', i18n }
+  if (d.id) {
+    const [row] = await db.update(prompts).set(values).where(eq(prompts.id, d.id)).returning({ id: prompts.id })
+    if (!row) return nope('Diese Frage gibt es nicht mehr.')
+  } else await db.insert(prompts).values(values)
+  await audit(admin.userId, d.id ? 'prompts:update' : 'prompts:create', admin.userId, d.text.slice(0, 60))
+  // Die App liest die Fragen direkt aus der Datenbank – sie gelten ab dem nächsten Laden.
+  changed()
+  return done(d.id ? 'Frage gespeichert.' : 'Frage hinzugefügt.')
+}
+
+/** Löschen: Gedanken, die darauf geantwortet haben, bleiben – nur ohne den Hinweis auf die Frage. */
+export async function deletePrompt(form: FormData): Promise<AdminResult> {
+  const admin = await assertModerator('admin')
+  const id = z.uuid().safeParse(form.get('id'))
+  if (!id.success) return nope(INVALID)
+  const [row] = await db.delete(prompts).where(eq(prompts.id, id.data)).returning({ text: prompts.text })
+  if (!row) return nope('Diese Frage gibt es nicht mehr.')
+  await audit(admin.userId, 'prompts:delete', admin.userId, row.text.slice(0, 60))
+  changed()
+  return done('Frage gelöscht.')
 }
 
 /* ------------------------------------------------------------- Partner */

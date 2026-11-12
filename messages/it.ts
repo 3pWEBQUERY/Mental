@@ -107,6 +107,12 @@ export const it: Messages = {
     tabsLabel: 'Vista',
     tabs: { all: 'Tutti', unheard: 'In attesa di sostegno', brave: 'Momenti di coraggio' },
     prompt: 'Che cosa porti con te oggi?',
+    teamPrompt: {
+      eyebrow: 'Domanda del team Jiaia',
+      share: 'Condividi qualcosa',
+      others: 'Altre domande in questo cerchio',
+      onCard: 'In risposta alla domanda del team',
+    },
     circle: 'Cerchio:',
     clearCircle: (name: string) => `${name} ×`,
     clearFilter: (name: string) => `${name} – rimuovi filtro`,
@@ -206,6 +212,8 @@ export const it: Messages = {
     pending: 'La tua risposta verrà verificata a breve.',
   },
   composer: {
+    promptLabel: 'Stai rispondendo alla domanda del team:',
+    promptRemove: 'Condividi senza la domanda',
     title: 'Condividi un pensiero',
     editTitle: 'Modifica il pensiero',
     placeholder: 'Scrivilo così com’è adesso. Non deve essere bello.',
@@ -897,7 +905,7 @@ export const it: Messages = {
   },
   admin: {
     title: 'Moderazione',
-    nav: { queue: 'Coda', images: 'Immagini', circles: 'Cerchi', help: 'Numeri d’aiuto', terms: 'Elenco termini di crisi', steps: 'Piccoli passi', audit: 'Registro di audit', stats: 'Statistiche', members: 'Membri', partners: 'Partner', blog: 'Blog' },
+    nav: { queue: 'Coda', entries: 'Contenuti', images: 'Immagini', circles: 'Cerchi', help: 'Numeri d’aiuto', terms: 'Elenco termini di crisi', steps: 'Piccoli passi', prompts: 'Domande del team', audit: 'Registro di audit', stats: 'Statistiche', members: 'Membri', partners: 'Partner', blog: 'Blog' },
     passkeyRequired:
       'L’area di moderazione è accessibile solo con una passkey. Esci e accedi di nuovo con la tua passkey. Non ne hai ancora una? Creala in Impostazioni → Sicurezza.',
     passkeyRelogin: 'Esci e accedi con la passkey',
@@ -917,6 +925,8 @@ export const it: Messages = {
       'crisis-terms:remove': 'Termine di crisi rimosso',
       'crisis-terms:update': 'Elenco termini di crisi modificato',
       'steps:create': 'Piccolo passo creato', 'steps:update': 'Piccolo passo modificato', 'steps:delete': 'Piccolo passo eliminato',
+      'prompts:create': 'Domanda creata', 'prompts:update': 'Domanda modificata', 'prompts:delete': 'Domanda eliminata',
+      'content:hide': 'Contenuto nascosto', 'content:show': 'Contenuto di nuovo visibile', 'content:delete': 'Contenuto eliminato', 'content:cw-on': 'Avviso aggiunto', 'content:cw-off': 'Avviso rimosso', 'content:close': 'Risposte chiuse', 'content:open': 'Risposte aperte', 'content:warn': 'Ammonito (dai contenuti)', 'content:mute24': 'Muto 24 h (dai contenuti)', 'content:mute7': 'Muto 7 giorni (dai contenuti)', 'content:ban': 'Bloccato (dai contenuti)',
       'partner:create': 'Partner creato', 'partner:update': 'Partner modificato', 'partner:delete': 'Partner eliminato',
       'partner-media:upload': 'Logo caricato', 'partner-media:delete': 'Logo eliminato',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

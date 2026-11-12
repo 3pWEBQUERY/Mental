@@ -107,6 +107,12 @@ export const fr: Messages = {
     tabsLabel: 'Affichage',
     tabs: { all: 'Toutes', unheard: 'Besoin de soutien', brave: 'Moments de courage' },
     prompt: 'Qu’est-ce que tu portes avec toi aujourd’hui ?',
+    teamPrompt: {
+      eyebrow: 'Question de l’équipe Jiaia',
+      share: 'Partager quelque chose',
+      others: 'Autres questions dans ce cercle',
+      onCard: 'En réponse à la question de l’équipe',
+    },
     circle: 'Cercle :',
     clearCircle: (name: string) => `${name} ×`,
     clearFilter: (name: string) => `${name} – retirer le filtre`,
@@ -206,6 +212,8 @@ export const fr: Messages = {
     pending: 'Ta réponse va être vérifiée rapidement.',
   },
   composer: {
+    promptLabel: 'Tu réponds à la question de l’équipe :',
+    promptRemove: 'Partager sans la question',
     title: 'Partage une pensée',
     editTitle: 'Modifier la pensée',
     placeholder: 'Écris-le comme c’est en ce moment. Pas besoin que ce soit beau.',
@@ -897,7 +905,7 @@ export const fr: Messages = {
   },
   admin: {
     title: 'Modération',
-    nav: { queue: 'File d’attente', images: 'Images', circles: 'Cercles', help: 'Numéros d’aide', terms: 'Liste de termes de crise', steps: 'Petits pas', audit: 'Journal d’audit', stats: 'Statistiques', members: 'Membres', partners: 'Partenaires', blog: 'Blog' },
+    nav: { queue: 'File d’attente', entries: 'Contenus', images: 'Images', circles: 'Cercles', help: 'Numéros d’aide', terms: 'Liste de termes de crise', steps: 'Petits pas', prompts: 'Questions de l’équipe', audit: 'Journal d’audit', stats: 'Statistiques', members: 'Membres', partners: 'Partenaires', blog: 'Blog' },
     passkeyRequired:
       'L’espace de modération n’est accessible qu’avec un passkey. Déconnecte-toi et reconnecte-toi avec ton passkey. Pas encore de passkey ? Crée-le sous Réglages → Sécurité.',
     passkeyRelogin: 'Se déconnecter et se reconnecter avec un passkey',
@@ -917,6 +925,8 @@ export const fr: Messages = {
       'crisis-terms:remove': 'Terme de crise retiré',
       'crisis-terms:update': 'Liste de termes de crise modifiée',
       'steps:create': 'Petit pas créé', 'steps:update': 'Petit pas modifié', 'steps:delete': 'Petit pas supprimé',
+      'prompts:create': 'Question créée', 'prompts:update': 'Question modifiée', 'prompts:delete': 'Question supprimée',
+      'content:hide': 'Contenu masqué', 'content:show': 'Contenu réaffiché', 'content:delete': 'Contenu supprimé', 'content:cw-on': 'Avertissement ajouté', 'content:cw-off': 'Avertissement retiré', 'content:close': 'Réponses fermées', 'content:open': 'Réponses ouvertes', 'content:warn': 'Averti (depuis les contenus)', 'content:mute24': 'Muet 24 h (depuis les contenus)', 'content:mute7': 'Muet 7 jours (depuis les contenus)', 'content:ban': 'Bloqué (depuis les contenus)',
       'partner:create': 'Partenaire créé', 'partner:update': 'Partenaire modifié', 'partner:delete': 'Partenaire supprimé',
       'partner-media:upload': 'Logo téléversé', 'partner-media:delete': 'Logo supprimé',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

@@ -104,6 +104,12 @@ export const de = {
     tabsLabel: 'Ansicht',
     tabs: { all: 'Alle', unheard: 'Braucht Zuspruch', brave: 'Mut-Momente' },
     prompt: 'Was trägst du heute mit dir?',
+    teamPrompt: {
+      eyebrow: 'Frage vom Team Jiaia',
+      share: 'Etwas dazu teilen',
+      others: 'Weitere Fragen in diesem Kreis',
+      onCard: 'Zur Frage vom Team',
+    },
     circle: 'Kreis:',
     clearCircle: (name: string) => `${name} ×`,
     clearFilter: (name: string) => `${name} – Filter entfernen`,
@@ -203,6 +209,8 @@ export const de = {
     pending: 'Deine Antwort wird kurz geprüft.',
   },
   composer: {
+    promptLabel: 'Du antwortest auf die Frage vom Team:',
+    promptRemove: 'Ohne die Frage teilen',
     title: 'Teile einen Gedanken',
     editTitle: 'Gedanken bearbeiten',
     placeholder: 'Schreib es so auf, wie es gerade ist. Es muss nicht schön sein.',
@@ -895,7 +903,7 @@ export const de = {
   },
   admin: {
     title: 'Moderation',
-    nav: { queue: 'Warteschlange', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', audit: 'Audit-Log', stats: 'Statistik', members: 'Mitglieder', partners: 'Partner', blog: 'Blog' },
+    nav: { queue: 'Warteschlange', entries: 'Einträge', images: 'Bilder', circles: 'Kreise', help: 'Hilfe-Nummern', terms: 'Krisen-Wortliste', steps: 'Kleine Schritte', prompts: 'Fragen vom Team', audit: 'Audit-Log', stats: 'Statistik', members: 'Mitglieder', partners: 'Partner', blog: 'Blog' },
     passkeyRequired:
       'Der Moderationsbereich ist nur mit einem Passkey erreichbar. Melde dich ab und wieder mit deinem Passkey an. Noch keinen? Lege ihn unter Einstellungen → Sicherheit an.',
     passkeyRelogin: 'Abmelden und mit Passkey anmelden',
@@ -915,6 +923,8 @@ export const de = {
       'crisis-terms:remove': 'Krisenbegriff entfernt',
       'crisis-terms:update': 'Krisen-Wortliste geändert',
       'steps:create': 'Schritt angelegt', 'steps:update': 'Schritt geändert', 'steps:delete': 'Schritt gelöscht',
+      'prompts:create': 'Frage angelegt', 'prompts:update': 'Frage geändert', 'prompts:delete': 'Frage gelöscht',
+      'content:hide': 'Eintrag ausgeblendet', 'content:show': 'Eintrag wieder gezeigt', 'content:delete': 'Eintrag gelöscht', 'content:cw-on': 'Inhaltshinweis gesetzt', 'content:cw-off': 'Inhaltshinweis entfernt', 'content:close': 'Antworten geschlossen', 'content:open': 'Antworten geöffnet', 'content:warn': 'Verwarnt (aus Einträgen)', 'content:mute24': '24 h stumm (aus Einträgen)', 'content:mute7': '7 Tage stumm (aus Einträgen)', 'content:ban': 'Gesperrt (aus Einträgen)',
       'partner:create': 'Partner angelegt', 'partner:update': 'Partner geändert', 'partner:delete': 'Partner gelöscht',
       'partner-media:upload': 'Logo hochgeladen', 'partner-media:delete': 'Logo gelöscht',
       'blog:create': 'Blogbeitrag angelegt', 'blog:update': 'Blogbeitrag geändert', 'blog:delete': 'Blogbeitrag gelöscht', 'blog-media:upload': 'Titelbild hochgeladen',

@@ -39,6 +39,7 @@ import { randomSeed } from '@/lib/server/crypto'
 import { hit } from '@/lib/server/rate-limit'
 import { excerpt, notifyReply, notifySupport } from '@/lib/server/notify'
 import { getFeed, getPostById, type FeedPage, type FeedView } from '@/lib/server/posts'
+import { promptForCircle } from '@/lib/server/prompts'
 import { getViewer, type Viewer } from '@/lib/server/session'
 import { getCrisisTerms } from '@/lib/server/terms'
 import { zurichDay } from '@/lib/time'
@@ -132,6 +133,8 @@ const postSchema = z.object({
   mediaAlt: z.string().trim().max(300).nullish(),
   /** «Gedanke loslassen»: nach so vielen Tagen automatisch löschen (0 = nie). */
   letGoDays: z.union([z.literal(0), z.literal(1), z.literal(7), z.literal(30)]).default(0),
+  /** Antwort auf eine «Frage vom Team» – wird nur verknüpft, wenn die Frage aktiv ist und zum Kreis gehört. */
+  promptId: z.uuid().nullish(),
 })
 
 export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<{ post: PublicPost; acute: boolean }> | Fail> {
@@ -161,6 +164,7 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
   // Die Bildbeschreibung sehen alle – sie wird wie der Text geprüft.
   const level = detectCrisis(`${d.body}\n${d.mediaAlt ?? ''}`, await getCrisisTerms())
   const anonymous = d.visibility === 'anonymous'
+  const promptId = d.promptId ? await promptForCircle(d.promptId, circle.id) : null
   const [row] = await db
     .insert(posts)
     .values({
@@ -177,6 +181,7 @@ export async function createPost(input: z.input<typeof postSchema>): Promise<Ok<
       expiresAt: d.letGoDays ? new Date(Date.now() + d.letGoDays * DAY) : null,
       status: level === 'acute' ? 'pending' : 'visible',
       crisisLevel: level,
+      promptId,
     })
     .returning({ id: posts.id })
   const postId = row!.id

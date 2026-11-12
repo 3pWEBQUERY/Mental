@@ -81,6 +81,9 @@ export function Composer() {
   // Ohne eigene Wahl landet ein Gedanke in «Einfach so» (falls es den Kreis gibt) – nicht in einem Thema, das nicht passt.
   const defaultCircle = viewer.circles.find((ci) => ci.slug === DEFAULT_CIRCLE)?.slug ?? viewer.circles[0]?.slug ?? ''
   const [circle, setCircle] = useState(defaultCircle)
+  /** «Frage vom Team»: gilt nur, solange der Kreis der Frage gewählt ist. */
+  const [prompt, setPrompt] = useState<{ id: string; text: string; circle: string } | null>(null)
+  const activePrompt = prompt && prompt.circle === circle ? prompt : null
   const forcedCw = viewer.circles.find((ci) => ci.slug === circle)?.requireCw ?? false
   const [mood, setMood] = useState(viewer.lastMood ?? 2)
   const [letGo, setLetGo] = useState<0 | 1 | 7 | 30>(0)
@@ -112,6 +115,7 @@ export function Composer() {
       on('compose', (detail) => {
         setError('')
         setRestored(false)
+        setPrompt(null)
         if (detail?.edit) {
           const p = detail.edit
           setEdit(p)
@@ -136,6 +140,10 @@ export function Composer() {
             setRestored(true)
           }
           if (detail?.circle) setCircle(detail.circle)
+          if (detail?.prompt) {
+            setPrompt(detail.prompt)
+            setCircle(detail.prompt.circle)
+          }
         }
         // Fokus setzt der Dialog nach showModal() auf das Textfeld (data-autofocus).
         setOpen(true)
@@ -198,6 +206,7 @@ export function Composer() {
 
   function reset() {
     setText('')
+    setPrompt(null)
     setCw(false)
     setLetGo(0)
     dropUpload()
@@ -234,6 +243,7 @@ export function Composer() {
       mediaId: upload && 'mediaId' in upload ? upload.mediaId : null,
       mediaAlt: upload && alt.trim() ? alt.trim() : null,
       letGoDays: letGo,
+      promptId: activePrompt?.id ?? null,
     }).catch(() => ({ ok: false as const, error: m.common.error }))
     setBusy(false)
     if (!res.ok) return setError(res.error)
@@ -251,6 +261,16 @@ export function Composer() {
       <Dialog open={open} onClose={() => setOpen(false)} title={edit ? c.editTitle : c.title} className="dlg-large">
         <form className="composer" onSubmit={submit} noValidate>
           {restored && <p className="fine" style={{ marginBottom: 6 }}>{c.draftRestored}</p>}
+          {activePrompt && !edit && (
+            <div className="composer-prompt">
+              <p>
+                <span className="fine">{c.promptLabel}</span> <q>{activePrompt.text}</q>
+              </p>
+              <button type="button" className="linkish fine" onClick={() => setPrompt(null)}>
+                {c.promptRemove}
+              </button>
+            </div>
+          )}
           <div className="field">
             <div ref={hl}>
               <Highlight text={text} matches={pii} />

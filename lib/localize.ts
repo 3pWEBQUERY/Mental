@@ -1,4 +1,4 @@
-import type { CircleI18n, StepI18n } from '../db/schema'
+import type { CircleI18n, PromptI18n, StepI18n } from '../db/schema'
 import { currentLocale, type Locale } from '../messages'
 
 /**
@@ -19,5 +19,9 @@ export function localCircleName(name: string, i18n: CircleI18n | null | undefine
 }
 
 export function localStepText(text: string, i18n: StepI18n | null | undefined, locale: Locale = currentLocale()) {
+  return (locale !== 'de' && i18n?.[locale]?.text) || text
+}
+
+export function localPromptText(text: string, i18n: PromptI18n | null | undefined, locale: Locale = currentLocale()) {
   return (locale !== 'de' && i18n?.[locale]?.text) || text
 }
