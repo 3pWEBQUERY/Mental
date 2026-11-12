@@ -371,6 +371,11 @@ export function PostCard({
         </p>
       )}
 
+      {post.prompt && (
+        <p className="post-prompt">
+          <span>{f.teamPrompt.onCard}</span> <q>{post.prompt}</q>
+        </p>
+      )}
       {revealed ? (
         <p className={`post-text${onOpen ? ' openable' : ''}`} {...openable}>
           {post.body}

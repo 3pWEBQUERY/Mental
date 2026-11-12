@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
-import { blocks, bookmarks, circlePrefs, circles, postHides, postMedia, posts, replies, support, users } from '@/db/schema'
+import { blocks, bookmarks, circlePrefs, circles, postHides, postMedia, posts, prompts, replies, support, users } from '@/db/schema'
 import { LIMITS, type SupportKind } from '../constants'
 import { toPublicPost, type PostRow, type PublicMedia, type PublicPost, type ReplyRow, type SupportSummary } from '../dto'
 
@@ -30,6 +30,8 @@ const postColumns = {
   circleI18n: circles.i18n,
   circleColor: circles.color,
   circleCw: circles.requireCw,
+  promptText: prompts.text,
+  promptI18n: prompts.i18n,
 }
 
 /**
@@ -61,6 +63,7 @@ function baseQuery() {
     .from(posts)
     .innerJoin(circles, eq(circles.id, posts.circleId))
     .innerJoin(users, eq(users.id, posts.userId))
+    .leftJoin(prompts, eq(prompts.id, posts.promptId))
     .$dynamic()
 }
 

@@ -104,6 +104,12 @@ export const de = {
     tabsLabel: 'Ansicht',
     tabs: { all: 'Alle', unheard: 'Braucht Zuspruch', brave: 'Mut-Momente' },
     prompt: 'Was trägst du heute mit dir?',
+    teamPrompt: {
+      eyebrow: 'Frage vom Team Jiaia',
+      share: 'Etwas dazu teilen',
+      others: 'Weitere Fragen in diesem Kreis',
+      onCard: 'Zur Frage vom Team',
+    },
     circle: 'Kreis:',
     clearCircle: (name: string) => `${name} ×`,
     clearFilter: (name: string) => `${name} – Filter entfernen`,
@@ -203,6 +209,8 @@ export const de = {
     pending: 'Deine Antwort wird kurz geprüft.',
   },
   composer: {
+    promptLabel: 'Du antwortest auf die Frage vom Team:',
+    promptRemove: 'Ohne die Frage teilen',
     title: 'Teile einen Gedanken',
     editTitle: 'Gedanken bearbeiten',
     placeholder: 'Schreib es so auf, wie es gerade ist. Es muss nicht schön sein.',

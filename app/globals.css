@@ -302,6 +302,31 @@ ul, ol { list-style: none; }
 .prompt:hover { border-color: var(--ink); }
 .prompt span { font-family: var(--serif); font-size: calc(25px * var(--fz)); line-height: 1.15; }
 .prompt i { flex: none; width: 56px; height: 56px; border-radius: calc(var(--r) - 1px - var(--inset)); background: var(--clay); color: #fff; display: grid; place-items: center; font-style: normal; font-size: calc(22px * var(--fz)); }
+/* «Frage vom Team Jiaia»: klar als Team gekennzeichnet (Logo, Name), ruhig auf Papier statt als Mitglieds-Gedanke. */
+.team-prompt { margin: 14px 0 12px; padding: 16px 18px 6px; border-radius: var(--r-l); background: var(--paper-2); border: 1px solid var(--line); }
+.team-prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: calc(12px * var(--fz)); }
+.team-badge { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink); }
+.team-badge img { width: auto; height: 17px; }
+.team-prompt-circle { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.team-prompt-circle::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--clay)); }
+.team-prompt-main { display: grid; gap: 12px; width: 100%; padding: 0 0 12px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.team-prompt-q { font-family: var(--serif); font-size: calc(25px * var(--fz)); line-height: 1.15; text-wrap: pretty; }
+.team-prompt-go { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: calc(14px * var(--fz)); font-weight: 500; color: var(--clay-ink); }
+.team-prompt svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s; }
+.team-prompt-main:hover .team-prompt-go svg, .team-prompt-more button:hover svg { transform: translateX(3px); }
+.team-prompt-more { list-style: none; border-top: 1px solid var(--line); }
+.team-prompt-more li + li { border-top: 1px solid var(--line); }
+.team-prompt-more button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 10px 0; border: 0; background: none; color: var(--ink); font-size: calc(15px * var(--fz)); text-align: left; cursor: pointer; }
+.team-prompt-more button svg { color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { .team-prompt svg { transition: none; } }
+.composer-prompt { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 10px; padding: 10px 14px; border-radius: var(--r); background: var(--paper-2); }
+.composer-prompt q { font-family: var(--serif); font-size: calc(18px * var(--fz)); line-height: 1.2; }
+.post-prompt { margin: 2px 0 6px; color: var(--ink-2); font-size: calc(13px * var(--fz)); }
+.post-prompt q { color: var(--ink); }
+/* Anführungszeichen wie in der Schweiz: «…» (Französisch mit Abstand), Englisch “…”. */
+.composer-prompt q, .post-prompt q { quotes: '«' '»' '‹' '›'; }
+:lang(fr) .composer-prompt q, :lang(fr) .post-prompt q { quotes: '«\00a0' '\00a0»' '‹\00a0' '\00a0›'; }
+:lang(en) .composer-prompt q, :lang(en) .post-prompt q { quotes: '“' '”' '‘' '’'; }
 .filter { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; font-size: calc(13px * var(--fz)); flex-wrap: wrap; }
 .filter button, .filter a { padding: 5px 12px; border-radius: 999px; border: var(--bw) solid color-mix(in srgb, currentColor 34%, transparent); font-size: calc(13px * var(--fz)); text-decoration: none; }
 .filter .circle-desc { flex-basis: 100%; color: var(--ink-2); margin-top: 6px; max-width: 60ch; }

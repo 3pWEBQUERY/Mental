@@ -208,6 +208,28 @@ export const circlePresence = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.circleId] }), index('presence_circle_idx').on(t.circleId, t.seenAt)],
 )
 
+/**
+ * «Frage vom Team Jiaia»: ein Anstoss je Kreis, sichtbar als Frage des Teams (nie als Mitglied). Wer darauf etwas
+ * teilt, schreibt einen ganz normalen eigenen Gedanken – der Gedanke merkt sich nur, auf welche Frage er antwortet.
+ */
+export type PromptI18n = { fr?: { text?: string }; it?: { text?: string }; en?: { text?: string } }
+
+export const prompts = pgTable(
+  'prompts',
+  {
+    id: id(),
+    circleId: uuid('circle_id')
+      .notNull()
+      .references(() => circles.id, { onDelete: 'cascade' }),
+    text: text('text').notNull(),
+    i18n: jsonb('i18n').$type<PromptI18n>().notNull().default({}),
+    sort: integer('sort').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [index('prompts_circle_idx').on(t.circleId, t.sort)],
+)
+
 /* ------------------------------------------------------------ Gedanken */
 
 export const posts = pgTable(
@@ -237,6 +259,8 @@ export const posts = pgTable(
     nudgedAt: ts('nudged_at'),
     /** Zweite Prüfstufe (Worker) gelaufen. Fehlt der Wert nach 10 Minuten, reiht der Worker die Prüfung erneut ein. */
     moderatedAt: ts('moderated_at'),
+    /** Antwort auf eine «Frage vom Team» (prompts) – null, wenn frei geteilt oder die Frage gelöscht wurde. */
+    promptId: uuid('prompt_id').references(() => prompts.id, { onDelete: 'set null' }),
   },
   (t) => [
     index('posts_expires_idx').on(t.expiresAt).where(sql`expires_at IS NOT NULL AND deleted_at IS NULL`),

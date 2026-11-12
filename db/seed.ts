@@ -6,10 +6,11 @@ import { eq, sql } from 'drizzle-orm'
 import { DEFAULT_CRISIS_TERMS, DEFAULT_CRISIS_TERMS_EN, DEFAULT_CRISIS_TERMS_FR, DEFAULT_CRISIS_TERMS_IT } from '../lib/crisis'
 import { DEFAULT_HELP, DEFAULT_HELP_EN, DEFAULT_HELP_FR, DEFAULT_HELP_IT } from '../lib/help'
 import { db, pool } from './index'
-import { blogMedia, blogPosts, circles, crisisTerms, helpResources, seedMarks, steps } from './schema'
+import { blogMedia, blogPosts, circles, crisisTerms, helpResources, prompts, seedMarks, steps } from './schema'
 import { CIRCLE_HELP, NEW_CIRCLES, NEW_STEPS } from './seed-kreise'
 import { CIRCLE_HELP_EN, CIRCLES_EN, DEFAULT_HELP_CHATS_EN, STEPS_EN } from './seed-en'
 import { LAUNCH_COVER_ALT, LAUNCH_POSTS } from './seed-launch'
+import { TEAM_PROMPTS } from './seed-prompts'
 import { readFile } from 'node:fs/promises'
 import sharp from 'sharp'
 
@@ -258,6 +259,15 @@ async function main() {
     }
   })
 
+  // «Fragen vom Team»: zwei je Kreis, einmal angelegt – Änderungen und Löschungen im Admin bleiben bestehen.
+  await once('team-prompts-2026-11', async (tx) => {
+    const rows = await tx.select({ id: circles.id, slug: circles.slug }).from(circles)
+    const values = TEAM_PROMPTS.flatMap((p, i) => {
+      const circle = rows.find((r) => r.slug === p.circle)
+      return circle ? [{ circleId: circle.id, text: p.de, i18n: { fr: { text: p.fr }, it: { text: p.it }, en: { text: p.en } }, sort: i }] : []
+    })
+    if (values.length) await tx.insert(prompts).values(values)
+  })
   // Passkeys von vor der Spalte rp_id gehören zur Domain, die jetzt gilt. Läuft dieses Deploy noch auf der alten
   // Domain, sind sie damit richtig markiert – nach dem Wechsel auf jiaia.app zählen sie nicht mehr (passkey-actions.ts).
   const rpId = process.env.WEBAUTHN_RP_ID ?? new URL(process.env.APP_URL ?? 'http://localhost:3000').hostname

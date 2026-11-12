@@ -106,6 +106,12 @@ export const en: Messages = {
     tabsLabel: 'View',
     tabs: { all: 'All', unheard: 'Needs support', brave: 'Brave moments' },
     prompt: 'What are you carrying with you today?',
+    teamPrompt: {
+      eyebrow: 'Question from the Jiaia team',
+      share: 'Share something',
+      others: 'More questions in this circle',
+      onCard: 'Answering the team’s question',
+    },
     circle: 'Circle:',
     clearCircle: (name: string) => `${name} ×`,
     clearFilter: (name: string) => `${name} – remove filter`,
@@ -205,6 +211,8 @@ export const en: Messages = {
     pending: 'Your reply is being checked briefly.',
   },
   composer: {
+    promptLabel: 'You’re answering the team’s question:',
+    promptRemove: 'Share without the question',
     title: 'Share a thought',
     editTitle: 'Edit thought',
     placeholder: 'Write it down the way it is right now. It doesn’t have to be pretty.',

@@ -107,6 +107,12 @@ export const fr: Messages = {
     tabsLabel: 'Affichage',
     tabs: { all: 'Toutes', unheard: 'Besoin de soutien', brave: 'Moments de courage' },
     prompt: 'Qu’est-ce que tu portes avec toi aujourd’hui ?',
+    teamPrompt: {
+      eyebrow: 'Question de l’équipe Jiaia',
+      share: 'Partager quelque chose',
+      others: 'Autres questions dans ce cercle',
+      onCard: 'En réponse à la question de l’équipe',
+    },
     circle: 'Cercle :',
     clearCircle: (name: string) => `${name} ×`,
     clearFilter: (name: string) => `${name} – retirer le filtre`,
@@ -206,6 +212,8 @@ export const fr: Messages = {
     pending: 'Ta réponse va être vérifiée rapidement.',
   },
   composer: {
+    promptLabel: 'Tu réponds à la question de l’équipe :',
+    promptRemove: 'Partager sans la question',
     title: 'Partage une pensée',
     editTitle: 'Modifier la pensée',
     placeholder: 'Écris-le comme c’est en ce moment. Pas besoin que ce soit beau.',

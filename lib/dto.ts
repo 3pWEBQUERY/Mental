@@ -1,6 +1,6 @@
 import { LIMITS, type Need, type SupportKind } from './constants'
-import type { CircleI18n } from '../db/schema'
-import { localCircleName } from './localize'
+import type { CircleI18n, PromptI18n } from '../db/schema'
+import { localCircleName, localPromptText } from './localize'
 import { m } from '../messages'
 
 /**
@@ -63,6 +63,8 @@ export type PublicPost = {
   bookmarked: boolean
   media: PublicMedia | null
   replies: PublicReply[]
+  /** Antwort auf diese «Frage vom Team» (in der Sprache der lesenden Person), sonst null. */
+  prompt: string | null
 }
 
 export type PostRow = {
@@ -90,6 +92,9 @@ export type PostRow = {
   circleColor: string
   /** Kreis mit Pflicht-Inhaltshinweis: gilt auch für ältere Gedanken darin. */
   circleCw?: boolean
+  /** «Frage vom Team», auf die der Gedanke antwortet (optional, wie circleI18n). */
+  promptText?: string | null
+  promptI18n?: PromptI18n | null
 }
 
 export type ReplyRow = {
@@ -174,5 +179,6 @@ export function toPublicPost(
     bookmarked: ctx.bookmarked,
     media: ctx.media,
     replies: shown.map((r) => toPublicReply(r, ctx.viewerId, p.userId, p.visibility === 'anonymous')),
+    prompt: p.promptText ? localPromptText(p.promptText, p.promptI18n) : null,
   }
 }
