@@ -10,6 +10,14 @@ test('Fragen vom Team: im Kreis sichtbar, Antwort ist ein eigener Gedanke mit Hi
   // «Alle»: eine Frage des Tages, klar als Team gekennzeichnet.
   await expect(page.locator('.team-prompt:visible')).toHaveCount(1)
   await expect(page.locator('.team-prompt:visible')).toContainText('Frage vom Team Jiaia')
+  // Bei jedem Neuladen eine andere Frage – nie zweimal dieselbe hintereinander.
+  let before = await page.locator('.team-prompt:visible .team-prompt-q').innerText()
+  for (let i = 0; i < 4; i++) {
+    await page.reload()
+    const now = await page.locator('.team-prompt:visible .team-prompt-q').innerText()
+    expect(now).not.toBe(before)
+    before = now
+  }
 
   await page.goto('/start?kreis=schlaf')
   const card = page.locator('.team-prompt:visible')
