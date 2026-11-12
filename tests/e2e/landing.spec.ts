@@ -109,7 +109,7 @@ test('Von der Startseite zur Hilfe ohne Neuladen: kein dunkler Himmel hinter der
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(5, 10, 22)')
 })
 
-test('Footer: Instagram, X und TikTok; App-Store-Bereich darüber (nicht auf der Hilfe); Logo als Tab-Icon', async ({ page, request }) => {
+test('Footer: Instagram, X und TikTok; App-Store-Bereich darüber (nicht auf der Hilfe, beim Anmelden und Registrieren); Logo als Tab-Icon', async ({ page, request }) => {
   await page.goto('/')
   const social = page.locator('.public-foot .social')
   await expect(social.locator('a[href="https://www.instagram.com/jiaia.app/"]')).toBeVisible()
@@ -127,4 +127,10 @@ test('Footer: Instagram, X und TikTok; App-Store-Bereich darüber (nicht auf der
   // Auf der Hilfe lenkt nichts von den Nummern ab.
   await page.goto('/hilfe')
   await expect(page.locator('.app-store')).toHaveCount(0)
+  // Auch nicht beim Anmelden und Registrieren.
+  for (const path of ['/anmelden', '/registrieren']) {
+    await page.goto(path)
+    await expect(page.locator('.public-foot')).toBeVisible()
+    await expect(page.locator('.app-store')).toHaveCount(0)
+  }
 })

@@ -323,6 +323,8 @@ export function PostCard({
       ]
 
   const brave = post.need === 'brave'
+  // Lange Gedanken: kleinere Schrift; im Feed nach einigen Zeilen gekürzt, ganz im geöffneten Gedanken.
+  const long = post.body.length > LIMITS.postLong
   // Wer Text markiert, will kopieren – nicht öffnen.
   const openable = onOpen
     ? {
@@ -377,9 +379,16 @@ export function PostCard({
         </p>
       )}
       {revealed ? (
-        <p className={`post-text${onOpen ? ' openable' : ''}`} {...openable}>
-          {post.body}
-        </p>
+        <>
+          <p className={`post-text${onOpen ? ' openable' : ''}${long ? ' long' : ''}${long && onOpen ? ' clamped' : ''}`} {...openable}>
+            {post.body}
+          </p>
+          {long && onOpen && (
+            <button type="button" className="read-more" onClick={onOpen}>
+              {f.readMore}
+            </button>
+          )}
+        </>
       ) : (
         <button
           type="button"

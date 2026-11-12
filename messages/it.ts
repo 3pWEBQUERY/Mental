@@ -107,6 +107,7 @@ export const it: Messages = {
     tabsLabel: 'Vista',
     tabs: { all: 'Tutti', unheard: 'In attesa di sostegno', brave: 'Momenti di coraggio' },
     prompt: 'Che cosa porti con te oggi?',
+    readMore: 'Continua a leggere',
     teamPrompt: {
       eyebrow: 'Domanda del team Jiaia',
       share: 'Condividi qualcosa',

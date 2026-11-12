@@ -271,7 +271,7 @@ export function Composer() {
               </button>
             </div>
           )}
-          <div className="field">
+          <div className={text.length > LIMITS.postLong ? 'field long' : 'field'}>
             <div ref={hl}>
               <Highlight text={text} matches={pii} />
             </div>

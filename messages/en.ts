@@ -106,6 +106,7 @@ export const en: Messages = {
     tabsLabel: 'View',
     tabs: { all: 'All', unheard: 'Needs support', brave: 'Brave moments' },
     prompt: 'What are you carrying with you today?',
+    readMore: 'Read more',
     teamPrompt: {
       eyebrow: 'Question from the Jiaia team',
       share: 'Share something',

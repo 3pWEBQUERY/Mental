@@ -120,8 +120,8 @@ export function PublicShell({
         {hero}
         {children}
       </main>
-      {/* Nicht auf den Hilfeseiten: Dort soll nichts von den Nummern ablenken. */}
-      {active !== 'help' && <AppStore t={t} />}
+      {/* Nicht auf den Hilfeseiten (nichts soll von den Nummern ablenken) und nicht beim Anmelden und Registrieren. */}
+      {!active && <AppStore t={t} />}
       <footer className="public-foot">
         <span>{t.common.fine}</span>
         <Link href="/blog">{t.landing.blog}</Link>

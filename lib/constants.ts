@@ -29,7 +29,10 @@ export const ANON_HANDLE = 'Anonym'
 
 export const LIMITS = {
   postMin: 3,
-  postMax: 600,
+  /** Gedanken dürfen ausführlich sein; im Feed werden lange nach einigen Zeilen gekürzt («Weiterlesen»). */
+  postMax: 3000,
+  /** Ab dieser Länge: kleinere Schrift und im Feed gekürzt. */
+  postLong: 420,
   replyMax: 400,
   noteMax: 280,
   journalMax: 5000,
