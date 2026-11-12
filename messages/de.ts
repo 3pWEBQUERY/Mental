@@ -104,6 +104,7 @@ export const de = {
     tabsLabel: 'Ansicht',
     tabs: { all: 'Alle', unheard: 'Braucht Zuspruch', brave: 'Mut-Momente' },
     prompt: 'Was trägst du heute mit dir?',
+    readMore: 'Weiterlesen',
     teamPrompt: {
       eyebrow: 'Frage vom Team Jiaia',
       share: 'Etwas dazu teilen',
