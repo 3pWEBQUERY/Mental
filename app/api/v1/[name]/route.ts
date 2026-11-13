@@ -34,6 +34,8 @@ const CALLS: Record<string, Call> = {
   // Lesen
   me: mobile.me,
   feed: mobile.feed,
+  // «Fragen vom Team Jiaia» (Kreis-Slug, «meine» oder leer; zuletzt gezeigte Frage)
+  prompts: mobile.prompts,
   post: mobile.post,
   myPosts: mobile.myPosts,
   bookmarks: mobile.bookmarks,
