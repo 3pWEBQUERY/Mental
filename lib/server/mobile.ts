@@ -1,7 +1,8 @@
 import 'server-only'
 import { and, count, desc, eq, gt, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { breathLog, checkins, circlePrefs, circles as circlesTable, posts, pushSubscriptions, replies, stepLog } from '@/db/schema'
+import { apnsDevices, breathLog, checkins, circlePrefs, circles as circlesTable, posts, pushSubscriptions, replies, stepLog } from '@/db/schema'
+import { isApnsToken } from '@/lib/apns'
 import { openText } from '@/lib/at-rest'
 import { localizeCircle } from '@/lib/localize'
 import { nightStaffed } from '@/lib/moderation-hours'
@@ -166,4 +167,27 @@ export async function saved() {
     .orderBy(desc(replies.createdAt))
     .limit(100)
   return rows.map((r) => ({ id: r.id, body: r.body, authorHandle: r.handle, createdAt: r.createdAt.toISOString(), postBody: r.postBody }))
+}
+
+/**
+ * Mitteilungen auf diesem iPhone/iPad: Die App meldet ihr Geräte-Token von Apple. Es gehört zur aktuellen Sitzung –
+ * nach dem Abmelden (auch «überall abmelden» oder Notausgang) kommen keine Mitteilungen mehr. Ruhezeiten wie im Konto.
+ */
+export async function registerDevice(token: string, sandbox: boolean) {
+  const v = await getViewer()
+  if (!v || !isApnsToken(token)) return { ok: false as const }
+  const q = v.settings.quiet
+  const quiet = q && Number.isInteger(q.from) && Number.isInteger(q.to) ? { quietFrom: q.from, quietTo: q.to } : {}
+  const values = { userId: v.userId, sessionId: v.sessionId, token: token.toLowerCase(), sandbox: sandbox === true, ...quiet }
+  // Gleiches Gerät, anderes Konto oder neue Sitzung: übernehmen statt doppelt anlegen.
+  await db.insert(apnsDevices).values(values).onConflictDoUpdate({ target: apnsDevices.token, set: values })
+  return { ok: true as const }
+}
+
+/** Mitteilungen auf diesem Gerät ausschalten (Einstellungen der App). */
+export async function unregisterDevice(token: string) {
+  const v = await getViewer()
+  if (!v || !isApnsToken(token)) return { ok: true as const }
+  await db.delete(apnsDevices).where(and(eq(apnsDevices.userId, v.userId), eq(apnsDevices.token, token.toLowerCase())))
+  return { ok: true as const }
 }

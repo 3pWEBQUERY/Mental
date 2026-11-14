@@ -470,6 +470,26 @@ export const pushSubscriptions = pgTable(
   (t) => [index('push_user_idx').on(t.userId)],
 )
 
+/**
+ * iPhones und iPads der App für Mitteilungen über Apple (APNs). Jedes Gerät gehört zur Sitzung, in der es sich
+ * angemeldet hat: Abmelden, «überall abmelden» oder der Notausgang beenden damit auch die Mitteilungen.
+ */
+export const apnsDevices = pgTable(
+  'apns_devices',
+  {
+    id: id(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id').notNull().references(() => sessions.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    /** Entwicklungs-Builds aus Xcode senden über die Sandbox von Apple, App Store und TestFlight nicht. */
+    sandbox: boolean('sandbox').notNull().default(false),
+    quietFrom: smallint('quiet_from').notNull().default(22),
+    quietTo: smallint('quiet_to').notNull().default(7),
+    createdAt: createdAt(),
+  },
+  (t) => [index('apns_user_idx').on(t.userId)],
+)
+
 /* ---------------------------------------------------------- Sicherheit */
 
 export const reports = pgTable(

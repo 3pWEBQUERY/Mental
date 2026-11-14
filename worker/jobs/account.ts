@@ -9,6 +9,7 @@ import {
   notifications,
   passkeys,
   pushSubscriptions,
+  apnsDevices,
   reports,
   blocks,
   bookmarks,
@@ -104,7 +105,7 @@ async function exportOnce(exportId: string, last: boolean): Promise<boolean> {
     // Bilder in Prüfung. Nie Token, Schlüssel oder wer moderiert hat.
     const ownPostIds = db.select({ id: posts.id }).from(posts).where(eq(posts.userId, userId))
     const ownReplyIds = db.select({ id: replies.id }).from(replies).where(eq(replies.userId, userId))
-    const [myReports, myNotifications, mySessions, myPasskeys, mySubs, actionsAgainst, allMedia] = await Promise.all([
+    const [myReports, myNotifications, mySessions, myPasskeys, mySubs, myDevices, actionsAgainst, allMedia] = await Promise.all([
       db
         .select({ targetType: reports.targetType, reason: reports.reason, note: reports.note, status: reports.status, createdAt: reports.createdAt })
         .from(reports)
@@ -125,6 +126,10 @@ async function exportOnce(exportId: string, last: boolean): Promise<boolean> {
         .select({ endpoint: pushSubscriptions.endpoint, quietFrom: pushSubscriptions.quietFrom, quietTo: pushSubscriptions.quietTo, createdAt: pushSubscriptions.createdAt })
         .from(pushSubscriptions)
         .where(eq(pushSubscriptions.userId, userId)),
+      db
+        .select({ quietFrom: apnsDevices.quietFrom, quietTo: apnsDevices.quietTo, createdAt: apnsDevices.createdAt })
+        .from(apnsDevices)
+        .where(eq(apnsDevices.userId, userId)),
       db
         .select({ targetType: moderationActions.targetType, action: moderationActions.action, reason: moderationActions.reason, createdAt: moderationActions.createdAt })
         .from(moderationActions)
@@ -161,7 +166,11 @@ async function exportOnce(exportId: string, last: boolean): Promise<boolean> {
       sitzungen: mySessions,
       passkeys: myPasskeys,
       // Nur der Push-Dienst, nicht die vollständige Adresse (sie ist ein Geräte-Geheimnis).
-      pushGeraete: mySubs.map((p) => ({ dienst: new URL(p.endpoint).hostname, ruhezeit: { von: p.quietFrom, bis: p.quietTo }, createdAt: p.createdAt })),
+      pushGeraete: [
+        ...mySubs.map((p) => ({ dienst: new URL(p.endpoint).hostname, ruhezeit: { von: p.quietFrom, bis: p.quietTo }, createdAt: p.createdAt })),
+        // iOS-App: das Geräte-Token selbst gehört nicht in den Export (es ist ein Schlüssel für Apple, keine Angabe über dich).
+        ...myDevices.map((d) => ({ dienst: 'Apple (iOS-App)', ruhezeit: { von: d.quietFrom, bis: d.quietTo }, createdAt: d.createdAt })),
+      ],
       massnahmen: actionsAgainst,
       bilder: allMedia,
     }
