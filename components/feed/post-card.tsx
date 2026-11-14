@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { startTransition, useEffect, useId, useOptimistic, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import {
   blockAuthor,
   createReply,
@@ -342,7 +342,7 @@ export function PostCard({
       }
     : {}
   return (
-    <article className={`post${open ? ' open' : ''}`} aria-labelledby={`p-${post.id}`}>
+    <article className={`post${open ? ' open' : ''}`} aria-labelledby={`p-${post.id}`} style={{ '--c': post.circle.color } as CSSProperties}>
       <div className="post-meta">
         <Glyph seed={post.glyphSeed} mood={post.mood} />
         <div>
@@ -350,7 +350,7 @@ export function PostCard({
             {post.isMine && post.authorHandle === m.common.anonymous ? `${m.common.anonymous} (${m.common.you.toLowerCase()})` : post.authorHandle}
           </div>
           <div>
-            {post.circle.name} · <span suppressHydrationWarning>{relativeTime(post.createdAt)}</span>
+            <span className="post-circle">{post.circle.name}</span> · <span suppressHydrationWarning>{relativeTime(post.createdAt)}</span>
             {post.editedAt && ` · ${f.edited}`}
             <span className="need-mobile"> · {m.needs[post.need]}</span>
           </div>
@@ -451,6 +451,9 @@ export function PostCard({
           }}
         >
           {m.replies.count(rc)}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
       </div>
 
