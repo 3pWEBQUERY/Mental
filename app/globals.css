@@ -385,6 +385,19 @@ ul, ol { list-style: none; }
 .read-more { display: inline-flex; align-items: center; min-height: 32px; margin: -2px 0 6px; padding: 0; border: 0; background: none; color: var(--clay-ink); font-size: calc(14px * var(--fz)); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 /* Gedanke gross: gleiche Fläche wie das Schreibfenster, Inhalt scrollt im Dialog. */
 .post-dlg .post { border: 0; border-radius: 0; background: none; padding: 0; margin: 0; animation: none; }
+/* Ein Gedanke in der Gedanken-Spalte (feed-column.tsx): gleitet von rechts herein, «Zurück» oben links bleibt beim
+   Scrollen stehen. Zurück gleitet der Feed von links an seine alte Stelle. */
+.post-view { animation: post-in 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.post-view .post { animation: none; }
+.feed-main.returning { animation: feed-back 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes post-in { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes feed-back { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
+.post-view-bar { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; gap: 16px; margin: -12px 0 14px; padding: 12px 0; background: var(--paper); }
+.post-view-back { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px 0 12px; border-radius: 999px; border: var(--bw) solid color-mix(in srgb, currentColor 34%, transparent); color: var(--ink); font-size: calc(14px * var(--fz)); font-weight: 500; text-decoration: none; transition: background 0.2s; }
+.post-view-back:hover { background: var(--paper-2); }
+.post-view-back svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s; }
+.post-view-back:hover svg { transform: translateX(-2px); }
+.post-view-bar h2, .post-view-title { font-family: var(--serif); font-weight: 400; font-size: calc(26px * var(--fz)); line-height: 1; letter-spacing: -0.01em; }
 .post-dlg .post-text { font-size: calc(clamp(19px, 1.5vw, 22px) * var(--fz)); }
 .post-dlg .post-image { max-width: 720px; }
 .unheard { display: flex; align-items: flex-start; gap: 8px; font-size: calc(13px * var(--fz)); line-height: 1.45; color: var(--clay-ink); margin: 6px 0 2px; }
