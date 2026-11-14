@@ -8,6 +8,7 @@ import { nightStaffed } from '@/lib/moderation-hours'
 import { currentLocale } from '@/messages'
 import { getBookmarkedPosts, getFeed, getMyPosts, getPostById, notBlocked, type FeedView } from './posts'
 import { getViewer } from './session'
+import { getCirclePrompts, getFeedPrompt, type TeamPrompt } from './prompts'
 import { getCircleHelp, getCircles, getCrisisTerms, getHelpResources } from './terms'
 
 /**
@@ -57,6 +58,8 @@ export async function me() {
       hidePresence: s.hidePresence ?? false,
       discreet: s.discreet ?? false,
       listener: s.listener ?? false,
+      // Nachfrage am Tag nach einem akuten Krisen-Treffer (Standard: an) – neu für die App (Nov. 2026).
+      followUp: s.followUp ?? true,
       onboard: s.onboard ?? false,
       locale: s.locale ?? null,
     },
@@ -69,6 +72,22 @@ export async function me() {
     help,
     nightModeration: nightStaffed(),
   }
+}
+
+/**
+ * «Fragen vom Team Jiaia» wie auf /start: im Kreis alle seine Fragen, sonst eine zufällige (bei «meine» nur aus
+ * gefolgten Kreisen). `lastId` ist die zuletzt gezeigte Frage – die App merkt sie sich statt des Cookies im Web.
+ */
+export async function prompts(circle: string | null, lastId: string | null): Promise<TeamPrompt[]> {
+  const v = await getViewer()
+  if (!v) return []
+  const mine = circle === 'meine'
+  if (circle && !mine && typeof circle === 'string') {
+    const [c] = await db.select({ id: circlesTable.id }).from(circlesTable).where(and(eq(circlesTable.slug, circle), eq(circlesTable.isActive, true)))
+    return c ? getCirclePrompts(c.id) : []
+  }
+  const p = await getFeedPrompt(v.userId, mine, typeof lastId === 'string' && lastId.length <= 64 ? lastId : null)
+  return p ? [p] : []
 }
 
 /** Feed wie /start – `circle` ist ein Kreis-Slug, «meine» (gefolgte Kreise) oder leer. */
