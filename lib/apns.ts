@@ -7,7 +7,7 @@ import http2 from 'node:http2'
  * Variablen (nur im Worker nötig):
  * - APNS_KEY_ID: Schlüssel-ID des «Apple Push Notifications service (APNs)»-Schlüssels (10 Zeichen)
  * - APNS_TEAM_ID: Team-ID (z. B. CY2659G6Q3)
- * - APNS_PRIVATE_KEY: Inhalt der .p8-Datei (Zeilenumbrüche dürfen als \n stehen)
+ * - APNS_PRIVATE_KEY (oder APNS_KEY): Inhalt der .p8-Datei – Zeilenumbrüche, Kopfzeilen und Leerzeichen sind egal
  * - APNS_TOPIC: Bundle-ID der App (Standard app.jiaia)
  * Fehlt etwas, sendet der Worker nur Web-Push.
  */
@@ -28,18 +28,40 @@ type Config = { keyId: string; teamId: string; key: KeyObject; topic: string }
 
 let config: Config | null | undefined
 
+/**
+ * Den .p8-Schlüssel so annehmen, wie er in Railway landet: mit oder ohne Kopf- und Fusszeile, mit echten oder
+ * maskierten Zeilenumbrüchen (\\n), als eine Zeile mit Leerzeichen, in Anführungszeichen. Nur der Base64-Inhalt zählt.
+ */
+export function parseP8(raw: string): KeyObject | null {
+  const body = raw
+    .replace(/\\n/g, '\n')
+    .replace(/^["']|["']$/g, '')
+    .replace(/-----(BEGIN|END)[A-Z ]*-----/g, '')
+    .replace(/[^A-Za-z0-9+/=]/g, '')
+  if (body.length < 64) return null
+  try {
+    return createPrivateKey({ key: Buffer.from(body, 'base64'), format: 'der', type: 'pkcs8' })
+  } catch {
+    return null
+  }
+}
+
 export function apnsConfig(): Config | null {
   if (config !== undefined) return config
   const keyId = process.env.APNS_KEY_ID?.trim()
   const teamId = process.env.APNS_TEAM_ID?.trim()
-  const pem = process.env.APNS_PRIVATE_KEY?.replace(/\\n/g, '\n').trim()
-  if (!keyId || !teamId || !pem) return (config = null)
-  try {
-    config = { keyId, teamId, key: createPrivateKey(pem), topic: process.env.APNS_TOPIC?.trim() || 'app.jiaia' }
-  } catch {
-    console.error('[apns] APNS_PRIVATE_KEY ist kein gültiger Schlüssel (.p8)')
-    config = null
+  // APNS_KEY als zweiter Name: So heisst die Variable oft, wenn man sie von Hand anlegt. Der erste lesbare zählt.
+  const candidates = [process.env.APNS_PRIVATE_KEY, process.env.APNS_KEY].map((v) => v?.trim()).filter((v): v is string => Boolean(v))
+  if (!keyId || !teamId || !candidates.length) return (config = null)
+  const key = candidates.map(parseP8).find(Boolean) ?? null
+  if (!key) {
+    // Ohne den Schlüssel selbst zu zeigen: was fehlt, damit man es in Railway beheben kann.
+    const hint = candidates.map((v) => `${v.length} Zeichen, Kopfzeile ${v.includes('BEGIN') ? 'ja' : 'nein'}`).join(' / ')
+    console.error(`[apns] APNS_PRIVATE_KEY ist kein gültiger Schlüssel (.p8) – ${hint}`)
+    return (config = null)
   }
+  config = { keyId, teamId, key, topic: process.env.APNS_TOPIC?.trim() || 'app.jiaia' }
+  console.log(`[apns] bereit (Schlüssel ${keyId}, Team ${teamId}, ${config.topic})`)
   return config
 }
 
