@@ -641,6 +641,8 @@ export const de = {
     appBadgeSmall: 'Laden im',
     appBadgeBig: 'App Store',
     appLink: 'Jiaia im App Store laden (öffnet ein neues Fenster)',
+    sheetCta: 'Im App Store laden',
+    sheetLater: 'Im Browser weiter',
   },
   blog: {
     title: 'Blog',

@@ -644,6 +644,8 @@ export const fr: Messages = {
     appBadgeSmall: 'Télécharger dans',
     appBadgeBig: 'l’App Store',
     appLink: 'Télécharger Jiaia dans l’App Store (nouvelle fenêtre)',
+    sheetCta: 'Télécharger dans l’App Store',
+    sheetLater: 'Continuer dans le navigateur',
   },
   blog: {
     title: 'Blog',

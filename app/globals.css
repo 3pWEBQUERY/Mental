@@ -1010,6 +1010,27 @@ p.image-review-preview { padding: 24px 16px; text-align: center; }
 .transparency-early h2 { margin-top: 0; }
 
 /* App Store: Nachtkarte über dem Footer – Ausschnitt des Sternenhimmels der Startseite, in beiden Farbschemata dunkel. */
+/* App-Hinweis am iPhone/iPad: Blatt von unten, oben ein Streifen Nachthimmel, darauf das App-Icon. */
+dialog.app-sheet { margin: auto 0 0; width: 100%; max-width: 100%; max-height: calc(100dvh - 40px); padding: 0; border-radius: 28px 28px 0 0; background: var(--paper); color: var(--ink); overflow: hidden auto; overscroll-behavior: contain; }
+dialog.app-sheet[open] { animation: sheet-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+dialog.app-sheet::backdrop { background: rgba(5, 10, 22, 0.5); animation: sheet-fade 0.35s ease-out; }
+@media (min-width: 640px) { dialog.app-sheet { width: min(500px, calc(100% - 32px)); margin: auto auto 20px; border-radius: 28px; } }
+.app-sheet-inner { display: grid; outline: none; }
+.app-sheet-sky { position: relative; height: 136px; background: linear-gradient(to bottom, rgba(5, 10, 22, 0) 35%, var(--paper) 100%), var(--sky) 72% 28% / cover no-repeat, #050a16; }
+.app-sheet-grabber { position: absolute; top: 9px; left: 50%; width: 38px; height: 5px; border-radius: 3px; background: rgba(244, 239, 230, 0.6); transform: translateX(-50%); }
+.app-sheet-icon { position: relative; width: 78px; height: 78px; margin: -48px auto 0; border-radius: 19px; box-shadow: 0 12px 30px rgba(5, 10, 22, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.7); }
+.app-sheet-body { display: grid; justify-items: center; padding: 16px 24px calc(14px + env(safe-area-inset-bottom)); text-align: center; }
+.app-sheet-eyebrow { font-size: calc(12px * var(--fz)); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.app-sheet-title { margin-top: 10px; font-family: var(--serif); font-weight: 400; font-size: calc(35px * var(--fz)); line-height: 1.02; letter-spacing: -0.015em; text-wrap: balance; }
+.app-sheet-title em { font-style: italic; color: var(--clay-ink); }
+.app-sheet-text { margin-top: 12px; max-width: 34ch; color: var(--ink-2); font-size: calc(15px * var(--fz)); line-height: 1.5; text-wrap: pretty; }
+.app-sheet-cta { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; margin-top: 22px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: calc(16px * var(--fz)); font-weight: 600; text-decoration: none; transition: transform 0.15s; }
+.app-sheet-cta:active { transform: scale(0.98); }
+.app-sheet-cta svg { width: 19px; height: 19px; margin-top: -2px; fill: currentColor; }
+.app-sheet-later { min-height: 44px; margin-top: 6px; padding: 0 12px; border: 0; background: none; color: var(--ink-2); font-size: calc(14px * var(--fz)); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes sheet-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { dialog.app-sheet[open], dialog.app-sheet::backdrop { animation: none; } }
 .app-store { padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 48px); }
 .app-store-card {
   position: relative; isolation: isolate; overflow: hidden; max-width: 1120px; margin: 0 auto;
