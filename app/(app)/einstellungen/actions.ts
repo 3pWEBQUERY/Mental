@@ -4,7 +4,7 @@ import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { db } from '@/db'
-import { blocks, exports, passkeys, postHides, profiles, pushSubscriptions, sessions, users, type Settings } from '@/db/schema'
+import { apnsDevices, blocks, exports, passkeys, postHides, profiles, pushSubscriptions, sessions, users, type Settings } from '@/db/schema'
 import { LIMITS } from '@/lib/constants'
 import { displayNameProblem } from '@/lib/display-name'
 import { isPushEndpoint, MAX_PUSH_SUBSCRIPTIONS } from '@/lib/push-endpoint'
@@ -239,6 +239,7 @@ export async function updateQuietHours(from: number, to: number): Promise<R> {
   const q = z.object({ from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).safeParse({ from, to })
   if (!q.success) return fail(m.common.error)
   await db.update(pushSubscriptions).set({ quietFrom: q.data.from, quietTo: q.data.to }).where(eq(pushSubscriptions.userId, v.userId))
+  await db.update(apnsDevices).set({ quietFrom: q.data.from, quietTo: q.data.to }).where(eq(apnsDevices.userId, v.userId))
   // Auch im Konto merken: gilt für Geräte, die erst später Benachrichtigungen erlauben (und für die iOS-App).
   await db
     .update(profiles)

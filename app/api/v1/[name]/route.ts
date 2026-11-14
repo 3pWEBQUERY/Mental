@@ -99,6 +99,9 @@ const CALLS: Record<string, Call> = {
   deleteAccount: settings.deleteAccount,
   // Ruhezeiten für Benachrichtigungen (wie in der Web-App, gilt für alle Geräte des Kontos).
   updateQuietHours: settings.updateQuietHours,
+  // Mitteilungen über Apple (APNs): Geräte-Token der App an- und abmelden.
+  registerDevice: mobile.registerDevice,
+  unregisterDevice: mobile.unregisterDevice,
 }
 
 const MAX_BODY = 64 * 1024
