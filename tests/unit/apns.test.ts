@@ -1,6 +1,6 @@
 import { generateKeyPairSync, verify } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { apnsPayload, isApnsToken, providerToken } from '@/lib/apns'
+import { apnsPayload, isApnsToken, parseP8, providerToken } from '@/lib/apns'
 
 describe('APNs', () => {
   it('signiert das Anmelde-Token mit ES256 so, dass Apple es prüfen kann', () => {
@@ -27,5 +27,27 @@ describe('APNs', () => {
     expect(isApnsToken('xyz')).toBe(false)
     expect(isApnsToken('g'.repeat(64))).toBe(false)
     expect(isApnsToken({ length: 64 })).toBe(false)
+  })
+})
+
+describe('APNs-Schlüssel aus Railway', () => {
+  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString().trim()
+  const body = pem.split('\n').filter((l) => !l.startsWith('-----')).join('')
+
+  it.each([
+    ['wie in der Datei', pem],
+    ['mit maskierten Zeilenumbrüchen', pem.replace(/\n/g, '\\n')],
+    ['als eine Zeile mit Leerzeichen', pem.replace(/\n/g, ' ')],
+    ['ohne Kopf- und Fusszeile', body],
+    ['in Anführungszeichen', `"${pem}"`],
+  ])('liest den Schlüssel %s', (_, raw) => {
+    const key = parseP8(raw)
+    expect(key?.asymmetricKeyType).toBe('ec')
+  })
+
+  it('lehnt Unsinn ab, ohne zu werfen', () => {
+    expect(parseP8('${{APNS_KEY}}')).toBeNull()
+    expect(parseP8('kein schlüssel')).toBeNull()
   })
 })
