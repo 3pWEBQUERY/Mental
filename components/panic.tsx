@@ -26,9 +26,9 @@ export function PanicGuard() {
     let presses: number[] = []
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.repeat) return
-      // Schliesst das Esc gerade einen Dialog oder ein Menü, zählt es nicht – sonst blendete «Menü zu, Dialog zu,
+      // Schliesst das Esc gerade einen Dialog, ein Menü oder einen geöffneten Gedanken, zählt es nicht – sonst blendete «Menü zu, Dialog zu,
       // noch einmal» die App ungewollt aus.
-      if (document.querySelector('dialog[open], [role="menu"]')) {
+      if (document.querySelector('dialog[open], [role="menu"], .post-view')) {
         presses = []
         return
       }
