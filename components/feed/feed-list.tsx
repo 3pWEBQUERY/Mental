@@ -8,7 +8,6 @@ import type { FeedView } from '@/lib/server/posts'
 import { m } from '@/messages'
 import { useViewer } from '../viewer'
 import { PostCard } from './post-card'
-import { PostDialog } from './post-dialog'
 import { ReportDialog, type ReportTarget } from './report-dialog'
 import { attempt } from '@/lib/client/attempt'
 
@@ -35,7 +34,6 @@ export function FeedList({
   const [caughtUp, setCaughtUp] = useState(initialCaughtUp)
   const [report, setReport] = useState<ReportTarget>(null)
   const [pending, start] = useTransition()
-  const [openId, setOpenId] = useState<string | null>(null)
   // Fokus nicht verlieren: Verschwindet eine Karte (gelöscht, blockiert, ausgeblendet) oder kommen neue dazu
   // («Mehr laden»), landet der Fokus auf der passenden Karte statt auf dem Seitenanfang.
   const listRef = useRef<HTMLDivElement>(null)
@@ -55,7 +53,7 @@ export function FeedList({
     const i = posts.findIndex((x) => x.id === id)
     const card = i >= 0 ? listRef.current?.querySelectorAll<HTMLElement>(':scope > article')[i] : null
     // Nur umsetzen, wenn der Fokus in der Karte lag (oder im Dialog dazu) – sonst nicht springen.
-    if (card && (card.contains(document.activeElement) || openId === id)) focusIndex.current = i
+    if (card && card.contains(document.activeElement)) focusIndex.current = i
     setPosts((cur) => cur.filter((x) => x.id !== id))
   }
 
@@ -72,6 +70,8 @@ export function FeedList({
     [view, circle, following],
   )
   useEffect(() => on('post-updated', (p) => setPosts((cur) => cur.map((x) => (x.id === p.id ? p : x)))), [])
+  // Gelöscht oder ausgeblendet in der geöffneten Ansicht (feed-column.tsx).
+  useEffect(() => on('post-removed', (id) => setPosts((cur) => cur.filter((x) => x.id !== id))), [])
 
   function more() {
     const hadFocus = Boolean(document.activeElement?.closest('.more'))
@@ -110,7 +110,7 @@ export function FeedList({
               onChange={(np) => setPosts((cur) => cur.map((x) => (x.id === np.id ? np : x)))}
               onRemove={remove}
               onReport={setReport}
-              onOpen={() => setOpenId(p.id)}
+              onOpen={() => emit('open-post', p)}
             />
           ))
         )}
@@ -134,13 +134,6 @@ export function FeedList({
           </div>
         )
       )}
-      <PostDialog
-        post={posts.find((p) => p.id === openId) ?? null}
-        onClose={() => setOpenId(null)}
-        onChange={(np) => setPosts((cur) => cur.map((x) => (x.id === np.id ? np : x)))}
-        onRemove={remove}
-        onReport={setReport}
-      />
       <ReportDialog target={report} onClose={() => setReport(null)} />
     </>
   )

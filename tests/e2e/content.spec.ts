@@ -236,26 +236,42 @@ async function excerpts(text: string) {
   }
 }
 
-test('Gedanke per Klick gross öffnen – 75 % des Bildschirms, Antworten darin', async ({ page }) => {
+test('Gedanke per Klick öffnen – in der Gedanken-Spalte, mit «Zurück», Antworten darin', async ({ page }) => {
   await register(page)
   const text = `Ein Gedanke zum Öffnen ${Date.now()}`
   await share(page, text)
   await page.locator('article', { hasText: text }).locator('.post-text').click()
-  const dlg = page.locator('dialog[open]')
-  await expect(dlg.getByRole('heading', { name: 'Gedanke' })).toBeVisible()
-  await expect(dlg.locator('.post-text')).toHaveText(text)
-  const box = (await dlg.boundingBox())!
-  const vp = page.viewportSize()!
-  expect(Math.abs(box.width / vp.width - 0.75)).toBeLessThan(0.01)
-  expect(Math.abs(box.height / vp.height - 0.75)).toBeLessThan(0.01)
-
-  await dlg.getByLabel('Antwort schreiben').fill('Danke, dass du das teilst.')
-  await dlg.getByRole('button', { name: 'Antwort senden' }).click()
-  await expect(dlg.locator('.replies')).toContainText('Danke, dass du das teilst.')
-  await page.keyboard.press('Escape')
+  // Kein Dialog: Der Gedanke ersetzt den Feed in derselben Spalte, die Adresse zeigt auf ihn.
+  const view = page.locator('.post-view')
+  await expect(view.getByRole('heading', { name: 'Gedanke' })).toBeVisible()
+  await expect(view.locator('.post-text')).toHaveText(text)
   await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await expect(page.locator('.feed-main')).toBeHidden()
+  await expect(page).toHaveURL(/\/start\/gedanke\/[0-9a-f-]+$/)
+  const back = view.getByRole('button', { name: 'Zurück' })
+  await expect(back).toBeFocused()
+  await expect(page.locator('.feed-column > .post-view')).toHaveCount(1)
+
+  await view.getByLabel('Antwort schreiben').fill('Danke, dass du das teilst.')
+  await view.getByRole('button', { name: 'Antwort senden' }).click()
+  await expect(view.locator('.replies')).toContainText('Danke, dass du das teilst.')
+  await back.click()
+  await expect(view).toHaveCount(0)
+  await expect(page).toHaveURL(/\/start$/)
   // Die Karte im Feed hat die Antwort ebenfalls – ohne Neuladen.
-  await expect(page.locator('.list article', { hasText: text }).locator('.replies')).toContainText('Danke, dass du das teilst.')
+  const card = page.locator('.list article', { hasText: text })
+  await expect(card.locator('.replies')).toContainText('Danke, dass du das teilst.')
+
+  // Browser-Zurück schliesst, Vorwärts öffnet wieder, Esc schliesst ebenfalls.
+  await card.locator('.post-text').click()
+  await expect(view).toBeVisible()
+  await page.goBack()
+  await expect(view).toHaveCount(0)
+  await page.goForward()
+  await expect(view.locator('.post-text')).toHaveText(text)
+  await page.keyboard.press('Escape')
+  await expect(view).toHaveCount(0)
+  await expect(page).toHaveURL(/\/start$/)
 })
 
 test('«Meine Kreise»: gefolgte Kreise als Filter', async ({ page }) => {
@@ -299,9 +315,9 @@ test('Tastatur: Menü, Bestätigung und Auswahlgruppen', async ({ page }) => {
   await page.getByRole('button', { name: 'Teilen', exact: true }).click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
 
-  // Gedanke gross öffnen, Menü per Tastatur: Esc schliesst nur das Menü
+  // Gedanke öffnen, Menü per Tastatur: Esc schliesst nur das Menü, nicht den Gedanken
   await page.locator('article', { hasText: text }).locator('.post-text').click()
-  const dlg = page.locator('dialog[open]')
+  const dlg = page.locator('.post-view')
   const dots = dlg.getByRole('button', { name: 'Weitere Aktionen' })
   await dots.focus()
   await page.keyboard.press('Enter')
@@ -311,7 +327,7 @@ test('Tastatur: Menü, Bestätigung und Auswahlgruppen', async ({ page }) => {
   await page.keyboard.press('Escape')
   await expect(dlg.getByRole('menu')).toHaveCount(0)
   await expect(dots).toBeFocused()
-  await expect(page.locator('dialog[open]')).toHaveCount(1)
+  await expect(dlg).toBeVisible()
 
   // Bestätigung: Fokus auf «Abbrechen», Enter löscht nichts
   await page.keyboard.press('Enter')

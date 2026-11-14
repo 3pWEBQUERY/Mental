@@ -12,6 +12,7 @@ import { TeamPrompts } from '@/components/feed/team-prompt'
 import { getCirclePrompts, getFeedPrompt, LAST_PROMPT_COOKIE } from '@/lib/server/prompts'
 import { cookies } from 'next/headers'
 import { FeedList } from '@/components/feed/feed-list'
+import { FeedColumn } from '@/components/feed/feed-column'
 import { TabBar } from '@/components/tab-bar'
 import { db } from '@/db'
 import { circles } from '@/db/schema'
@@ -45,9 +46,12 @@ export default function FeedPage({ searchParams }: { searchParams: Search }) {
   return (
     <>
       <main className="feed" id="inhalt">
-        <Suspense fallback={<FeedHead view="all" circle={null} />}>
-          <Feed searchParams={searchParams} />
-        </Suspense>
+        {/* Ein angeklickter Gedanke öffnet sich in dieser Spalte, mit «Zurück» oben links (feed-column.tsx). */}
+        <FeedColumn>
+          <Suspense fallback={<FeedHead view="all" circle={null} />}>
+            <Feed searchParams={searchParams} />
+          </Suspense>
+        </FeedColumn>
       </main>
       {/* Die Leiste steht sofort – sonst bleibt sie leer, bis die Daten da sind (auch beim Wechsel der Ansicht). */}
       <Side

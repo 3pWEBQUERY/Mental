@@ -19,7 +19,7 @@ test('Lange Gedanken: bis 3000 Zeichen, im Feed gekürzt mit «Weiterlesen», ge
   expect(await text.evaluate((el) => el.scrollHeight > el.clientHeight + 20)).toBe(true)
 
   await card.getByRole('button', { name: 'Weiterlesen' }).click()
-  const dlg = page.getByRole('dialog')
+  const dlg = page.locator('.post-view')
   await expect(dlg.locator('.post-text')).toContainText(end)
   await expect(dlg.locator('.post-text')).not.toHaveClass(/clamped/)
   expect(await dlg.locator('.post-text').evaluate((el) => el.scrollHeight <= el.clientHeight + 2)).toBe(true)

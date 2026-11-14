@@ -17,6 +17,10 @@ export type BusEvents = {
   notifications: undefined
   'post-created': PublicPost
   'post-updated': PublicPost
+  /** Ein Gedanke öffnet sich in der Gedanken-Spalte (feed-column.tsx) statt in einem Dialog. */
+  'open-post': PublicPost
+  /** Gelöscht oder ausgeblendet in der geöffneten Ansicht – der Feed nimmt ihn heraus. */
+  'post-removed': string
   'checkin-mood': number
 }
 
